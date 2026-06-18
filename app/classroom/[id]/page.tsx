@@ -5,7 +5,7 @@ import { ThemeProvider } from '@/lib/hooks/use-theme';
 import { useStageStore } from '@/lib/store';
 import { loadImageMapping } from '@/lib/utils/image-storage';
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useSceneGenerator } from '@/lib/hooks/use-scene-generator';
 import { useMediaGenerationStore } from '@/lib/store/media-generation';
 import { useWhiteboardHistoryStore } from '@/lib/store/whiteboard-history';
@@ -19,6 +19,7 @@ const log = createLogger('Classroom');
 
 export default function ClassroomDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const classroomId = params?.id as string;
 
   const { loadFromStorage } = useStageStore();
@@ -123,6 +124,21 @@ export default function ClassroomDetailPage() {
       setLoading(false);
     }
   }, [classroomId, loadFromStorage]);
+
+  useEffect(() => {
+    if (searchParams?.get('tts') !== 'browser') return;
+
+    void import('@/lib/store/settings').then(({ useSettingsStore }) => {
+      const settings = useSettingsStore.getState();
+      settings.setTTSEnabled(true);
+      settings.setTTSProvider('browser-native-tts');
+      settings.setTTSProviderConfig('browser-native-tts', { enabled: true });
+      settings.setTTSVoice('default');
+      settings.setASREnabled(true);
+      settings.setASRProvider('browser-native');
+      settings.setASRLanguage('en-US');
+    });
+  }, [searchParams]);
 
   useEffect(() => {
     // Reset loading state on course switch to unmount Stage during transition,

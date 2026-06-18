@@ -58,6 +58,7 @@ export interface CoursePlanningRequest {
   audience?: string;
   language?: string;
   resourcesSummary?: string;
+  resourceIds?: string[];
 }
 
 export interface CourseMemory {
@@ -69,4 +70,21 @@ export interface CourseMemory {
   assessmentSignals: string[];
   teacherSummary: string;
   referencesUsed: string[];
+}
+
+export interface CourseResource {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  createdAt: string;
+  summary: string;
+  excerpt: string;
+  textLength: number;
+  pageCount?: number;
+}
+
+export interface PersistedCourseResource extends CourseResource {
+  storedFileName: string;
+  text: string;
 }

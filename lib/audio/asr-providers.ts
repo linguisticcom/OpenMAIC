@@ -314,9 +314,11 @@ async function transcribeOpenAIWhisper(
     throw new Error('Invalid audio buffer type');
   }
 
+  const requestedModel = config.modelId || 'gpt-4o-mini-transcribe';
+
   try {
     const result = await transcribe({
-      model: openai.transcription(config.modelId || 'gpt-4o-mini-transcribe'),
+      model: openai.transcription(requestedModel),
       audio: audioData,
       providerOptions: {
         openai: {
@@ -331,6 +333,23 @@ async function transcribeOpenAIWhisper(
     const errMsg = error instanceof Error ? error.message : '';
     if (errMsg.includes('empty') || errMsg.includes('too short')) {
       return { text: '' };
+    }
+    if (requestedModel !== 'whisper-1') {
+      try {
+        const fallbackResult = await transcribe({
+          model: openai.transcription('whisper-1'),
+          audio: audioData,
+          providerOptions: {
+            openai: {
+              language: config.language === 'auto' ? undefined : config.language,
+            },
+          },
+        });
+
+        return { text: fallbackResult.text || '' };
+      } catch {
+        // Keep the original provider error; it usually has the clearest detail.
+      }
     }
     throw error;
   }

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { nanoid } from 'nanoid';
 import { callLLM } from '@/lib/ai/llm';
+import { parseJsonResponse } from '@/lib/generation/json-repair';
 import { createLogger } from '@/lib/logger';
 import { apiError, apiSuccess } from '@/lib/server/api-response';
 import { resolveModelFromRequest } from '@/lib/server/resolve-model';
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
     const { model: languageModel, thinkingConfig } = await resolveModelFromRequest(req, body);
 
     const systemPrompt = `You are the edit agent for an AI classroom studio.
-You receive an existing OpenMAIC classroom and a user instruction.
+You receive an existing LC Academy classroom and a user instruction.
 Return ONLY valid JSON. Do not write markdown.
 
 Your task is to propose a safe structured edit plan, not to regenerate the whole classroom unless necessary.
@@ -172,7 +173,8 @@ Return JSON with this shape:
       thinkingConfig,
     );
 
-    const parsed = JSON.parse(extractJsonObject(result.text));
+    const parsed = parseJsonResponse<unknown>(extractJsonObject(result.text));
+    if (!parsed) throw new Error('Could not parse classroom edit JSON from model response');
     const plan = normalizePlan(parsed, instruction);
 
     return apiSuccess({ plan });

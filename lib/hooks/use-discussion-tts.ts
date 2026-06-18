@@ -32,6 +32,41 @@ interface QueueItem {
   voiceId: string;
 }
 
+function isBrowserTTSUrlOverride(): boolean {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).get('tts') === 'browser';
+}
+
+function voiceMatchesLanguage(voice: SpeechSynthesisVoice, language: string): boolean {
+  const voiceLang = voice.lang.toLowerCase();
+  const target = language.toLowerCase();
+  const baseTarget = target.split('-')[0];
+  return voiceLang === target || voiceLang.startsWith(`${baseTarget}-`);
+}
+
+function browserVoiceForAgent(
+  voices: SpeechSynthesisVoice[],
+  agent: AgentConfig | undefined,
+  index: number,
+  language: string,
+): string {
+  const usableVoices = voices.length > 0 ? voices : [];
+  const languageVoices = usableVoices.filter((voice) => voiceMatchesLanguage(voice, language));
+  const candidates = languageVoices.length > 0 ? languageVoices : usableVoices;
+  if (candidates.length === 0) return 'default';
+
+  const teacherHints = /david|mark|guy|george|daniel|male|fred|alex/i;
+  const studentHints = /zira|aria|jenny|susan|samantha|female|eva|hazel|helen|sara|sarah/i;
+
+  if (agent?.role === 'teacher') {
+    return candidates.find((voice) => teacherHints.test(voice.name))?.voiceURI || candidates[0].voiceURI;
+  }
+
+  const studentCandidates = candidates.filter((voice) => studentHints.test(voice.name));
+  const pool = studentCandidates.length > 0 ? studentCandidates : candidates;
+  return pool[index % pool.length].voiceURI;
+}
+
 export function useDiscussionTTS({ enabled, agents, onAudioStateChange }: DiscussionTTSOptions) {
   const { locale } = useI18n();
   const ttsProvidersConfig = useSettingsStore((s) => s.ttsProvidersConfig);
@@ -39,6 +74,7 @@ export function useDiscussionTTS({ enabled, agents, onAudioStateChange }: Discus
   const ttsMuted = useSettingsStore((s) => s.ttsMuted);
   const ttsVolume = useSettingsStore((s) => s.ttsVolume);
   const playbackSpeed = useSettingsStore((s) => s.playbackSpeed);
+  const forceBrowserTTS = isBrowserTTSUrlOverride();
   // Global lecture voice — used as fallback for teacher agent
   const globalTtsProviderId = useSettingsStore((s) => s.ttsProviderId);
   const globalTtsVoice = useSettingsStore((s) => s.ttsVoice);
@@ -131,6 +167,13 @@ export function useDiscussionTTS({ enabled, agents, onAudioStateChange }: Discus
       // could swap the user's chosen voice. Only if the global provider is itself
       // disabled does the teacher fall back to an enabled provider.
       if (agent.role === 'teacher') {
+        if (forceBrowserTTS) {
+          const index = agentIndexMap.current.get(agentId!) ?? 0;
+          return {
+            providerId: 'browser-native-tts',
+            voiceId: browserVoiceForAgent(browserVoices, agent, index, locale),
+          };
+        }
         if (isTTSProviderEnabled(globalTtsProviderId, ttsProvidersConfig[globalTtsProviderId])) {
           return {
             providerId: globalTtsProviderId,
@@ -142,6 +185,12 @@ export function useDiscussionTTS({ enabled, agents, onAudioStateChange }: Discus
       }
 
       const index = agentIndexMap.current.get(agentId!) ?? 0;
+      if (forceBrowserTTS) {
+        return {
+          providerId: 'browser-native-tts',
+          voiceId: browserVoiceForAgent(browserVoices, agent, index, locale),
+        };
+      }
       return resolveAgentVoice(agent, index, providers, agentVoiceOverrides);
     },
     [
@@ -152,6 +201,7 @@ export function useDiscussionTTS({ enabled, agents, onAudioStateChange }: Discus
       globalTtsProviderId,
       globalTtsVoice,
       agentVoiceOverrides,
+      forceBrowserTTS,
     ],
   );
 
@@ -208,7 +258,10 @@ export function useDiscussionTTS({ enabled, agents, onAudioStateChange }: Discus
         signal: controller.signal,
       });
 
-      if (!res.ok) throw new Error(`TTS API error: ${res.status}`);
+      if (!res.ok) {
+        const error = await res.json().catch(() => null);
+        throw new Error(error?.details || error?.error || `TTS API error: ${res.status}`);
+      }
 
       const data = await res.json();
       if (!data.base64) throw new Error('No audio in response');
@@ -248,7 +301,7 @@ export function useDiscussionTTS({ enabled, agents, onAudioStateChange }: Discus
       await audio.play();
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
-        console.error('[DiscussionTTS] TTS generation failed:', err);
+        console.warn('[DiscussionTTS] TTS generation failed:', err);
       }
       audioRef.current = null;
       isPlayingRef.current = false;

@@ -1,8 +1,10 @@
 import { NextRequest } from 'next/server';
 import { nanoid } from 'nanoid';
 import { callLLM } from '@/lib/ai/llm';
+import { parseJsonResponse } from '@/lib/generation/json-repair';
 import { createLogger } from '@/lib/logger';
 import { apiError, apiSuccess } from '@/lib/server/api-response';
+import { buildResourceSummaryBlock } from '@/lib/server/course-resources';
 import { resolveModelFromRequest } from '@/lib/server/resolve-model';
 import type { CourseModulePlan, CoursePlan, CoursePlanningRequest } from '@/lib/types/course-studio';
 
@@ -27,19 +29,90 @@ function buildFallbackModules(
   moduleDurationMinutes: number,
 ): CourseModulePlan[] {
   const moduleCount = Math.max(1, Math.ceil((totalDurationHours * 60) / moduleDurationMinutes));
-  return Array.from({ length: moduleCount }, (_, index) => ({
-    id: nanoid(8),
-    order: index + 1,
-    title: `${topic} - Module ${index + 1}`,
-    durationMinutes: moduleDurationMinutes,
-    learningObjectives: [`Understand the key ideas for module ${index + 1}`],
-    prerequisiteSummary:
-      index === 0
-        ? 'No previous module required.'
-        : `Build on the concepts and examples from modules 1-${index}.`,
-    classroomPrompt: `Create a ${moduleDurationMinutes}-minute OpenMAIC classroom for module ${index + 1} of a ${totalDurationHours}-hour course on ${topic}. Reference the previous module summaries where relevant and keep the lesson incremental.`,
-    resourceFocus: [],
-  }));
+  const isAiCourse = /\b(ai|artificial intelligence|machine learning|ml|generative ai)\b/i.test(topic);
+  const aiTopics = [
+    'Introduction to AI Concepts',
+    'Types of AI',
+    'Applications of AI',
+    'Ethics in AI',
+    'Data and Learning from Examples',
+    'Machine Learning Fundamentals',
+    'Supervised Learning',
+    'Unsupervised Learning',
+    'Model Training and Evaluation',
+    'Neural Networks and Deep Learning',
+    'Natural Language Processing',
+    'Computer Vision',
+    'Generative AI and Large Language Models',
+    'Prompting and Human-AI Interaction',
+    'AI Agents and Tool Use',
+    'Knowledge Representation and Reasoning',
+    'Search, Planning, and Optimization',
+    'Recommendation and Personalization Systems',
+    'AI in Business and Operations',
+    'AI in Healthcare and Public Services',
+    'AI in Education and Communication',
+    'Privacy, Security, and Governance',
+    'Bias, Fairness, and Explainability',
+    'Automation, Work, and Organizational Change',
+    'Designing an AI Use Case',
+    'Evaluating AI Products and Vendors',
+    'Building Responsible AI Workflows',
+    'AI Project Workshop',
+    'Future Trends in AI',
+    'Capstone Review and Learning Roadmap',
+  ];
+  const genericTopics = [
+    'Course Orientation and Key Questions',
+    'Core Concepts and Vocabulary',
+    'Historical Context and Current Relevance',
+    'Foundational Frameworks',
+    'Essential Methods and Tools',
+    'Worked Example 1',
+    'Worked Example 2',
+    'Common Misconceptions and Pitfalls',
+    'Applied Case Study',
+    'Practice Lab',
+    'Comparing Alternative Approaches',
+    'Decision-Making and Tradeoffs',
+    'Communication and Presentation',
+    'Quality Criteria and Evaluation',
+    'Advanced Concepts',
+    'Cross-Disciplinary Applications',
+    'Ethical and Social Considerations',
+    'Implementation Planning',
+    'Collaboration and Stakeholders',
+    'Troubleshooting and Iteration',
+    'Assessment Workshop',
+    'Real-World Scenario Analysis',
+    'Project Design',
+    'Project Development',
+    'Project Feedback',
+    'Project Refinement',
+    'Future Trends',
+    'Career and Practice Pathways',
+    'Synthesis and Review',
+    'Capstone Presentation',
+  ];
+  const topicPlan = isAiCourse ? aiTopics : genericTopics;
+
+  return Array.from({ length: moduleCount }, (_, index) => {
+    const title = topicPlan[index] || `${topic}: Applied Module ${index + 1}`;
+    return {
+      id: nanoid(8),
+      order: index + 1,
+      title,
+      durationMinutes: moduleDurationMinutes,
+      learningObjectives: [
+        `Explain the key ideas in ${title.toLowerCase()}`,
+        'Apply the lesson to a realistic beginner-friendly example',
+      ],
+      prerequisiteSummary:
+        index === 0 ? 'No previous module required.' : `Build on modules 1-${index}.`,
+      classroomPrompt: `Create a ${moduleDurationMinutes}-minute LC Academy classroom for "${title}" within a ${totalDurationHours}-hour course on ${topic}. Start with a brief connection to prior modules, teach the main concept with beginner-friendly examples, include one interactive discussion or activity, and end with a short recap that prepares learners for the next module.`,
+      resourceFocus: [title],
+    };
+  });
 }
 
 function normalizeCoursePlan(
@@ -53,7 +126,23 @@ function normalizeCoursePlan(
     request.totalDurationHours,
     request.moduleDurationMinutes,
   );
-  const modules = Array.isArray(value.modules) && value.modules.length > 0 ? value.modules : fallbackModules;
+  const rawModules = Array.isArray(value.modules) && value.modules.length > 0 ? value.modules : [];
+  const moduleSlots: unknown[] = Array.from(fallbackModules);
+  let nextEmptyIndex = 0;
+  rawModules.forEach((module) => {
+    const order = Number((module as Partial<CourseModulePlan>).order);
+    let index = Number.isFinite(order) && order > 0 ? order - 1 : -1;
+    if (index < 0 || index >= fallbackModules.length) {
+      while (nextEmptyIndex < moduleSlots.length && moduleSlots[nextEmptyIndex] !== fallbackModules[nextEmptyIndex]) {
+        nextEmptyIndex++;
+      }
+      index = nextEmptyIndex;
+    }
+    if (index >= 0 && index < moduleSlots.length) {
+      moduleSlots[index] = module;
+    }
+  });
+  const modules = moduleSlots;
 
   return {
     title: value.title || request.topic,
@@ -64,7 +153,7 @@ function normalizeCoursePlan(
       const m = module as Partial<CourseModulePlan>;
       return {
         id: typeof m.id === 'string' && m.id ? m.id : nanoid(8),
-        order: Number(m.order) || index + 1,
+        order: index + 1,
         title: m.title || `${request.topic} - Module ${index + 1}`,
         durationMinutes: Number(m.durationMinutes) || request.moduleDurationMinutes,
         learningObjectives: Array.isArray(m.learningObjectives)
@@ -96,29 +185,38 @@ export async function POST(req: NextRequest) {
     const moduleDurationMinutes =
       body.moduleDurationMinutes && body.moduleDurationMinutes > 0 ? body.moduleDurationMinutes : 30;
     const expectedModuleCount = Math.ceil((totalDurationHours * 60) / moduleDurationMinutes);
+    const storedResourceSummary =
+      Array.isArray(body.resourceIds) && body.resourceIds.length > 0
+        ? await buildResourceSummaryBlock(body.resourceIds)
+        : '';
+    const resourcesSummary = [body.resourcesSummary, storedResourceSummary]
+      .filter((value): value is string => Boolean(value?.trim()))
+      .join('\n\n');
 
     const { model: languageModel, thinkingConfig } = await resolveModelFromRequest(req, body);
 
     const systemPrompt = `You are an expert curriculum architect for an AI classroom generator.
-Design long courses as linked OpenMAIC classroom modules.
+Design long courses as linked LC Academy classroom modules.
 Return ONLY valid JSON. Do not use markdown.
 
 Planning rules:
 - Each module should become one classroom generation prompt.
 - Modules must be incremental and reference prior learning.
 - Keep module durations consistent.
+- Return exactly ${expectedModuleCount} modules. Do not summarize, omit, collapse, or write "continue similarly".
 - Include resourceFocus items when provided resources should influence a module.
-- The classroomPrompt must be directly usable by OpenMAIC generation.`;
+- The classroomPrompt must be directly usable by LC Academy classroom generation.`;
 
     const userPrompt = `Plan this course:
 Topic: ${topic}
 Total duration: ${totalDurationHours} hours
 Module duration: ${moduleDurationMinutes} minutes
 Expected module count: ${expectedModuleCount}
+Required module orders: 1 through ${expectedModuleCount}
 Audience: ${body.audience || 'not specified'}
 Language: ${body.language || 'infer from topic and resources'}
 Resources summary:
-${body.resourcesSummary || 'No resource summary provided yet.'}
+${resourcesSummary || 'No resource summary provided yet.'}
 
 Return JSON with this shape:
 {
@@ -134,11 +232,13 @@ Return JSON with this shape:
       "durationMinutes": ${moduleDurationMinutes},
       "learningObjectives": ["objective 1", "objective 2"],
       "prerequisiteSummary": "what prior modules this builds on",
-      "classroomPrompt": "complete prompt for generating this OpenMAIC classroom",
+      "classroomPrompt": "complete prompt for generating this LC Academy classroom",
       "resourceFocus": ["resource or topic to emphasize"]
     }
   ]
-}`;
+}
+
+The modules array must contain exactly ${expectedModuleCount} objects.`;
 
     const result = await callLLM(
       {
@@ -152,7 +252,8 @@ Return JSON with this shape:
       thinkingConfig,
     );
 
-    const parsed = JSON.parse(extractJsonObject(result.text));
+    const parsed = parseJsonResponse<unknown>(extractJsonObject(result.text));
+    if (!parsed) throw new Error('Could not parse course plan JSON from model response');
     const plan = normalizeCoursePlan(parsed, {
       topic,
       totalDurationHours,

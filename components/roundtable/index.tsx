@@ -340,8 +340,8 @@ export function Roundtable({
         }
         // Block if in send cooldown (e.g. text was sent while voice was processing)
         if (isSendCooldownRef.current) {
-          setIsVoiceOpen(false);
-          return;
+          setIsSendCooldown(false);
+          isSendCooldownRef.current = false;
         }
         showLocalUserMessage(text);
         onMessageSend?.(text);

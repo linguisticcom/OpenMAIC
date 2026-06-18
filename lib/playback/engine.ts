@@ -49,6 +49,11 @@ const log = createLogger('PlaybackEngine');
  */
 const CJK_LANG_THRESHOLD = 0.3;
 
+function isBrowserTTSUrlOverride(): boolean {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).get('tts') === 'browser';
+}
+
 export class PlaybackEngine {
   private scenes: Scene[] = [];
   private sceneIndex: number = 0;
@@ -130,6 +135,7 @@ export class PlaybackEngine {
 
     this.sceneIndex = 0;
     this.actionIndex = 0;
+    this.primeBrowserTTSForUserGesture();
     this.setMode('playing');
     this.processNext();
   }
@@ -140,6 +146,7 @@ export class PlaybackEngine {
       log.warn('Cannot continue: not idle, current mode:', this.mode);
       return;
     }
+    this.primeBrowserTTSForUserGesture();
     this.setMode('playing');
     this.processNext();
   }
@@ -498,13 +505,16 @@ export class PlaybackEngine {
               // No pre-generated audio — try browser-native TTS only when it is
               // the selected provider AND actually enabled (opt-in, #665).
               const settings = useSettingsStore.getState();
-              if (
+              const forceBrowserTTS = isBrowserTTSUrlOverride();
+              const canUseConfiguredBrowserTTS =
                 settings.ttsEnabled &&
                 settings.ttsProviderId === 'browser-native-tts' &&
                 isTTSProviderEnabled(
                   'browser-native-tts',
                   settings.ttsProvidersConfig?.['browser-native-tts'],
-                ) &&
+                );
+              if (
+                (forceBrowserTTS || canUseConfiguredBrowserTTS) &&
                 typeof window !== 'undefined' &&
                 window.speechSynthesis
               ) {
@@ -632,6 +642,16 @@ export class PlaybackEngine {
     this.browserTTSPausedChunks = [];
     this.browserTTSActive = true;
     this.playBrowserTTSChunk();
+  }
+
+  private primeBrowserTTSForUserGesture(): void {
+    if (!isBrowserTTSUrlOverride()) return;
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+
+    const utterance = new SpeechSynthesisUtterance(' ');
+    utterance.volume = 0;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
   }
 
   /** Speak the current chunk; on completion, advance to next or finish. */

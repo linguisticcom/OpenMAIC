@@ -288,6 +288,47 @@ function applyOpenAIImageFallback(
 }
 
 function buildConfig(yamlData: YamlData): ServerConfig {
+  const tts = loadEnvSection(TTS_ENV_MAP, yamlData.tts, {
+    keylessProviders: new Set(['voxcpm-tts', 'lemonade-tts']),
+  });
+  if (!tts['openai-tts'] && process.env.OPENAI_API_KEY) {
+    const yamlOpenAITts = yamlData.tts?.['openai-tts'];
+    tts['openai-tts'] = {
+      apiKey: process.env.OPENAI_API_KEY,
+      baseUrl: yamlOpenAITts?.baseUrl || process.env.TTS_OPENAI_BASE_URL || process.env.OPENAI_BASE_URL,
+      models: yamlOpenAITts?.models,
+      proxy: yamlOpenAITts?.proxy,
+    };
+  }
+
+  const asr = loadEnvSection(ASR_ENV_MAP, yamlData.asr, {
+    keylessProviders: new Set(['lemonade-asr']),
+  });
+  if (!asr['openai-whisper']) {
+    const openAIASRKey =
+      process.env.ASR_OPENAI_API_KEY || process.env.OPENAI_API_KEY || process.env.TTS_OPENAI_API_KEY;
+    if (openAIASRKey) {
+      const yamlOpenAIASR = yamlData.asr?.['openai-whisper'];
+      asr['openai-whisper'] = {
+        apiKey: openAIASRKey,
+        baseUrl: yamlOpenAIASR?.baseUrl || process.env.ASR_OPENAI_BASE_URL || process.env.OPENAI_BASE_URL,
+        models: yamlOpenAIASR?.models,
+        proxy: yamlOpenAIASR?.proxy,
+      };
+    }
+  }
+
+  const video = loadEnvSection(VIDEO_ENV_MAP, yamlData.video);
+  if (!video.sora && process.env.OPENAI_API_KEY) {
+    const yamlSora = yamlData.video?.sora;
+    video.sora = {
+      apiKey: process.env.OPENAI_API_KEY,
+      baseUrl: yamlSora?.baseUrl || process.env.VIDEO_SORA_BASE_URL || process.env.OPENAI_BASE_URL,
+      models: yamlSora?.models,
+      proxy: yamlSora?.proxy,
+    };
+  }
+
   const image = applyOpenAIImageFallback(
     loadEnvSection(IMAGE_ENV_MAP, yamlData.image, {
       keylessProviders: new Set(['lemonade']),
@@ -299,15 +340,11 @@ function buildConfig(yamlData: YamlData): ServerConfig {
     providers: loadEnvSection(LLM_ENV_MAP, yamlData.providers, {
       keylessProviders: new Set(['ollama', 'lemonade']),
     }),
-    tts: loadEnvSection(TTS_ENV_MAP, yamlData.tts, {
-      keylessProviders: new Set(['voxcpm-tts', 'lemonade-tts']),
-    }),
-    asr: loadEnvSection(ASR_ENV_MAP, yamlData.asr, {
-      keylessProviders: new Set(['lemonade-asr']),
-    }),
+    tts,
+    asr,
     pdf: loadEnvSection(PDF_ENV_MAP, yamlData.pdf, { requiresBaseUrl: true }),
     image,
-    video: loadEnvSection(VIDEO_ENV_MAP, yamlData.video),
+    video,
     webSearch: loadEnvSection(WEB_SEARCH_ENV_MAP, yamlData['web-search']),
     ttsDisabled: collectDisabledTTS(yamlData.tts),
   };
