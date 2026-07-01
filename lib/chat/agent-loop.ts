@@ -34,6 +34,7 @@ export interface AgentLoopRequest {
     agentIds: string[];
     sessionType?: string;
     agentConfigs?: Record<string, unknown>[];
+    maxTurns?: number;
     [key: string]: unknown;
   };
   userProfile?: { nickname?: string; bio?: string };
@@ -202,6 +203,14 @@ export async function runAgentLoop(
 
     // Director said END — no agent spoke
     if (iterationResult.totalAgents === 0) {
+      return { reason: 'end', directorState, turnCount };
+    }
+
+    const maxTurns =
+      typeof request.config.maxTurns === 'number' && request.config.maxTurns > 0
+        ? request.config.maxTurns
+        : undefined;
+    if (maxTurns && turnCount >= maxTurns) {
       return { reason: 'end', directorState, turnCount };
     }
 

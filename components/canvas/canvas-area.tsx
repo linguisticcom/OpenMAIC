@@ -38,6 +38,8 @@ export function CanvasArea({
   onPrevSlide,
   onNextSlide,
   onPlayPause,
+  onSeekBackward,
+  onSeekForward,
   onWhiteboardClose,
   isPresenting,
   onTogglePresentation,
@@ -262,6 +264,8 @@ export function CanvasArea({
           onPrevSlide={onPrevSlide}
           onNextSlide={onNextSlide}
           onPlayPause={onPlayPause}
+          onSeekBackward={onSeekBackward}
+          onSeekForward={onSeekForward}
           onWhiteboardClose={onWhiteboardClose}
           isPresenting={isPresenting}
           onTogglePresentation={onTogglePresentation}

@@ -1250,6 +1250,7 @@ export function useChatSessions(options: UseChatSessionsOptions = {}) {
               discussionTopic: request.topic,
               discussionPrompt: request.prompt,
               triggerAgentId: agentId,
+              maxTurns: 2,
             },
             userProfile: {
               nickname: userProfileState.nickname || undefined,

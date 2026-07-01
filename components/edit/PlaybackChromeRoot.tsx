@@ -845,6 +845,14 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
       setCurrentSceneId,
     ]);
 
+    const handleSeekBackward = useCallback(() => {
+      engineRef.current?.seekByActions(-1);
+    }, []);
+
+    const handleSeekForward = useCallback(() => {
+      engineRef.current?.seekByActions(1);
+    }, []);
+
     const currentSceneIndex = isPendingScene
       ? scenes.length
       : scenes.findIndex((s) => s.id === currentSceneId);
@@ -1072,6 +1080,8 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
               onToggleChat={() => setChatAreaCollapsed(!chatAreaCollapsed)}
               onPrevSlide={handlePreviousScene}
               onNextSlide={handleNextScene}
+              onSeekBackward={handleSeekBackward}
+              onSeekForward={handleSeekForward}
               onPlayPause={handlePlayPause}
               onWhiteboardClose={handleWhiteboardToggle}
               isPresenting={isPresenting}
@@ -1226,6 +1236,8 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
                 onToggleChat={() => setChatAreaCollapsed(!chatAreaCollapsed)}
                 onPrevSlide={handlePreviousScene}
                 onNextSlide={handleNextScene}
+                onSeekBackward={handleSeekBackward}
+                onSeekForward={handleSeekForward}
                 onWhiteboardClose={handleWhiteboardToggle}
                 isPresenting={isPresenting}
                 controlsVisible={controlsVisible}

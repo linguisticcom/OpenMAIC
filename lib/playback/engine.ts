@@ -54,6 +54,29 @@ function isBrowserTTSUrlOverride(): boolean {
   return new URLSearchParams(window.location.search).get('tts') === 'browser';
 }
 
+function pickNaturalBrowserVoice(
+  voices: SpeechSynthesisVoice[],
+  text: string,
+): SpeechSynthesisVoice | undefined {
+  const cjkRatio =
+    text.length > 0
+      ? (text.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length / text.length
+      : 0;
+  const targetLang = cjkRatio > CJK_LANG_THRESHOLD ? 'zh' : 'en';
+  const languageVoices = voices.filter((voice) =>
+    voice.lang.toLowerCase().startsWith(targetLang),
+  );
+  const candidates = languageVoices.length > 0 ? languageVoices : voices;
+  const naturalNameHints =
+    /natural|neural|online|premium|aria|jenny|guy|brian|emma|ava|andrew|samantha|google|microsoft/i;
+
+  return (
+    candidates.find((voice) => naturalNameHints.test(voice.name)) ||
+    candidates.find((voice) => !voice.localService) ||
+    candidates[0]
+  );
+}
+
 export class PlaybackEngine {
   private scenes: Scene[] = [];
   private sceneIndex: number = 0;
@@ -257,6 +280,53 @@ export class PlaybackEngine {
     this.savedActionIndex = null;
     this.currentTopicState = null;
     this.currentTrigger = null;
+  }
+
+  /**
+   * Move within the current scene's action list. This is action-based rather
+   * than timestamp-based because LC Academy playback is an interactive scene
+   * engine, not a single MP4 timeline.
+   */
+  seekByActions(delta: number): void {
+    if (this.mode === 'live') return;
+
+    const scene = this.scenes[this.sceneIndex];
+    const actions = scene?.actions || [];
+    if (actions.length === 0) return;
+
+    const wasPaused = this.mode === 'paused';
+    const wasIdle = this.mode === 'idle';
+    const baseIndex =
+      this.mode === 'playing' || this.mode === 'paused'
+        ? Math.max(0, this.actionIndex - 1)
+        : Math.max(0, this.actionIndex);
+    const nextIndex = Math.max(0, Math.min(actions.length - 1, baseIndex + delta));
+
+    this.audioPlayer.stop();
+    this.cancelBrowserTTS();
+    this.actionEngine.clearEffects();
+    if (this.triggerDelayTimer) {
+      clearTimeout(this.triggerDelayTimer);
+      this.triggerDelayTimer = null;
+    }
+    if (this.speechTimer) {
+      clearTimeout(this.speechTimer);
+      this.speechTimer = null;
+    }
+    this.speechTimerRemaining = 0;
+    this.currentTrigger = null;
+    this.callbacks.onProactiveHide?.();
+    this.callbacks.onSpeechEnd?.();
+
+    this.actionIndex = nextIndex;
+
+    if (wasPaused || wasIdle) {
+      this.setMode('paused');
+      return;
+    }
+
+    this.setMode('playing');
+    this.processNext();
   }
 
   /** User clicks "Join" on ProactiveCard → save cursor → live */
@@ -688,14 +758,15 @@ export class PlaybackEngine {
       }
     }
     if (!voiceFound) {
-      // No usable voice configured — detect text language so the browser
-      // auto-selects an appropriate voice.
-      const cjkRatio =
-        chunkText.length > 0
-          ? (chunkText.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length / chunkText.length
-          : 0;
-      utterance.lang = cjkRatio > CJK_LANG_THRESHOLD ? 'zh-CN' : 'en-US';
+      const voice = pickNaturalBrowserVoice(voices, chunkText);
+      if (voice) {
+        utterance.voice = voice;
+        utterance.lang = voice.lang;
+      } else {
+        utterance.lang = 'en-US';
+      }
     }
+    utterance.pitch = 1.04;
 
     utterance.onend = () => {
       this.browserTTSChunkIndex++;

@@ -15,6 +15,8 @@ import {
   Repeat,
   Maximize2,
   Minimize2,
+  Rewind,
+  FastForward,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStageStore } from '@/lib/store';
@@ -34,6 +36,8 @@ export interface CanvasToolbarProps {
   readonly onPrevSlide: () => void;
   readonly onNextSlide: () => void;
   readonly onPlayPause: () => void;
+  readonly onSeekBackward?: () => void;
+  readonly onSeekForward?: () => void;
   readonly onWhiteboardClose: () => void;
   readonly showStopDiscussion?: boolean;
   readonly onStopDiscussion?: () => void;
@@ -93,6 +97,8 @@ export function CanvasToolbar({
   onPrevSlide,
   onNextSlide,
   onPlayPause,
+  onSeekBackward,
+  onSeekForward,
   onWhiteboardClose,
   showStopDiscussion,
   onStopDiscussion,
@@ -289,6 +295,21 @@ export function CanvasToolbar({
             </button>
           )}
 
+          {onSeekBackward && (
+            <button
+              onClick={onSeekBackward}
+              disabled={isLiveSession}
+              className={cn(
+                ctrlBtn,
+                'w-6 h-6 text-gray-500 dark:text-gray-400 disabled:opacity-20 disabled:pointer-events-none',
+              )}
+              aria-label="Rewind one step"
+              title="Rewind one step"
+            >
+              <Rewind className="w-3.5 h-3.5" />
+            </button>
+          )}
+
           {/* Play / Pause / Stop Discussion */}
           {showStopDiscussion && onStopDiscussion ? (
             <button
@@ -329,6 +350,21 @@ export function CanvasToolbar({
               )}
             </button>
           ) : null}
+
+          {onSeekForward && (
+            <button
+              onClick={onSeekForward}
+              disabled={isLiveSession}
+              className={cn(
+                ctrlBtn,
+                'w-6 h-6 text-gray-500 dark:text-gray-400 disabled:opacity-20 disabled:pointer-events-none',
+              )}
+              aria-label="Forward one step"
+              title="Forward one step"
+            >
+              <FastForward className="w-3.5 h-3.5" />
+            </button>
+          )}
 
           {/* Next scene */}
           {scenesCount > 1 && (
