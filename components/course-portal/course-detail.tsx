@@ -109,7 +109,9 @@ export function CourseDetail({
             <div className="mt-5 space-y-4">
               <div className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
                 <ShieldCheck className="mt-0.5 size-4 shrink-0" />
-                <span>Your access code has unlocked this course for {university.name}.</span>
+                <span>
+                  Your account or access code has unlocked this course for {university.name}.
+                </span>
               </div>
               <Button
                 asChild

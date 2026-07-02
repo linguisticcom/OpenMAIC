@@ -16,7 +16,6 @@ import type {
   AdminMetrics,
   AdminSchoolOverview,
   AdminStudent,
-  StudentModuleStatus,
 } from '@/lib/types/admin-dashboard';
 
 function latestActivity(student: AdminStudent): string {
@@ -86,12 +85,6 @@ function computeMetrics(overview: AdminSchoolOverview): AdminMetrics {
   };
 }
 
-function statusLabel(status: StudentModuleStatus) {
-  if (status === 'completed') return 'Completed';
-  if (status === 'in_progress') return 'In progress';
-  return 'Not started';
-}
-
 function formatDate(value?: string) {
   if (!value) return 'Never';
   return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date(value));
@@ -115,7 +108,7 @@ function KpiCard({
           <p className="text-sm text-slate-500">{label}</p>
           <p className="mt-2 text-2xl font-semibold tracking-normal text-slate-950">{value}</p>
         </div>
-        <div className="rounded-md bg-violet-50 p-2 text-violet-700">
+        <div className="rounded-md bg-slate-950 p-2 text-white">
           <Icon className="size-5" />
         </div>
       </div>
@@ -187,14 +180,23 @@ export default function AcademyAdminPage() {
     <main className="min-h-screen bg-slate-50 text-slate-950">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 py-6 lg:px-8">
         <header className="flex flex-col gap-4 border-b border-slate-200 pb-5 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-wide text-violet-700">LC Academy Admin</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-normal">{overview.school.name}</h1>
-            <p className="mt-2 text-sm text-slate-600">
-              {overview.course.title} · {overview.school.plan}
-            </p>
+          <div className="flex items-center gap-4">
+            <img
+              src="/lc-academy-logo.webp"
+              alt="Linguistic Communication"
+              className="size-20 shrink-0 rounded-md border border-slate-200 bg-white p-1.5 object-contain shadow-sm"
+            />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Linguistic Communication
+              </p>
+              <h1 className="mt-1 text-3xl font-semibold tracking-normal text-slate-950">LC Academy</h1>
+              <p className="mt-2 text-sm text-slate-600">
+                {overview.course.title} · {overview.school.plan}
+              </p>
+            </div>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+          <div className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm">
             Last updated {formatDate(overview.generatedAt)}
           </div>
         </header>
@@ -233,7 +235,7 @@ export default function AcademyAdminPage() {
                 <h2 className="text-base font-semibold">Module Completion</h2>
                 <p className="text-sm text-slate-500">Completion by module across all student accounts.</p>
               </div>
-              <BarChart3 className="size-5 text-violet-700" />
+              <BarChart3 className="size-5 text-slate-900" />
             </div>
             <div className="space-y-4">
               {overview.course.modules.map((module) => {
@@ -252,7 +254,7 @@ export default function AcademyAdminPage() {
                       <span className="text-slate-500">{percent}%</span>
                     </div>
                     <div className="h-2 rounded-full bg-slate-100">
-                      <div className="h-2 rounded-full bg-violet-600" style={{ width: `${percent}%` }} />
+                      <div className="h-2 rounded-full bg-slate-950" style={{ width: `${percent}%` }} />
                     </div>
                   </div>
                 );
@@ -304,13 +306,13 @@ export default function AcademyAdminPage() {
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search students"
-                  className="h-10 rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-violet-400"
+                  className="h-10 rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-slate-900"
                 />
               </label>
               <select
                 value={group}
                 onChange={(event) => setGroup(event.target.value)}
-                className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-400"
+                className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-slate-900"
               >
                 {groups.map((item) => (
                   <option key={item}>{item}</option>
@@ -356,7 +358,7 @@ export default function AcademyAdminPage() {
                       <td className="py-3 pr-4">
                         <div className="flex items-center gap-2">
                           <div className="h-2 w-24 rounded-full bg-slate-100">
-                            <div className="h-2 rounded-full bg-violet-600" style={{ width: `${progress}%` }} />
+                            <div className="h-2 rounded-full bg-slate-950" style={{ width: `${progress}%` }} />
                           </div>
                           <span className="tabular-nums">{progress}%</span>
                         </div>

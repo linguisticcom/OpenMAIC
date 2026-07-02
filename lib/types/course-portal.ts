@@ -1,12 +1,41 @@
 export type CourseStatus = 'active' | 'draft' | 'locked' | 'completed';
 
-export interface University {
+export type SubscriptionStatus = 'trial' | 'active' | 'past_due' | 'cancelled';
+
+export type PortalUserRole =
+  | 'platform-admin'
+  | 'organization-admin'
+  | 'teacher-manager'
+  | 'student';
+
+export type EnrollmentStatus = 'not_started' | 'in_progress' | 'completed';
+
+export interface Organization {
   id: string;
   name: string;
   slug: string;
   logoUrl?: string;
   description: string;
+  contactEmail: string;
+  subscriptionStatus?: SubscriptionStatus;
   welcomeMessage?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type University = Organization;
+
+export interface PortalUser {
+  id: string;
+  organizationId?: string;
+  studentId?: string;
+  name: string;
+  email: string;
+  passwordHash: string;
+  role: PortalUserRole;
+  canGenerateAccessCodes?: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CourseModule {
@@ -37,27 +66,106 @@ export interface Course {
 export interface CourseAssignment {
   id: string;
   courseId: string;
-  universityId: string;
+  organizationId: string;
   cohortId?: string;
+  assignedAt: string;
+  assignedByUserId: string;
+  teacherUserId?: string;
+}
+
+export interface Student {
+  id: string;
+  organizationId: string;
+  name: string;
+  email?: string;
+  externalStudentId?: string;
+  cohortId?: string;
+  academicYear?: string;
+  programName?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Enrollment {
+  id: string;
+  studentId: string;
+  courseId: string;
+  organizationId: string;
+  accessCodeId?: string;
+  status: EnrollmentStatus;
+  progressPercentage: number;
+  startedAt: string;
+  completedAt?: string;
+  lastActivityAt?: string;
 }
 
 export interface AccessCode {
   id: string;
-  code: string;
+  codeHash: string;
+  organizationId: string;
   courseId: string;
-  universityId: string;
   cohortId?: string;
+  studentId?: string;
+  createdByUserId: string;
   expiresAt?: string;
   maxUses?: number;
   currentUses: number;
   isActive: boolean;
+  createdAt: string;
+  disabledAt?: string;
+}
+
+export interface AccessCodeView {
+  id: string;
+  organizationId: string;
+  courseId: string;
+  cohortId?: string;
+  studentId?: string;
+  createdByUserId: string;
+  expiresAt?: string;
+  maxUses?: number;
+  currentUses: number;
+  isActive: boolean;
+  createdAt: string;
+  disabledAt?: string;
+  courseTitle: string;
+  organizationName: string;
+  createdByName: string;
+  cohortName?: string;
+  cohortAcademicYear?: string;
+  cohortProgramName?: string;
+  studentName?: string;
+}
+
+export interface Cohort {
+  id: string;
+  organizationId: string;
+  name: string;
+  academicYear?: string;
+  programName?: string;
+  createdAt: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  organizationId: string;
+  studentId?: string;
+  courseId?: string;
+  action: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
 }
 
 export interface CoursePortalDataset {
-  universities: University[];
+  organizations: Organization[];
+  users: PortalUser[];
   courses: Course[];
   assignments: CourseAssignment[];
+  students: Student[];
+  enrollments: Enrollment[];
   accessCodes: AccessCode[];
+  cohorts: Cohort[];
+  activityLogs: ActivityLog[];
 }
 
 export interface CoursePortalCardData {
@@ -65,23 +173,59 @@ export interface CoursePortalCardData {
   cohortId?: string;
   university: University;
   course: Course;
+  enrolledStudents: number;
+  completionRate: number;
 }
 
 export interface CoursePortalCardView extends CoursePortalCardData {
   accessGranted: boolean;
 }
 
+export interface OrganizationCourseSummary extends CoursePortalCardData {
+  organization: Organization;
+  activeAccessCodes: number;
+}
+
+export interface StudentCourseProgress {
+  course: Course;
+  enrollment?: Enrollment;
+  accessCode?: AccessCodeView;
+}
+
+export interface OrganizationDashboardSummary {
+  organization: Organization;
+  activeCourses: number;
+  enrolledStudents: number;
+  activeAccessCodes: number;
+  averageCompletionRate: number;
+  recentActivity: ActivityLog[];
+  courses: OrganizationCourseSummary[];
+}
+
+export interface StudentManagementSummary {
+  student: Student;
+  coursesEnrolled: number;
+  averageProgress: number;
+  lastActivityAt?: string;
+  accessCodeUsed?: string;
+  completionStatus: EnrollmentStatus;
+}
+
 export interface CourseAccessValidationInput {
-  courseId: string;
-  universityId: string;
+  organizationId?: string;
+  organizationSlug?: string;
+  universityId?: string;
+  courseId?: string;
+  courseSlug?: string;
   accessCode: string;
   cohortId?: string;
+  studentId?: string;
 }
 
 export type CourseAccessInvalidReason =
   | 'missing-fields'
+  | 'organization-not-found'
   | 'course-not-found'
-  | 'university-not-found'
   | 'course-not-assigned'
   | 'invalid-code'
   | 'code-not-linked'
@@ -91,7 +235,9 @@ export type CourseAccessInvalidReason =
 
 export interface CourseAccessGrant {
   course: Course;
+  organization: Organization;
   university: University;
   assignment: CourseAssignment;
   accessCode: AccessCode;
+  enrollment?: Enrollment;
 }

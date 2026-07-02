@@ -60,7 +60,7 @@ function seedOverview(): AdminSchoolOverview {
   return {
     school: {
       id: 'school-lc-demo',
-      name: 'Linguistic Communication Academy',
+      name: 'LC Academy',
       plan: 'Pilot cohort',
     },
     course: {

@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { cookies } from 'next/headers';
+import { hasPortalAccountCourseAccess } from '@/lib/server/course-portal-data';
+import { getCurrentPortalSession } from '@/lib/server/organization-session';
 
 const DEFAULT_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
 
@@ -112,4 +114,21 @@ export async function hasCourseAccess(params: {
     getCourseAccessCookieName(params.courseId, params.universityId, params.cohortId),
   )?.value;
   return !!verifyCourseAccessToken(token, params);
+}
+
+export async function hasCourseAccessOrAccount(params: {
+  courseId: string;
+  universityId: string;
+  cohortId?: string;
+}): Promise<boolean> {
+  if (await hasCourseAccess(params)) return true;
+
+  const session = await getCurrentPortalSession();
+  if (!session) return false;
+
+  return hasPortalAccountCourseAccess(session.user, {
+    organizationId: params.universityId,
+    courseId: params.courseId,
+    cohortId: params.cohortId,
+  });
 }

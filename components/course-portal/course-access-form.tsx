@@ -51,12 +51,12 @@ export function CourseAccessForm({
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/validate-course-access', {
+      const response = await fetch('/api/course-access/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           courseId,
-          universityId,
+          organizationId: universityId,
           cohortId,
           accessCode,
         }),

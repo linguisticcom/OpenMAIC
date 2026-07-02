@@ -1,6 +1,6 @@
 import { CourseDirectory } from '@/components/course-portal/course-directory';
 import { CoursePortalIntro, CoursePortalShell } from '@/components/course-portal/portal-shell';
-import { hasCourseAccess } from '@/lib/server/course-access';
+import { hasCourseAccessOrAccount } from '@/lib/server/course-access';
 import { listCoursePortalCards, listUniversities } from '@/lib/server/course-portal-data';
 import type { CoursePortalCardData, CoursePortalCardView } from '@/lib/types/course-portal';
 
@@ -10,7 +10,7 @@ async function withAccessState(cards: CoursePortalCardData[]): Promise<CoursePor
   return Promise.all(
     cards.map(async (card) => ({
       ...card,
-      accessGranted: await hasCourseAccess({
+      accessGranted: await hasCourseAccessOrAccount({
         courseId: card.course.id,
         universityId: card.university.id,
         cohortId: card.cohortId,
