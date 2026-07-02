@@ -23,8 +23,13 @@ export async function PATCH(
   }
 
   const { accessCodeId } = await context.params;
-  const accessCode = await disableOrganizationAccessCode({ organizationId, accessCodeId });
+  const accessCode = await disableOrganizationAccessCode({
+    organizationId,
+    accessCodeId,
+    disabledByUserId: session.user.id,
+  });
   if (!accessCode) return apiError('INVALID_REQUEST', 404, 'Access code not found.');
+  if ('error' in accessCode) return apiError('INVALID_REQUEST', 403, accessCode.error);
 
   return apiSuccess({ accessCode });
 }

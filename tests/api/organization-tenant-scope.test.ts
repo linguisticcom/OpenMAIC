@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Organization, PortalUser } from '@/lib/types/course-portal';
 import { GET as getOrganizationCourses } from '@/app/api/organization/courses/route';
 import { GET as getOrganizationStudents } from '@/app/api/organization/students/route';
-import { GET as getOrganizationAccessCodes } from '@/app/api/organization/access-codes/route';
+import {
+  GET as getOrganizationAccessCodes,
+  POST as postOrganizationAccessCodes,
+} from '@/app/api/organization/access-codes/route';
+import { PATCH as patchDisableOrganizationAccessCode } from '@/app/api/organization/access-codes/[accessCodeId]/disable/route';
 import { POST as postOrganizationActivity } from '@/app/api/organization/activity/route';
 import { PATCH as patchOrganizationSettings } from '@/app/api/organization/settings/route';
 import { getCurrentPortalSession } from '@/lib/server/organization-session';
@@ -131,6 +135,65 @@ describe('organization API tenant scope', () => {
     await expect(response.json()).resolves.toMatchObject({
       success: false,
       error: 'Access-code management is not allowed.',
+    });
+  });
+
+  it('limits teacher-manager access-code lists to assigned courses', async () => {
+    setTeacherManagerSession();
+
+    const response = await getOrganizationAccessCodes(
+      new Request('http://localhost/api/organization/access-codes?organizationId=org-esilv'),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      accessCodes: [
+        expect.objectContaining({
+          id: 'code-esilv-cloud',
+          courseId: 'course-cloud-devsecops',
+        }),
+      ],
+    });
+  });
+
+  it('denies teacher-manager access-code creation for unassigned courses', async () => {
+    setTeacherManagerSession();
+
+    const response = await postOrganizationAccessCodes(
+      new Request('http://localhost/api/organization/access-codes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: 'org-esilv',
+          courseId: 'course-ai-foundations',
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: 'Course is not assigned to this teacher manager.',
+    });
+  });
+
+  it('denies teacher-manager access-code disables for unassigned courses', async () => {
+    setTeacherManagerSession();
+
+    const response = await patchDisableOrganizationAccessCode(
+      new Request('http://localhost/api/organization/access-codes/code-esilv-ai/disable', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId: 'org-esilv' }),
+      }),
+      { params: Promise.resolve({ accessCodeId: 'code-esilv-ai' }) },
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: 'Course is not assigned to this teacher manager.',
     });
   });
 

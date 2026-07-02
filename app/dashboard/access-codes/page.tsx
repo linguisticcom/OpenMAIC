@@ -3,14 +3,17 @@ import { PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AccessCodeManagementTable } from '@/components/tenant-portal/access-code-management-table';
 import { PageHeader, TenantShell } from '@/components/tenant-portal/tenant-shell';
-import { listOrganizationAccessCodes } from '@/lib/server/course-portal-data';
+import { listVisibleOrganizationAccessCodes } from '@/lib/server/course-portal-data';
 import { requireAccessCodeManagerPageSession } from '@/lib/server/tenant-page-auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardAccessCodesPage() {
   const session = await requireAccessCodeManagerPageSession();
-  const accessCodes = await listOrganizationAccessCodes(session.organization.id);
+  const accessCodes = await listVisibleOrganizationAccessCodes(
+    session.user,
+    session.organization.id,
+  );
 
   return (
     <TenantShell user={session.user} organization={session.organization}>

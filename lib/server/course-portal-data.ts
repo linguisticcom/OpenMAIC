@@ -1502,6 +1502,30 @@ export async function listOrganizationAccessCodes(
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+export async function listVisibleOrganizationAccessCodes(
+  user: PortalUser,
+  organizationId: string,
+): Promise<AccessCodeView[]> {
+  if (user.role === 'platform-admin' || user.role === 'organization-admin') {
+    return listOrganizationAccessCodes(organizationId);
+  }
+
+  const dataset = await readDataset();
+  const visibleCourseIds = new Set(
+    visibleAssignmentsForUser(dataset, user, organizationId).map(
+      (assignment) => assignment.courseId,
+    ),
+  );
+
+  return dataset.accessCodes
+    .filter(
+      (accessCode) =>
+        accessCode.organizationId === organizationId && visibleCourseIds.has(accessCode.courseId),
+    )
+    .map((accessCode) => toAccessCodeView(dataset, accessCode))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
 export async function listOrganizationCohorts(organizationId: string): Promise<Cohort[]> {
   const dataset = await readDataset();
   return dataset.cohorts
@@ -1542,8 +1566,20 @@ export async function createOrganizationAccessCode(params: {
   if (!organization || !course || assignments.length === 0)
     return { error: 'Course is not assigned to this organization.' };
   if (!creator) return { error: 'Access-code creator was not found.' };
+  if (creator.role !== 'platform-admin' && creator.organizationId !== organization.id) {
+    return { error: 'Access-code creator cannot manage this organization.' };
+  }
   if (params.cohortId && !cohort) return { error: 'Cohort does not belong to this organization.' };
   if (!assignment) return { error: 'Selected cohort is not assigned to this course.' };
+  if (creator.role === 'student') return { error: 'Access-code management is not allowed.' };
+  if (creator.role === 'teacher-manager') {
+    if (!creator.canGenerateAccessCodes) {
+      return { error: 'Access-code management is not allowed.' };
+    }
+    if (assignment.teacherUserId !== creator.id) {
+      return { error: 'Course is not assigned to this teacher manager.' };
+    }
+  }
   if (params.studentId && !student)
     return { error: 'Student does not belong to this organization.' };
   const codeCohortId = params.cohortId || assignment.cohortId;
@@ -1619,12 +1655,31 @@ export async function assignCourseToOrganization(params: {
 export async function disableOrganizationAccessCode(params: {
   organizationId: string;
   accessCodeId: string;
-}): Promise<AccessCodeView | undefined> {
+  disabledByUserId: string;
+}): Promise<AccessCodeView | { error: string } | undefined> {
   const dataset = await readDataset();
   const accessCode = dataset.accessCodes.find(
     (item) => item.id === params.accessCodeId && item.organizationId === params.organizationId,
   );
   if (!accessCode) return undefined;
+  const disabler = dataset.users.find((item) => item.id === params.disabledByUserId);
+  if (!disabler) return { error: 'Access-code manager was not found.' };
+  if (disabler.role !== 'platform-admin' && disabler.organizationId !== params.organizationId) {
+    return { error: 'Access-code manager cannot manage this organization.' };
+  }
+  if (disabler.role === 'student') return { error: 'Access-code management is not allowed.' };
+  if (disabler.role === 'teacher-manager') {
+    if (!disabler.canGenerateAccessCodes) {
+      return { error: 'Access-code management is not allowed.' };
+    }
+    const assignedToTeacher = dataset.assignments.some(
+      (assignment) =>
+        assignment.organizationId === params.organizationId &&
+        assignment.courseId === accessCode.courseId &&
+        assignment.teacherUserId === disabler.id,
+    );
+    if (!assignedToTeacher) return { error: 'Course is not assigned to this teacher manager.' };
+  }
 
   accessCode.isActive = false;
   accessCode.disabledAt = new Date().toISOString();

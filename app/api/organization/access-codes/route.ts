@@ -2,7 +2,7 @@ import { apiError, apiSuccess } from '@/lib/server/api-response';
 import {
   createOrganizationAccessCode,
   getOrganizationById,
-  listOrganizationAccessCodes,
+  listVisibleOrganizationAccessCodes,
 } from '@/lib/server/course-portal-data';
 import { canManageAccessCodes, getCurrentPortalSession } from '@/lib/server/organization-session';
 
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   const organization = await getOrganizationById(organizationId);
   if (!organization) return apiError('INVALID_REQUEST', 404, 'Organization not found.');
 
-  const accessCodes = await listOrganizationAccessCodes(organization.id);
+  const accessCodes = await listVisibleOrganizationAccessCodes(session.user, organization.id);
   return apiSuccess({ organization, accessCodes });
 }
 

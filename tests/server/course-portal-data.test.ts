@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   createOrganizationAccessCode,
+  disableOrganizationAccessCode,
   getPortalUserByEmail,
   getVisibleOrganizationCourseDetail,
   getVisibleOrganizationStudentDetail,
   hasPortalAccountCourseAccess,
   listOrganizationAccessCodes,
+  listVisibleOrganizationAccessCodes,
   listVisibleOrganizationCourseSummaries,
   listVisibleOrganizationStudentSummaries,
   trackStudentActivity,
@@ -156,6 +158,31 @@ describe('validateCourseAccessGrant', () => {
     });
 
     expect(result).toEqual({ error: 'Student is not in the selected cohort.' });
+  });
+
+  it('limits teacher-managed access codes to assigned courses', async () => {
+    const teacher = await getPortalUserByEmail('teacher@esilv.local');
+    expect(teacher).toBeDefined();
+    if (!teacher) return;
+
+    const accessCodes = await listVisibleOrganizationAccessCodes(teacher, 'org-esilv');
+    expect(accessCodes.map((code) => code.id)).toEqual(['code-esilv-cloud']);
+
+    await expect(
+      createOrganizationAccessCode({
+        organizationId: 'org-esilv',
+        courseId: 'course-ai-foundations',
+        createdByUserId: teacher.id,
+      }),
+    ).resolves.toEqual({ error: 'Course is not assigned to this teacher manager.' });
+
+    await expect(
+      disableOrganizationAccessCode({
+        organizationId: 'org-esilv',
+        accessCodeId: 'code-esilv-ai',
+        disabledByUserId: teacher.id,
+      }),
+    ).resolves.toEqual({ error: 'Course is not assigned to this teacher manager.' });
   });
 });
 
