@@ -237,8 +237,8 @@ export default function CourseStudioPage() {
   };
 
   const generateModuleClassroom = async (moduleId: string) => {
-    const module = coursePlan?.modules.find((item) => item.id === moduleId);
-    if (!module || !coursePlan) return;
+    const courseModule = coursePlan?.modules.find((item) => item.id === moduleId);
+    if (!courseModule || !coursePlan) return;
 
     setModuleJobs((current) => ({
       ...current,
@@ -251,19 +251,23 @@ export default function CourseStudioPage() {
     }));
 
     const requirement = [
-      `Create an LC Academy classroom for module ${module.order} of "${coursePlan.title}".`,
-      `Module title: ${module.title}.`,
-      `Duration: ${module.durationMinutes} minutes.`,
+      `Create an LC Academy classroom for module ${courseModule.order} of "${coursePlan.title}".`,
+      `Module title: ${courseModule.title}.`,
+      `Duration: ${courseModule.durationMinutes} minutes.`,
       `Audience: ${coursePlan.audience || audience || 'beginners'}.`,
-      `Learning objectives: ${module.learningObjectives.join('; ') || 'teach the module clearly'}.`,
-      `Module plan: ${module.classroomPrompt}`,
+      `Learning objectives: ${courseModule.learningObjectives.join('; ') || 'teach the module clearly'}.`,
+      `Module plan: ${courseModule.classroomPrompt}`,
       'Generate a concise classroom with 4 to 6 scenes maximum: welcome, core explanation, guided example or short discussion, quiz/checkpoint, and recap/completion.',
       'Keep each scene focused and brief so the classroom can be generated quickly and played in a few minutes.',
       'The classroom must include an AI teacher, multiple AI students, one guided discussion, one learner question moment, and a quiz/checkpoint near the end.',
       'Do not add generated video media unless Video media is explicitly enabled; prefer normal slide scenes and dialogue.',
       'End with a recap that prepares learners for the next course module. The classroom completion screen acts as the certificate/completion moment.',
-      module.prerequisiteSummary ? `Prior learning to reference: ${module.prerequisiteSummary}` : '',
-      module.resourceFocus?.length ? `Resource focus: ${module.resourceFocus.join(', ')}` : '',
+      courseModule.prerequisiteSummary
+        ? `Prior learning to reference: ${courseModule.prerequisiteSummary}`
+        : '',
+      courseModule.resourceFocus?.length
+        ? `Resource focus: ${courseModule.resourceFocus.join(', ')}`
+        : '',
     ]
       .filter(Boolean)
       .join('\n\n');
