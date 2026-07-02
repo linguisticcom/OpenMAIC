@@ -101,20 +101,29 @@ export function PageHeader({
   title,
   description,
   action,
+  leading,
 }: {
   label: string;
   title: string;
   description?: string;
   action?: React.ReactNode;
+  leading?: React.ReactNode;
 }) {
   return (
     <header className="flex flex-col gap-4 border-b border-slate-200 bg-white px-5 py-6 sm:px-8 lg:flex-row lg:items-end lg:justify-between">
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-wide text-violet-700">{label}</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-normal text-slate-950">{title}</h1>
-        {description && (
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{description}</p>
+      <div className="flex items-start gap-4">
+        {leading && (
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 p-2">
+            {leading}
+          </div>
         )}
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wide text-violet-700">{label}</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-normal text-slate-950">{title}</h1>
+          {description && (
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{description}</p>
+          )}
+        </div>
       </div>
       {action}
     </header>

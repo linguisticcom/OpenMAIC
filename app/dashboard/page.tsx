@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { KeyRound } from 'lucide-react';
+import { ArrowRight, GraduationCap, KeyRound, Users } from 'lucide-react';
 import {
   MetricCard,
   PageHeader,
@@ -21,14 +21,26 @@ export default async function DashboardPage() {
   );
   if (!summary) return null;
 
+  const canGenerateAccessCodes =
+    session.user.role === 'organization-admin' || !!session.user.canGenerateAccessCodes;
+  const canViewStudents =
+    session.user.role === 'organization-admin' || session.user.role === 'teacher-manager';
+
   return (
     <TenantShell user={session.user} organization={session.organization}>
       <PageHeader
         label="Organization dashboard"
         title={summary.organization.name}
         description="Tenant-scoped course activity, access-code status, and student progress."
+        leading={
+          <img
+            src={summary.organization.logoUrl || '/logo-horizontal.png'}
+            alt={`${summary.organization.name} logo`}
+            className="max-h-10 max-w-28 object-contain"
+          />
+        }
         action={
-          session.user.role === 'organization-admin' || session.user.canGenerateAccessCodes ? (
+          canGenerateAccessCodes ? (
             <Button asChild className="bg-violet-700 text-white hover:bg-violet-800">
               <Link href="/dashboard/access-codes/new">
                 <KeyRound className="size-4" />
@@ -63,6 +75,43 @@ export default async function DashboardPage() {
             helper="Average across assigned courses"
             tone="amber"
           />
+        </section>
+
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold tracking-normal">Quick actions</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                Jump to the tenant workflows available to your role.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" className="min-h-10">
+                <Link href="/dashboard/courses">
+                  <GraduationCap className="size-4" />
+                  View courses
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+              {canViewStudents && (
+                <Button asChild variant="outline" className="min-h-10">
+                  <Link href="/dashboard/students">
+                    <Users className="size-4" />
+                    View students
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              )}
+              {canGenerateAccessCodes && (
+                <Button asChild className="min-h-10 bg-violet-700 text-white hover:bg-violet-800">
+                  <Link href="/dashboard/access-codes/new">
+                    <KeyRound className="size-4" />
+                    Generate access code
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </div>
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[1fr_360px]">
