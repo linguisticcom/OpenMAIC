@@ -7,6 +7,8 @@ import {
   listOrganizationAccessCodes,
   listVisibleOrganizationCourseSummaries,
   listVisibleOrganizationStudentSummaries,
+  trackStudentActivity,
+  updateGlobalCourseStatus,
   validateCourseAccessGrant,
 } from '@/lib/server/course-portal-data';
 
@@ -80,6 +82,38 @@ describe('validateCourseAccessGrant', () => {
     }
   });
 
+  it('rejects submitted student identifiers outside the selected organization', async () => {
+    const result = await validateCourseAccessGrant({
+      courseId: 'course-cloud-devsecops',
+      organizationId: 'org-esilv',
+      cohortId: 'cohort-esilv-m2-cyber-cloud',
+      accessCode: 'ESILV-CLOUD-M2',
+      studentId: 'student-psb-1',
+    });
+
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.reason).toBe('code-not-linked');
+      expect(result.message).toBe('This code is not linked to the selected student.');
+    }
+  });
+
+  it('rejects submitted student identifiers outside a cohort-scoped code', async () => {
+    const result = await validateCourseAccessGrant({
+      courseId: 'course-business-genai',
+      organizationId: 'org-psb',
+      cohortId: 'cohort-psb-ai-product',
+      accessCode: 'PSB-GENAI',
+      studentId: 'student-psb-2',
+    });
+
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.reason).toBe('code-not-linked');
+      expect(result.message).toBe('This code is not linked to the selected student.');
+    }
+  });
+
   it('exposes readable cohort metadata without exposing code hashes', async () => {
     const accessCodes = await listOrganizationAccessCodes('org-esilv');
     const cloudCode = accessCodes.find((accessCode) => accessCode.id === 'code-esilv-cloud');
@@ -109,6 +143,18 @@ describe('validateCourseAccessGrant', () => {
     });
 
     expect(result).toEqual({ error: 'Selected cohort is not assigned to this course.' });
+  });
+
+  it('rejects access-code creation for a student outside the selected cohort', async () => {
+    const result = await createOrganizationAccessCode({
+      organizationId: 'org-psb',
+      courseId: 'course-business-genai',
+      cohortId: 'cohort-psb-ai-product',
+      studentId: 'student-psb-2',
+      createdByUserId: 'user-psb-admin',
+    });
+
+    expect(result).toEqual({ error: 'Student is not in the selected cohort.' });
   });
 });
 
@@ -181,5 +227,28 @@ describe('tenant visibility rules', () => {
         cohortId: 'cohort-esilv-m2-cyber-cloud',
       }),
     ).resolves.toBe(false);
+  });
+
+  it('rejects student activity for assigned courses without an enrollment', async () => {
+    await expect(
+      trackStudentActivity({
+        organizationId: 'org-esilv',
+        studentId: 'student-esilv-1',
+        courseId: 'course-secure-automation',
+        action: 'lesson.viewed',
+        progressPercentage: 20,
+      }),
+    ).resolves.toEqual({ error: 'Student is not enrolled in this course.' });
+  });
+});
+
+describe('global course management', () => {
+  it('rejects unsupported global course statuses', async () => {
+    await expect(
+      updateGlobalCourseStatus({
+        courseId: 'course-cloud-devsecops',
+        status: 'archived',
+      }),
+    ).resolves.toEqual({ error: 'Invalid course status.' });
   });
 });

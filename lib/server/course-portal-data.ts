@@ -13,6 +13,7 @@ import type {
   CourseAssignment,
   CoursePortalCardData,
   CoursePortalDataset,
+  CourseStatus,
   Enrollment,
   Organization,
   OrganizationCourseSummary,
@@ -945,6 +946,26 @@ export async function getCourseBySlug(slug: string): Promise<Course | undefined>
   return dataset.courses.find((course) => course.slug === slug);
 }
 
+const courseStatuses = new Set<CourseStatus>(['active', 'draft', 'locked', 'completed']);
+
+export async function updateGlobalCourseStatus(params: {
+  courseId: string;
+  status: string;
+}): Promise<Course | { error: string }> {
+  if (!courseStatuses.has(params.status as CourseStatus)) {
+    return { error: 'Invalid course status.' };
+  }
+
+  const dataset = await readDataset();
+  const course = dataset.courses.find((item) => item.id === params.courseId);
+  if (!course) return { error: 'Course not found.' };
+
+  course.status = params.status as CourseStatus;
+  course.updatedAt = new Date().toISOString();
+  await writeDataset(dataset);
+  return course;
+}
+
 export async function getPortalUserByEmail(email: string): Promise<PortalUser | undefined> {
   const dataset = await readDataset();
   return dataset.users.find((user) => user.email.toLowerCase() === email.trim().toLowerCase());
@@ -1481,6 +1502,10 @@ export async function createOrganizationAccessCode(params: {
   if (!assignment) return { error: 'Selected cohort is not assigned to this course.' };
   if (params.studentId && !student)
     return { error: 'Student does not belong to this organization.' };
+  const codeCohortId = params.cohortId || assignment.cohortId;
+  if (student && codeCohortId && student.cohortId !== codeCohortId) {
+    return { error: 'Student is not in the selected cohort.' };
+  }
 
   const code = `${organization.slug.toUpperCase()}-${randomBytes(3).toString('hex').toUpperCase()}`;
   const record: AccessCode = {
@@ -1488,7 +1513,7 @@ export async function createOrganizationAccessCode(params: {
     codeHash: hashAccessCode(code),
     organizationId: organization.id,
     courseId: course.id,
-    cohortId: params.cohortId || assignment.cohortId,
+    cohortId: codeCohortId,
     studentId: params.studentId,
     createdByUserId: creator.id,
     expiresAt: params.expiresAt || undefined,
@@ -1645,6 +1670,27 @@ export async function validateCourseAccessGrant(
     };
   }
 
+  const linkedStudentId = input.studentId || code.studentId;
+  const linkedStudent = linkedStudentId
+    ? dataset.students.find(
+        (item) => item.id === linkedStudentId && item.organizationId === organization.id,
+      )
+    : undefined;
+  if (linkedStudentId && !linkedStudent) {
+    return {
+      valid: false,
+      reason: 'code-not-linked',
+      message: 'This code is not linked to the selected student.',
+    };
+  }
+  if (assignment.cohortId && linkedStudent && linkedStudent.cohortId !== assignment.cohortId) {
+    return {
+      valid: false,
+      reason: 'code-not-linked',
+      message: 'This code is not linked to the selected student.',
+    };
+  }
+
   if (!code.isActive) {
     return {
       valid: false,
@@ -1665,15 +1711,14 @@ export async function validateCourseAccessGrant(
     };
   }
 
-  const enrollment =
-    input.studentId || code.studentId
-      ? dataset.enrollments.find(
-          (item) =>
-            item.organizationId === organization.id &&
-            item.courseId === course.id &&
-            item.studentId === (input.studentId || code.studentId),
-        )
-      : undefined;
+  const enrollment = linkedStudentId
+    ? dataset.enrollments.find(
+        (item) =>
+          item.organizationId === organization.id &&
+          item.courseId === course.id &&
+          item.studentId === linkedStudentId,
+      )
+    : undefined;
 
   return {
     valid: true,
@@ -1726,31 +1771,35 @@ export async function consumeCourseAccessGrant(
     studentId = student.id;
   }
 
-  if (studentId) {
-    const student = dataset.students.find(
-      (item) => item.id === studentId && item.organizationId === result.grant.organization.id,
-    );
-    if (student) {
-      enrollment = dataset.enrollments.find(
-        (item) =>
-          item.organizationId === result.grant.organization.id &&
-          item.courseId === result.grant.course.id &&
-          item.studentId === student.id,
-      );
-      if (!enrollment) {
-        enrollment = {
-          id: `enroll-${Date.now()}-${randomBytes(3).toString('hex')}`,
-          studentId: student.id,
-          organizationId: result.grant.organization.id,
-          courseId: result.grant.course.id,
-          accessCodeId: accessCode.id,
-          status: 'not_started',
-          progressPercentage: 0,
-          startedAt: new Date().toISOString(),
-        };
-        dataset.enrollments.push(enrollment);
-      }
-    }
+  const student = dataset.students.find(
+    (item) => item.id === studentId && item.organizationId === result.grant.organization.id,
+  );
+  if (!student) {
+    return {
+      valid: false,
+      reason: 'code-not-linked',
+      message: 'This code is not linked to the selected student.',
+    };
+  }
+
+  enrollment = dataset.enrollments.find(
+    (item) =>
+      item.organizationId === result.grant.organization.id &&
+      item.courseId === result.grant.course.id &&
+      item.studentId === student.id,
+  );
+  if (!enrollment) {
+    enrollment = {
+      id: `enroll-${Date.now()}-${randomBytes(3).toString('hex')}`,
+      studentId: student.id,
+      organizationId: result.grant.organization.id,
+      courseId: result.grant.course.id,
+      accessCodeId: accessCode.id,
+      status: 'not_started',
+      progressPercentage: 0,
+      startedAt: new Date().toISOString(),
+    };
+    dataset.enrollments.push(enrollment);
   }
 
   dataset.activityLogs.push({
@@ -1802,13 +1851,20 @@ export async function trackStudentActivity(params: {
     if (!assignment) return { error: 'Course is not assigned to this organization.' };
   }
 
+  const enrollment =
+    params.studentId && params.courseId
+      ? dataset.enrollments.find(
+          (item) =>
+            item.organizationId === params.organizationId &&
+            item.studentId === params.studentId &&
+            item.courseId === params.courseId,
+        )
+      : undefined;
+  if (params.studentId && params.courseId && !enrollment) {
+    return { error: 'Student is not enrolled in this course.' };
+  }
+
   if (params.studentId && params.courseId && typeof params.progressPercentage === 'number') {
-    const enrollment = dataset.enrollments.find(
-      (item) =>
-        item.organizationId === params.organizationId &&
-        item.studentId === params.studentId &&
-        item.courseId === params.courseId,
-    );
     if (enrollment) {
       enrollment.progressPercentage = Math.max(0, Math.min(100, params.progressPercentage));
       enrollment.status =

@@ -1,8 +1,9 @@
+import Link from 'next/link';
+import { GlobalCourseStatusForm } from '@/components/tenant-portal/global-course-status-form';
 import { PageHeader, TenantShell } from '@/components/tenant-portal/tenant-shell';
 import { Button } from '@/components/ui/button';
 import { getCoursePortalDataset } from '@/lib/server/course-portal-data';
 import { requirePlatformPageSession } from '@/lib/server/tenant-page-auth';
-import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,6 +40,11 @@ export default async function AdminCoursesPage() {
                 Assigned to {assignedOrganizations.length} organization
                 {assignedOrganizations.length === 1 ? '' : 's'}
               </p>
+              <p className="mt-2 text-xs text-slate-500">
+                Current status:{' '}
+                <span className="font-semibold capitalize text-slate-700">{course.status}</span>
+              </p>
+              <GlobalCourseStatusForm course={course} />
             </article>
           );
         })}

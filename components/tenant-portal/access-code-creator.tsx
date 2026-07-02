@@ -38,6 +38,11 @@ export function AccessCodeCreator({
     [cohorts],
   );
 
+  const eligibleStudents = useMemo(() => {
+    if (!selectedAssignment?.cohortId) return students;
+    return students.filter((student) => student.cohortId === selectedAssignment.cohortId);
+  }, [selectedAssignment?.cohortId, students]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedAssignment || isSubmitting) return;
@@ -115,11 +120,16 @@ export function AccessCodeCreator({
             className="h-11 rounded-md border border-slate-200 px-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100"
           >
             <option value="">Any eligible student</option>
-            {students.map((student) => (
+            {eligibleStudents.map((student) => (
               <option key={student.id} value={student.id}>
                 {student.name}
               </option>
             ))}
+            {eligibleStudents.length === 0 && (
+              <option value="" disabled>
+                No students in selected cohort
+              </option>
+            )}
           </select>
         </label>
         <label className="grid gap-2 text-sm font-medium text-slate-700">

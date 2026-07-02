@@ -1,6 +1,7 @@
 import { apiError, apiSuccess } from '@/lib/server/api-response';
 import { createCourseAccessToken, getCourseAccessCookieName } from '@/lib/server/course-access';
 import { consumeCourseAccessGrant } from '@/lib/server/course-portal-data';
+import { getCurrentPortalSession, isStudent } from '@/lib/server/organization-session';
 import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
@@ -11,13 +12,15 @@ export async function POST(request: Request) {
     courseSlug?: string;
     accessCode?: string;
     cohortId?: string;
-    studentId?: string;
   };
   try {
     body = await request.json();
   } catch {
     return apiError('INVALID_REQUEST', 400, 'Invalid JSON body');
   }
+
+  const session = await getCurrentPortalSession();
+  const studentId = session && isStudent(session.user) ? session.user.studentId : undefined;
 
   const result = await consumeCourseAccessGrant({
     organizationId: body.organizationId,
@@ -26,7 +29,7 @@ export async function POST(request: Request) {
     courseSlug: body.courseSlug,
     accessCode: body.accessCode || '',
     cohortId: body.cohortId,
-    studentId: body.studentId,
+    studentId,
   });
 
   if (!result.valid) {
