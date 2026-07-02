@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { CourseDirectory } from '@/components/course-portal/course-directory';
 import { CoursePortalShell } from '@/components/course-portal/portal-shell';
 import { UniversityHeader } from '@/components/course-portal/university-header';
-import { hasCourseAccess } from '@/lib/server/course-access';
+import { hasCourseAccessOrAccount } from '@/lib/server/course-access';
 import {
   getUniversityBySlug,
   listCoursePortalCards,
@@ -20,7 +20,7 @@ async function withAccessState(cards: CoursePortalCardData[]): Promise<CoursePor
   return Promise.all(
     cards.map(async (card) => ({
       ...card,
-      accessGranted: await hasCourseAccess({
+      accessGranted: await hasCourseAccessOrAccount({
         courseId: card.course.id,
         universityId: card.university.id,
         cohortId: card.cohortId,
