@@ -1,7 +1,6 @@
-import Link from 'next/link';
-import { ArrowRight, Building2, Clock3, LockKeyhole, PlayCircle, ShieldCheck } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Building2, Clock3, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { CourseAccessForm } from '@/components/course-portal/course-access-form';
+import { CourseStartButton } from '@/components/course-portal/course-start-button';
 import type { Course, CourseAssignment, University } from '@/lib/types/course-portal';
 
 function formatDuration(minutes?: number) {
@@ -113,16 +112,11 @@ export function CourseDetail({
                   Your account or access code has unlocked this course for {university.name}.
                 </span>
               </div>
-              <Button
-                asChild
-                className="min-h-10 w-full bg-violet-700 text-white hover:bg-violet-800"
-              >
-                <Link href={startHref}>
-                  <PlayCircle className="size-4" />
-                  Start course
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
+              <CourseStartButton
+                href={startHref}
+                organizationId={university.id}
+                courseId={course.id}
+              />
             </div>
           ) : (
             <div className="mt-5">

@@ -56,6 +56,16 @@ const teacherManager: PortalUser = {
   canGenerateAccessCodes: true,
 };
 
+const studentUser: PortalUser = {
+  ...organizationAdmin,
+  id: 'user-esilv-student',
+  name: 'ESILV Student',
+  email: 'student@esilv.local',
+  role: 'student',
+  studentId: 'student-esilv-1',
+  canGenerateAccessCodes: false,
+};
+
 function setOrganizationAdminSession() {
   getCurrentPortalSessionMock.mockResolvedValue({
     user: organizationAdmin,
@@ -66,6 +76,13 @@ function setOrganizationAdminSession() {
 function setTeacherManagerSession() {
   getCurrentPortalSessionMock.mockResolvedValue({
     user: teacherManager,
+    organization,
+  });
+}
+
+function setStudentSession() {
+  getCurrentPortalSessionMock.mockResolvedValue({
+    user: studentUser,
     organization,
   });
 }
@@ -132,6 +149,29 @@ describe('organization API tenant scope', () => {
     );
 
     await expectForbidden(response);
+  });
+
+  it('denies student activity writes for another student identity', async () => {
+    setStudentSession();
+
+    const response = await postOrganizationActivity(
+      new Request('http://localhost/api/organization/activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: 'org-esilv',
+          studentId: 'student-esilv-2',
+          courseId: 'course-cloud-devsecops',
+          action: 'course.started',
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: 'Students can only track their own activity.',
+    });
   });
 
   it('denies cross-tenant organization settings updates with a controlled 403', async () => {
