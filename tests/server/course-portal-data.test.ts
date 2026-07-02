@@ -3,6 +3,7 @@ import {
   createOrganizationAccessCode,
   getPortalUserByEmail,
   getVisibleOrganizationCourseDetail,
+  getVisibleOrganizationStudentDetail,
   hasPortalAccountCourseAccess,
   listOrganizationAccessCodes,
   listVisibleOrganizationCourseSummaries,
@@ -178,6 +179,48 @@ describe('tenant visibility rules', () => {
       'student-esilv-1',
       'student-esilv-2',
     ]);
+
+    const studentDetail = await getVisibleOrganizationStudentDetail(
+      teacher,
+      'org-esilv',
+      'student-esilv-1',
+    );
+    expect(studentDetail?.progress.map((item) => item.course.id).sort()).toEqual([
+      'course-cloud-devsecops',
+      'course-secure-automation',
+    ]);
+  });
+
+  it('shows organization admins every organization student, including unenrolled learners', async () => {
+    const admin = await getPortalUserByEmail('admin@esilv.local');
+    expect(admin).toBeDefined();
+    if (!admin) return;
+
+    const students = await listVisibleOrganizationStudentSummaries(admin, 'org-esilv');
+    expect(students.map((item) => item.student.id).sort()).toEqual([
+      'student-esilv-1',
+      'student-esilv-2',
+      'student-esilv-3',
+    ]);
+
+    const unenrolledSummary = students.find((item) => item.student.id === 'student-esilv-3');
+    expect(unenrolledSummary).toMatchObject({
+      coursesEnrolled: 0,
+      averageProgress: 0,
+      completionStatus: 'not_started',
+    });
+
+    const studentDetail = await getVisibleOrganizationStudentDetail(
+      admin,
+      'org-esilv',
+      'student-esilv-3',
+    );
+    expect(studentDetail?.progress.map((item) => item.course.id).sort()).toEqual([
+      'course-ai-foundations',
+      'course-cloud-devsecops',
+      'course-secure-automation',
+    ]);
+    expect(studentDetail?.progress.every((item) => item.enrollment === undefined)).toBe(true);
   });
 
   it('limits student accounts to their own enrolled course and enrollment detail', async () => {
@@ -195,6 +238,15 @@ describe('tenant visibility rules', () => {
     );
     expect(detail?.students.map((item) => item.id)).toEqual(['student-esilv-1']);
     expect(detail?.enrollments.map((item) => item.studentId)).toEqual(['student-esilv-1']);
+
+    const studentDetail = await getVisibleOrganizationStudentDetail(
+      student,
+      'org-esilv',
+      'student-esilv-1',
+    );
+    expect(studentDetail?.progress.map((item) => item.course.id)).toEqual([
+      'course-cloud-devsecops',
+    ]);
   });
 
   it('grants public course account access only to enrolled student accounts', async () => {

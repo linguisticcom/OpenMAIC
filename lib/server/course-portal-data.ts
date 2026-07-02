@@ -459,6 +459,18 @@ const seedStudents: Student[] = [
     updatedAt: SEED_NOW,
   },
   {
+    id: 'student-esilv-3',
+    organizationId: 'org-esilv',
+    cohortId: 'cohort-esilv-m2-cyber-cloud',
+    name: 'Leila Morel',
+    email: 'leila.morel@esilv.example',
+    externalStudentId: 'ESILV-2026-003',
+    academicYear: '2026-2027',
+    programName: 'Cybersecurity and Cloud Computing',
+    createdAt: '2026-06-14T09:20:00.000Z',
+    updatedAt: SEED_NOW,
+  },
+  {
     id: 'student-ingetis-1',
     organizationId: 'org-ingetis',
     cohortId: 'cohort-ingetis-devops',
@@ -1353,6 +1365,20 @@ export async function listVisibleOrganizationStudentSummaries(
     return [studentSummaryFromEnrollments(dataset, student, enrollments)];
   }
 
+  if (user.role === 'platform-admin' || user.role === 'organization-admin') {
+    return dataset.students
+      .filter((student) => student.organizationId === organizationId)
+      .map((student) => {
+        const enrollments = dataset.enrollments.filter(
+          (enrollment) =>
+            enrollment.organizationId === organizationId &&
+            enrollment.studentId === student.id &&
+            visibleCourseIds.has(enrollment.courseId),
+        );
+        return studentSummaryFromEnrollments(dataset, student, enrollments);
+      });
+  }
+
   const studentIds = new Set(
     dataset.enrollments
       .filter(
@@ -1444,8 +1470,26 @@ export async function getVisibleOrganizationStudentDetail(
       enrollment.studentId === studentId &&
       visibleCourseIds.has(enrollment.courseId),
   );
-  if (!hasVisibleEnrollment) return undefined;
-  return getOrganizationStudentDetail(organizationId, studentId);
+  if (
+    user.role !== 'platform-admin' &&
+    user.role !== 'organization-admin' &&
+    !hasVisibleEnrollment
+  ) {
+    return undefined;
+  }
+  const detail = await getOrganizationStudentDetail(organizationId, studentId);
+  if (!detail) return undefined;
+
+  return {
+    ...detail,
+    progress: detail.progress.filter((item) => visibleCourseIds.has(item.course.id)),
+    activity: detail.activity.filter((activity) => {
+      if (!activity.courseId) {
+        return user.role === 'platform-admin' || user.role === 'organization-admin';
+      }
+      return visibleCourseIds.has(activity.courseId);
+    }),
+  };
 }
 
 export async function listOrganizationAccessCodes(
