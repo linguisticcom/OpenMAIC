@@ -41,6 +41,20 @@ async function verifyToken(token: string, accessCode: string): Promise<boolean> 
   return mismatch === 0;
 }
 
+function hasRouteLevelLmsAuth(pathname: string): boolean {
+  return (
+    pathname.startsWith('/api/admin/') ||
+    pathname.startsWith('/api/course-access/') ||
+    pathname.startsWith('/api/organization/') ||
+    pathname.startsWith('/api/organization-auth/') ||
+    pathname.startsWith('/api/generate-classroom') ||
+    pathname.startsWith('/api/course/resources') ||
+    pathname === '/api/classroom/edit' ||
+    pathname === '/api/course/plan' ||
+    pathname === '/api/validate-course-access'
+  );
+}
+
 export async function middleware(request: NextRequest) {
   const accessCode = process.env.ACCESS_CODE;
   if (!accessCode) {
@@ -51,6 +65,12 @@ export async function middleware(request: NextRequest) {
 
   // Whitelist: access-code endpoints, health check
   if (pathname.startsWith('/api/access-code/') || pathname === '/api/health') {
+    return NextResponse.next();
+  }
+
+  // The LMS and Course Studio APIs enforce organization/session access in-route.
+  // Let them run even when the optional deployment-wide ACCESS_CODE gate is enabled.
+  if (hasRouteLevelLmsAuth(pathname)) {
     return NextResponse.next();
   }
 

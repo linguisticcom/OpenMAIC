@@ -38,11 +38,15 @@ function formatDuration(minutes?: number) {
   return mins ? `${hours}h ${mins}m` : `${hours}h`;
 }
 
+export function getTenantCourseHref(card: Pick<CoursePortalCardView, 'course' | 'university'>) {
+  return `/u/${card.university.slug}/courses/${card.course.slug}`;
+}
+
 export function CourseCard({ card }: { card: CoursePortalCardView }) {
   const [open, setOpen] = useState(false);
   const { course, university } = card;
   const tone = toneClasses[course.coverTone || 'violet'];
-  const detailHref = `/courses/${course.slug}?university=${university.slug}`;
+  const detailHref = getTenantCourseHref(card);
   const needsCode = !card.accessGranted;
 
   return (

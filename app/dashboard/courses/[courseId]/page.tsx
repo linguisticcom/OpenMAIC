@@ -45,33 +45,43 @@ export default async function DashboardCourseDetailPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {detail.enrollments.map((enrollment) => {
-                  const student = detail.students.find((item) => item.id === enrollment.studentId);
-                  return (
-                    <tr key={enrollment.id}>
-                      <td className="px-4 py-3 font-medium text-slate-950">
-                        {student?.name || 'Unknown'}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="h-2 w-28 rounded-full bg-slate-100">
-                          <div
-                            className={`h-2 rounded-full ${progressTone(enrollment.progressPercentage)}`}
-                            style={{ width: `${enrollment.progressPercentage}%` }}
-                          />
-                        </div>
-                        <span className="mt-1 block text-xs text-slate-500">
-                          {enrollment.progressPercentage}%
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 capitalize text-slate-600">
-                        {enrollment.status.replace('_', ' ')}
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {formatPortalDate(enrollment.lastActivityAt || enrollment.startedAt)}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {detail.enrollments.length > 0 ? (
+                  detail.enrollments.map((enrollment) => {
+                    const student = detail.students.find(
+                      (item) => item.id === enrollment.studentId,
+                    );
+                    return (
+                      <tr key={enrollment.id}>
+                        <td className="px-4 py-3 font-medium text-slate-950">
+                          {student?.name || 'Unknown'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="h-2 w-28 rounded-full bg-slate-100">
+                            <div
+                              className={`h-2 rounded-full ${progressTone(enrollment.progressPercentage)}`}
+                              style={{ width: `${enrollment.progressPercentage}%` }}
+                            />
+                          </div>
+                          <span className="mt-1 block text-xs text-slate-500">
+                            {enrollment.progressPercentage}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 capitalize text-slate-600">
+                          {enrollment.status.replace('_', ' ')}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">
+                          {formatPortalDate(enrollment.lastActivityAt || enrollment.startedAt)}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td className="px-4 py-8 text-center text-sm text-slate-500" colSpan={4}>
+                      No student enrollments have been recorded for this course.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

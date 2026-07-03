@@ -5,6 +5,7 @@ import {
   readClassroomGenerationJob,
 } from '@/lib/server/classroom-job-store';
 import { buildRequestOrigin } from '@/lib/server/classroom-storage';
+import { requirePlatformApiSession } from '@/lib/server/tenant-api-auth';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('ClassroomJob API');
@@ -14,6 +15,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest, context: { params: Promise<{ jobId: string }> }) {
   let resolvedJobId: string | undefined;
   try {
+    const authError = await requirePlatformApiSession();
+    if (authError) return authError;
+
     const { jobId } = await context.params;
     resolvedJobId = jobId;
 

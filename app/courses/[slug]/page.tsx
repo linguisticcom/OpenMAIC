@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { CourseDetail } from '@/components/course-portal/course-detail';
 import { CoursePortalShell } from '@/components/course-portal/portal-shell';
-import { hasCourseAccessOrAccount } from '@/lib/server/course-access';
+import { findCourseAccessAssignment } from '@/lib/server/course-access';
 import { getCourseDetailContext } from '@/lib/server/course-portal-data';
 
 export const dynamic = 'force-dynamic';
@@ -26,12 +26,16 @@ export default async function CoursePage({ params, searchParams }: CoursePagePro
   });
   if (!context) notFound();
 
-  const { course, university, assignment } = context;
-  const accessGranted = await hasCourseAccessOrAccount({
+  const { course, university } = context;
+  const universityAssignments = context.assignments.filter(
+    (assignment) => assignment.organizationId === university.id,
+  );
+  const accessAssignment = await findCourseAccessAssignment({
     courseId: course.id,
     universityId: university.id,
-    cohortId: assignment.cohortId,
+    assignments: universityAssignments,
   });
+  const assignment = accessAssignment || context.assignment;
 
   return (
     <CoursePortalShell>
@@ -48,7 +52,7 @@ export default async function CoursePage({ params, searchParams }: CoursePagePro
         course={course}
         university={university}
         assignment={assignment}
-        accessGranted={accessGranted}
+        accessGranted={Boolean(accessAssignment)}
       />
     </CoursePortalShell>
   );

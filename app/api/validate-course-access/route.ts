@@ -1,7 +1,8 @@
 import { cookies } from 'next/headers';
 import { apiError, apiSuccess } from '@/lib/server/api-response';
 import { createCourseAccessToken, getCourseAccessCookieName } from '@/lib/server/course-access';
-import { validateCourseAccessGrant } from '@/lib/server/course-portal-data';
+import { consumeCourseAccessGrant } from '@/lib/server/course-portal-data';
+import { getCurrentPortalSession, isStudent } from '@/lib/server/organization-session';
 import type { CourseAccessValidationInput } from '@/lib/types/course-portal';
 import { createLogger } from '@/lib/logger';
 
@@ -14,12 +15,18 @@ export async function POST(req: Request) {
     const body = (await req.json()) as Partial<CourseAccessValidationInput>;
     courseId = body.courseId;
     universityId = body.universityId;
+    const session = await getCurrentPortalSession();
+    const studentId = session && isStudent(session.user) ? session.user.studentId : undefined;
 
-    const result = await validateCourseAccessGrant({
-      courseId: body.courseId || '',
-      universityId: body.universityId || '',
+    const result = await consumeCourseAccessGrant({
+      organizationId: body.organizationId,
+      organizationSlug: body.organizationSlug,
+      courseId: body.courseId,
+      courseSlug: body.courseSlug,
+      universityId: body.universityId,
       cohortId: body.cohortId || undefined,
       accessCode: body.accessCode || '',
+      studentId,
     });
 
     if (!result.valid) {
@@ -34,8 +41,10 @@ export async function POST(req: Request) {
     const { token, maxAge } = createCourseAccessToken({
       courseId: grant.course.id,
       universityId: grant.university.id,
-      cohortId: grant.accessCode.cohortId,
+      cohortId: grant.assignment.cohortId,
       codeId: grant.accessCode.id,
+      studentId: grant.enrollment?.studentId,
+      enrollmentId: result.enrollmentId,
       codeExpiresAt: grant.accessCode.expiresAt,
     });
 
@@ -54,11 +63,13 @@ export async function POST(req: Request) {
 
     return apiSuccess({
       valid: true,
-      accessToken: token,
+      accessSession: result.accessSession,
+      enrollmentId: result.enrollmentId,
       courseId: grant.course.id,
       universityId: grant.university.id,
-      cohortId: grant.accessCode.cohortId,
-      redirectUrl: `/courses/${grant.course.slug}?university=${grant.university.slug}`,
+      organizationId: grant.organization.id,
+      cohortId: grant.assignment.cohortId,
+      redirectUrl: `/u/${grant.organization.slug}/courses/${grant.course.slug}`,
     });
   } catch (error) {
     log.error(

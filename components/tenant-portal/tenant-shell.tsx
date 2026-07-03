@@ -8,7 +8,9 @@ import {
   Settings,
   Users,
 } from 'lucide-react';
+import { LogoutButton } from '@/components/tenant-portal/logout-button';
 import { cn } from '@/lib/utils';
+import { canManageAccessCodes } from '@/lib/server/organization-session';
 import type { Organization, PortalUser } from '@/lib/types/course-portal';
 
 const dashboardLinks = [
@@ -43,7 +45,7 @@ export function TenantShell({
           return link.href === '/dashboard' || link.href === '/dashboard/courses';
         }
         if (link.href === '/dashboard/access-codes') {
-          return user.role === 'organization-admin' || !!user.canGenerateAccessCodes;
+          return organization ? canManageAccessCodes(user, organization.id) : false;
         }
         if (link.href === '/dashboard/settings') {
           return user.role === 'organization-admin';
@@ -54,7 +56,7 @@ export function TenantShell({
   return (
     <main className="min-h-screen bg-slate-100 text-slate-950">
       <div className="grid min-h-screen lg:grid-cols-[270px_1fr]">
-        <aside className="border-b border-slate-200 bg-white lg:border-b-0 lg:border-r">
+        <aside className="border-b border-slate-200 bg-white lg:sticky lg:top-0 lg:h-screen lg:self-start lg:overflow-y-auto lg:border-b-0 lg:border-r">
           <div className="flex h-full flex-col">
             <div className="border-b border-slate-200 p-5">
               <Link
@@ -85,8 +87,8 @@ export function TenantShell({
                 </Link>
               ))}
             </nav>
-            <div className="mt-auto border-t border-slate-200 p-4 text-xs leading-5 text-slate-500">
-              Tenant data is scoped server-side by organization.
+            <div className="mt-auto border-t border-slate-200 p-4 pb-16">
+              <LogoutButton />
             </div>
           </div>
         </aside>

@@ -5,6 +5,7 @@ import { parseJsonResponse } from '@/lib/generation/json-repair';
 import { createLogger } from '@/lib/logger';
 import { apiError, apiSuccess } from '@/lib/server/api-response';
 import { resolveModelFromRequest } from '@/lib/server/resolve-model';
+import { requirePlatformApiSession } from '@/lib/server/tenant-api-auth';
 import type {
   ClassroomEditPatch,
   ClassroomEditPlan,
@@ -85,16 +86,15 @@ export async function POST(req: NextRequest) {
   let instructionSnippet: string | undefined;
 
   try {
+    const authError = await requirePlatformApiSession();
+    if (authError) return authError;
+
     const body = (await req.json()) as ClassroomEditRequest;
     const { instruction, stage, scenes, currentSceneId, courseMemory } = body;
     instructionSnippet = instruction?.substring(0, 80);
 
     if (!instruction || !stage || !Array.isArray(scenes)) {
-      return apiError(
-        'MISSING_REQUIRED_FIELD',
-        400,
-        'instruction, stage, and scenes are required',
-      );
+      return apiError('MISSING_REQUIRED_FIELD', 400, 'instruction, stage, and scenes are required');
     }
 
     const { model: languageModel, thinkingConfig } = await resolveModelFromRequest(req, body);

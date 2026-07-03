@@ -61,6 +61,14 @@ export interface CoursePlanningRequest {
   resourceIds?: string[];
 }
 
+export interface GeneratedPortalCourseMetadata {
+  title?: string;
+  description?: string;
+  category?: string;
+  level?: string;
+  estimatedDurationMinutes?: number;
+}
+
 export interface CourseMemory {
   courseId?: string;
   completedModuleIds: string[];

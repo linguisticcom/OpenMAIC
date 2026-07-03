@@ -11,6 +11,7 @@ import type {
   CourseAccessInvalidReason,
   CourseAccessValidationInput,
   CourseAssignment,
+  CourseModule,
   CoursePortalCardData,
   CoursePortalDataset,
   CourseStatus,
@@ -24,6 +25,8 @@ import type {
   StudentCourseProgress,
   University,
 } from '@/lib/types/course-portal';
+import type { GeneratedPortalCourseMetadata } from '@/lib/types/course-studio';
+import type { Scene, Stage } from '@/lib/types/stage';
 
 const COURSE_PORTAL_DATA_FILE = path.join(process.cwd(), 'data', 'course-portal', 'catalog.json');
 const SEED_NOW = '2026-07-02T09:00:00.000Z';
@@ -39,6 +42,13 @@ export function hashPortalPassword(password: string): string {
 
 function cloneDataset(dataset: CoursePortalDataset): CoursePortalDataset {
   return JSON.parse(JSON.stringify(dataset)) as CoursePortalDataset;
+}
+
+type PortalUserView = Omit<PortalUser, 'passwordHash'>;
+
+function toPortalUserView(user: PortalUser): PortalUserView {
+  const { passwordHash: _passwordHash, ...view } = user;
+  return view;
 }
 
 const seedOrganizations: Organization[] = [
@@ -788,6 +798,102 @@ function courseCompletionRate(
   return Math.round(total / enrollments.length);
 }
 
+function completionRateFromEnrollments(enrollments: Enrollment[]): number {
+  if (enrollments.length === 0) return 0;
+  const total = enrollments.reduce((sum, enrollment) => sum + enrollment.progressPercentage, 0);
+  return Math.round(total / enrollments.length);
+}
+
+function studentMatchesAssignment(student: Student, assignment: CourseAssignment): boolean {
+  return !assignment.cohortId || student.cohortId === assignment.cohortId;
+}
+
+function enrollmentMatchesAssignment(
+  dataset: CoursePortalDataset,
+  enrollment: Enrollment,
+  assignment: CourseAssignment,
+): boolean {
+  if (
+    enrollment.organizationId !== assignment.organizationId ||
+    enrollment.courseId !== assignment.courseId
+  ) {
+    return false;
+  }
+  const student = dataset.students.find(
+    (item) => item.id === enrollment.studentId && item.organizationId === enrollment.organizationId,
+  );
+  return Boolean(student && studentMatchesAssignment(student, assignment));
+}
+
+function accessCodeMatchesAssignment(
+  accessCode: Pick<AccessCode, 'organizationId' | 'courseId' | 'cohortId'>,
+  assignment: CourseAssignment,
+): boolean {
+  if (
+    accessCode.organizationId !== assignment.organizationId ||
+    accessCode.courseId !== assignment.courseId
+  ) {
+    return false;
+  }
+  return !assignment.cohortId || accessCode.cohortId === assignment.cohortId;
+}
+
+function isActiveAccessCode(accessCode: AccessCode): boolean {
+  return (
+    accessCode.isActive &&
+    (!accessCode.expiresAt || new Date(accessCode.expiresAt).getTime() >= Date.now())
+  );
+}
+
+function countActiveAccessCodesForAssignment(
+  dataset: CoursePortalDataset,
+  assignment: CourseAssignment,
+): number {
+  return dataset.accessCodes.filter(
+    (code) => accessCodeMatchesAssignment(code, assignment) && isActiveAccessCode(code),
+  ).length;
+}
+
+function studentMatchesAnyAssignment(student: Student, assignments: CourseAssignment[]): boolean {
+  return assignments.some(
+    (assignment) =>
+      assignment.organizationId === student.organizationId &&
+      studentMatchesAssignment(student, assignment),
+  );
+}
+
+function enrollmentMatchesAnyAssignment(
+  dataset: CoursePortalDataset,
+  enrollment: Enrollment,
+  assignments: CourseAssignment[],
+): boolean {
+  return assignments.some((assignment) =>
+    enrollmentMatchesAssignment(dataset, enrollment, assignment),
+  );
+}
+
+function activityMatchesAssignments(
+  dataset: CoursePortalDataset,
+  activity: ActivityLog,
+  assignments: CourseAssignment[],
+  options: { includeUnscoped: boolean },
+): boolean {
+  if (!activity.courseId && !activity.studentId) return options.includeUnscoped;
+
+  const student = activity.studentId
+    ? dataset.students.find(
+        (item) => item.id === activity.studentId && item.organizationId === activity.organizationId,
+      )
+    : undefined;
+
+  return assignments.some((assignment) => {
+    if (assignment.organizationId !== activity.organizationId) return false;
+    if (activity.courseId && assignment.courseId !== activity.courseId) return false;
+    if (!student) return !assignment.cohortId;
+    return studentMatchesAssignment(student, assignment);
+  });
+}
+
 function toAccessCodeView(dataset: CoursePortalDataset, accessCode: AccessCode): AccessCodeView {
   const course = dataset.courses.find((item) => item.id === accessCode.courseId);
   const organization = dataset.organizations.find((item) => item.id === accessCode.organizationId);
@@ -799,7 +905,10 @@ function toAccessCodeView(dataset: CoursePortalDataset, accessCode: AccessCode):
       )
     : undefined;
   const student = accessCode.studentId
-    ? dataset.students.find((item) => item.id === accessCode.studentId)
+    ? dataset.students.find(
+        (item) =>
+          item.id === accessCode.studentId && item.organizationId === accessCode.organizationId,
+      )
     : undefined;
 
   return {
@@ -833,16 +942,15 @@ function assignmentToCard(
   const organization = dataset.organizations.find((item) => item.id === assignment.organizationId);
   if (!course || !organization) return null;
 
-  const enrollments = dataset.enrollments.filter(
-    (enrollment) =>
-      enrollment.organizationId === organization.id && enrollment.courseId === course.id,
+  const enrollments = dataset.enrollments.filter((enrollment) =>
+    enrollmentMatchesAssignment(dataset, enrollment, assignment),
   );
   const card: CoursePortalCardData = {
     assignmentId: assignment.id,
     course,
     university: organization,
     enrolledStudents: enrollments.length,
-    completionRate: courseCompletionRate(dataset, organization.id, course.id),
+    completionRate: completionRateFromEnrollments(enrollments),
   };
   if (assignment.cohortId) card.cohortId = assignment.cohortId;
   return card;
@@ -866,16 +974,14 @@ function visibleAssignmentsForUser(
   }
 
   if (user.role === 'student' && user.studentId) {
-    const enrolledCourseIds = new Set(
-      dataset.enrollments
-        .filter(
-          (enrollment) =>
-            enrollment.organizationId === organizationId && enrollment.studentId === user.studentId,
-        )
-        .map((enrollment) => enrollment.courseId),
+    const studentEnrollments = dataset.enrollments.filter(
+      (enrollment) =>
+        enrollment.organizationId === organizationId && enrollment.studentId === user.studentId,
     );
     return organizationAssignments.filter((assignment) =>
-      enrolledCourseIds.has(assignment.courseId),
+      studentEnrollments.some((enrollment) =>
+        enrollmentMatchesAssignment(dataset, enrollment, assignment),
+      ),
     );
   }
 
@@ -958,7 +1064,174 @@ export async function getCourseBySlug(slug: string): Promise<Course | undefined>
   return dataset.courses.find((course) => course.slug === slug);
 }
 
+export async function getClassroomCourseAccessContext(
+  classroomId: string,
+): Promise<{ course: Course; assignments: CourseAssignment[] } | undefined> {
+  const dataset = await readDataset();
+  const course = dataset.courses.find((item) => item.classroomId === classroomId);
+  if (!course) return undefined;
+
+  return {
+    course,
+    assignments: dataset.assignments.filter((assignment) => assignment.courseId === course.id),
+  };
+}
+
 const courseStatuses = new Set<CourseStatus>(['active', 'draft', 'locked', 'completed']);
+const subscriptionStatuses = new Set<NonNullable<Organization['subscriptionStatus']>>([
+  'trial',
+  'active',
+  'past_due',
+  'cancelled',
+]);
+
+function normalizeCourseSlug(value: string | undefined, fallback: string): string {
+  return (
+    (value || fallback)
+      .trim()
+      .toLowerCase()
+      .replace(/['’]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-{2,}/g, '-') || fallback
+  );
+}
+
+function normalizeOrganizationSlug(value: string | undefined): string {
+  return (value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+}
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function isValidLogoUrl(value: string): boolean {
+  if (value.startsWith('/')) return !value.startsWith('//') && !/[\u0000-\u001f]/.test(value);
+
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
+function uniqueCourseSlug(
+  dataset: CoursePortalDataset,
+  preferredSlug: string,
+  existingCourseId?: string,
+): string {
+  const usedSlugs = new Set(
+    dataset.courses.filter((course) => course.id !== existingCourseId).map((course) => course.slug),
+  );
+  if (!usedSlugs.has(preferredSlug)) return preferredSlug;
+
+  let suffix = 2;
+  let candidate = `${preferredSlug}-${suffix}`;
+  while (usedSlugs.has(candidate)) {
+    suffix += 1;
+    candidate = `${preferredSlug}-${suffix}`;
+  }
+  return candidate;
+}
+
+function trimText(value: string | undefined, maxLength: number): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  return trimmed.length > maxLength ? `${trimmed.slice(0, maxLength - 3).trim()}...` : trimmed;
+}
+
+function sceneToCourseModule(scene: Scene, index: number): CourseModule {
+  const typeLabel = scene.type === 'pbl' ? 'project-based learning' : scene.type;
+  return {
+    id: `module-${scene.id}`,
+    title: trimText(scene.title, 120) || `Scene ${index + 1}`,
+    description: `OpenMAIC-generated ${typeLabel} scene ${index + 1}.`,
+    durationMinutes: 10,
+  };
+}
+
+function buildGeneratedCourseModules(scenes: Scene[]): CourseModule[] {
+  const modules = [...scenes]
+    .sort((a, b) => a.order - b.order)
+    .map((scene, index) => sceneToCourseModule(scene, index));
+
+  if (modules.length > 0) return modules;
+  return [
+    {
+      id: 'module-overview',
+      title: 'Classroom overview',
+      description: 'OpenMAIC-generated classroom content.',
+      durationMinutes: 10,
+    },
+  ];
+}
+
+export async function registerGeneratedClassroomCourse(params: {
+  classroomId: string;
+  stage: Stage;
+  scenes: Scene[];
+  metadata?: GeneratedPortalCourseMetadata;
+}): Promise<Course> {
+  const dataset = await readDataset();
+  const now = new Date().toISOString();
+  const courseId = `course-${params.classroomId}`;
+  const existing = dataset.courses.find(
+    (course) => course.classroomId === params.classroomId || course.id === courseId,
+  );
+  const title =
+    trimText(params.metadata?.title, 160) ||
+    trimText(params.stage.name, 160) ||
+    `OpenMAIC Classroom ${params.classroomId}`;
+  const description =
+    trimText(params.metadata?.description, 420) ||
+    trimText(params.stage.description, 420) ||
+    `OpenMAIC-generated classroom with ${params.scenes.length} scene${params.scenes.length === 1 ? '' : 's'}.`;
+  const category = trimText(params.metadata?.category, 80) || 'OpenMAIC Generated';
+  const level = trimText(params.metadata?.level, 80);
+  const modules = buildGeneratedCourseModules(params.scenes);
+  const estimatedDurationMinutes =
+    params.metadata?.estimatedDurationMinutes && params.metadata.estimatedDurationMinutes > 0
+      ? Math.round(params.metadata.estimatedDurationMinutes)
+      : modules.reduce((total, module) => total + module.durationMinutes, 0);
+  const preferredSlug = normalizeCourseSlug(title, `openmaic-classroom-${params.classroomId}`);
+  const slug = uniqueCourseSlug(dataset, preferredSlug, existing?.id);
+
+  const course: Course = {
+    ...(existing || {
+      id: courseId,
+      status: 'draft' as CourseStatus,
+      createdAt: now,
+      coverTone: 'violet' as const,
+    }),
+    id: existing?.id || courseId,
+    title,
+    slug,
+    description,
+    category,
+    level,
+    generatedBy: 'OpenMAIC',
+    updatedAt: now,
+    estimatedDurationMinutes,
+    modules,
+    classroomId: params.classroomId,
+  };
+
+  if (existing) {
+    Object.assign(existing, course);
+  } else {
+    dataset.courses.push(course);
+  }
+
+  await writeDataset(dataset);
+  return course;
+}
 
 export async function updateGlobalCourseStatus(params: {
   courseId: string;
@@ -993,6 +1266,106 @@ export async function listPortalUsers(): Promise<PortalUser[]> {
   return dataset.users;
 }
 
+export async function listOrganizationAdminUsers(
+  organizationId: string,
+): Promise<PortalUserView[]> {
+  const dataset = await readDataset();
+  return dataset.users
+    .filter((user) => user.organizationId === organizationId && user.role === 'organization-admin')
+    .map((user) => toPortalUserView(user))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function createOrganizationWithAdmin(params: {
+  name?: string;
+  slug?: string;
+  logoUrl?: string;
+  description?: string;
+  contactEmail?: string;
+  subscriptionStatus?: string;
+  welcomeMessage?: string;
+  adminName?: string;
+  adminEmail?: string;
+  adminPassword?: string;
+}): Promise<{ organization: Organization; adminUser: PortalUserView } | { error: string }> {
+  const name = params.name?.trim();
+  const slug = normalizeOrganizationSlug(params.slug || params.name);
+  const logoUrl = params.logoUrl?.trim();
+  const description = params.description?.trim();
+  const contactEmail = params.contactEmail?.trim().toLowerCase();
+  const welcomeMessage = params.welcomeMessage?.trim();
+  const adminName = params.adminName?.trim();
+  const adminEmail = params.adminEmail?.trim().toLowerCase();
+  const adminPassword = params.adminPassword || '';
+  const subscriptionStatus = params.subscriptionStatus || 'trial';
+
+  if (!name) return { error: 'Organization name is required.' };
+  if (!slug) return { error: 'Organization slug is required.' };
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+    return { error: 'Organization slug must use lowercase letters, numbers, and hyphens.' };
+  }
+  if (!description) return { error: 'Organization description is required.' };
+  if (!contactEmail) return { error: 'Contact email is required.' };
+  if (!isValidEmail(contactEmail)) return { error: 'Contact email must be valid.' };
+  if (logoUrl && !isValidLogoUrl(logoUrl)) {
+    return { error: 'Logo URL must be a relative path or an HTTP(S) URL.' };
+  }
+  if (
+    !subscriptionStatuses.has(subscriptionStatus as NonNullable<Organization['subscriptionStatus']>)
+  ) {
+    return { error: 'Subscription status is invalid.' };
+  }
+  if (!adminName) return { error: 'Admin name is required.' };
+  if (!adminEmail) return { error: 'Admin email is required.' };
+  if (!isValidEmail(adminEmail)) return { error: 'Admin email must be valid.' };
+  if (adminPassword.trim().length < 8) {
+    return { error: 'Admin password must be at least 8 characters.' };
+  }
+
+  const dataset = await readDataset();
+  const organizationId = `org-${slug}`;
+  if (
+    dataset.organizations.some(
+      (organization) => organization.id === organizationId || organization.slug === slug,
+    )
+  ) {
+    return { error: 'Organization slug is already in use.' };
+  }
+  if (dataset.users.some((user) => user.email.toLowerCase() === adminEmail)) {
+    return { error: 'Admin email is already in use.' };
+  }
+
+  const now = new Date().toISOString();
+  const organization: Organization = {
+    id: organizationId,
+    name,
+    slug,
+    logoUrl: logoUrl || undefined,
+    description,
+    contactEmail,
+    subscriptionStatus: subscriptionStatus as NonNullable<Organization['subscriptionStatus']>,
+    welcomeMessage: welcomeMessage || undefined,
+    createdAt: now,
+    updatedAt: now,
+  };
+  const adminUser: PortalUser = {
+    id: `user-${slug}-admin`,
+    organizationId,
+    name: adminName,
+    email: adminEmail,
+    passwordHash: hashPortalPassword(adminPassword),
+    role: 'organization-admin',
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  dataset.organizations.push(organization);
+  dataset.users.push(adminUser);
+  await writeDataset(dataset);
+
+  return { organization, adminUser: toPortalUserView(adminUser) };
+}
+
 export async function updateOrganizationSettings(params: {
   organizationId: string;
   name?: string;
@@ -1018,8 +1391,11 @@ export async function updateOrganizationSettings(params: {
   if (params.description !== undefined && !description) {
     return { error: 'Organization description is required.' };
   }
-  if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+  if (contactEmail && !isValidEmail(contactEmail)) {
     return { error: 'Contact email must be valid.' };
+  }
+  if (logoUrl && !isValidLogoUrl(logoUrl)) {
+    return { error: 'Logo URL must be a relative path or an HTTP(S) URL.' };
   }
 
   if (name) organization.name = name;
@@ -1058,19 +1434,16 @@ export async function listOrganizationCourseSummaries(
 
   return dataset.assignments
     .filter((assignment) => assignment.organizationId === organizationId)
-    .map((assignment) => assignmentToCard(dataset, assignment))
-    .filter((item): item is CoursePortalCardData => Boolean(item))
-    .map((card) => ({
-      ...card,
-      organization,
-      activeAccessCodes: dataset.accessCodes.filter(
-        (code) =>
-          code.organizationId === organizationId &&
-          code.courseId === card.course.id &&
-          code.isActive &&
-          (!code.expiresAt || new Date(code.expiresAt).getTime() >= Date.now()),
-      ).length,
-    }));
+    .map((assignment) => {
+      const card = assignmentToCard(dataset, assignment);
+      if (!card) return null;
+      return {
+        ...card,
+        organization,
+        activeAccessCodes: countActiveAccessCodesForAssignment(dataset, assignment),
+      };
+    })
+    .filter((item): item is OrganizationCourseSummary => Boolean(item));
 }
 
 export async function listVisibleOrganizationCourseSummaries(
@@ -1082,19 +1455,16 @@ export async function listVisibleOrganizationCourseSummaries(
   if (!organization) return [];
 
   return visibleAssignmentsForUser(dataset, user, organizationId)
-    .map((assignment) => assignmentToCard(dataset, assignment))
-    .filter((item): item is CoursePortalCardData => Boolean(item))
-    .map((card) => ({
-      ...card,
-      organization,
-      activeAccessCodes: dataset.accessCodes.filter(
-        (code) =>
-          code.organizationId === organizationId &&
-          code.courseId === card.course.id &&
-          code.isActive &&
-          (!code.expiresAt || new Date(code.expiresAt).getTime() >= Date.now()),
-      ).length,
-    }));
+    .map((assignment) => {
+      const card = assignmentToCard(dataset, assignment);
+      if (!card) return null;
+      return {
+        ...card,
+        organization,
+        activeAccessCodes: countActiveAccessCodesForAssignment(dataset, assignment),
+      };
+    })
+    .filter((item): item is OrganizationCourseSummary => Boolean(item));
 }
 
 export async function getOrganizationDashboardSummary(
@@ -1112,13 +1482,25 @@ export async function getOrganizationDashboardSummary(
       (!code.expiresAt || new Date(code.expiresAt).getTime() >= Date.now()),
   ).length;
   const completionRates = courses.map((course) => course.completionRate);
+  const organizationStudentIds = new Set(
+    dataset.students
+      .filter((student) => student.organizationId === organizationId)
+      .map((student) => student.id),
+  );
+  const enrolledStudentIds = new Set(
+    dataset.enrollments
+      .filter(
+        (enrollment) =>
+          enrollment.organizationId === organizationId &&
+          organizationStudentIds.has(enrollment.studentId),
+      )
+      .map((enrollment) => enrollment.studentId),
+  );
 
   return {
     organization,
     activeCourses: courses.filter((item) => item.course.status === 'active').length,
-    enrolledStudents: dataset.students.filter(
-      (student) => student.organizationId === organizationId,
-    ).length,
+    enrolledStudents: enrolledStudentIds.size,
     activeAccessCodes,
     averageCompletionRate:
       completionRates.length > 0
@@ -1143,7 +1525,6 @@ export async function getVisibleOrganizationDashboardSummary(
   if (!organization) return undefined;
 
   const visibleAssignments = visibleAssignmentsForUser(dataset, user, organizationId);
-  const visibleCourseIds = new Set(visibleAssignments.map((assignment) => assignment.courseId));
   const visibleStudentIds =
     user.role === 'student' && user.studentId
       ? new Set([user.studentId])
@@ -1152,7 +1533,7 @@ export async function getVisibleOrganizationDashboardSummary(
             .filter(
               (enrollment) =>
                 enrollment.organizationId === organizationId &&
-                visibleCourseIds.has(enrollment.courseId),
+                enrollmentMatchesAnyAssignment(dataset, enrollment, visibleAssignments),
             )
             .map((enrollment) => enrollment.studentId),
         );
@@ -1171,7 +1552,9 @@ export async function getVisibleOrganizationDashboardSummary(
         : dataset.accessCodes.filter(
             (code) =>
               code.organizationId === organizationId &&
-              visibleCourseIds.has(code.courseId) &&
+              visibleAssignments.some((assignment) =>
+                accessCodeMatchesAssignment(code, assignment),
+              ) &&
               code.isActive &&
               (!code.expiresAt || new Date(code.expiresAt).getTime() >= Date.now()),
           ).length,
@@ -1184,9 +1567,10 @@ export async function getVisibleOrganizationDashboardSummary(
     recentActivity: dataset.activityLogs
       .filter((activity) => {
         if (activity.organizationId !== organizationId) return false;
-        if (activity.courseId && !visibleCourseIds.has(activity.courseId)) return false;
         if (user.role === 'student' && activity.studentId !== user.studentId) return false;
-        return true;
+        return activityMatchesAssignments(dataset, activity, visibleAssignments, {
+          includeUnscoped: user.role === 'platform-admin' || user.role === 'organization-admin',
+        });
       })
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, 6),
@@ -1204,6 +1588,7 @@ export async function getCourseDetailContext(params: {
       university: University;
       organization: Organization;
       assignment: CourseAssignment;
+      assignments: CourseAssignment[];
     }
   | undefined
 > {
@@ -1218,9 +1603,10 @@ export async function getCourseDetailContext(params: {
   if (requestedSlug && !organization) return undefined;
 
   const assignments = dataset.assignments.filter((item) => item.courseId === course.id);
-  const assignment = organization
-    ? assignments.find((item) => item.organizationId === organization.id)
-    : assignments[0];
+  const matchingAssignments = organization
+    ? assignments.filter((item) => item.organizationId === organization.id)
+    : assignments;
+  const assignment = matchingAssignments[0];
   const resolvedOrganization =
     organization || dataset.organizations.find((item) => item.id === assignment?.organizationId);
 
@@ -1230,6 +1616,7 @@ export async function getCourseDetailContext(params: {
     university: resolvedOrganization,
     organization: resolvedOrganization,
     assignment,
+    assignments: matchingAssignments,
   };
 }
 
@@ -1286,18 +1673,35 @@ export async function getVisibleOrganizationCourseDetail(
   const course = findCourse(dataset, courseIdOrSlug);
   if (!course) return undefined;
   const visibleAssignments = visibleAssignmentsForUser(dataset, user, organizationId);
-  if (!visibleAssignments.some((assignment) => assignment.courseId === course.id)) return undefined;
+  const matchingAssignments = visibleAssignments.filter(
+    (assignment) => assignment.courseId === course.id,
+  );
+  if (matchingAssignments.length === 0) return undefined;
   const detail = await getOrganizationCourseDetail(organizationId, course.id);
-  if (!detail || user.role !== 'student') return detail;
+  if (!detail) return undefined;
+  if (user.role === 'platform-admin' || user.role === 'organization-admin') return detail;
 
   const enrollments = detail.enrollments.filter(
-    (enrollment) => enrollment.studentId === user.studentId,
+    (enrollment) =>
+      (user.role !== 'student' || enrollment.studentId === user.studentId) &&
+      enrollmentMatchesAnyAssignment(dataset, enrollment, matchingAssignments),
   );
   const studentIds = new Set(enrollments.map((enrollment) => enrollment.studentId));
+  const canViewAccessCodes =
+    user.role === 'teacher-manager' ? !!user.canGenerateAccessCodes : user.role !== 'student';
   return {
     ...detail,
+    assignment: matchingAssignments[0],
     enrollments,
     students: detail.students.filter((student) => studentIds.has(student.id)),
+    accessCodes: canViewAccessCodes
+      ? detail.accessCodes.filter((accessCode) =>
+          matchingAssignments.some((assignment) =>
+            accessCodeMatchesAssignment(accessCode, assignment),
+          ),
+        )
+      : [],
+    completionRate: completionRateFromEnrollments(enrollments),
   };
 }
 
@@ -1360,7 +1764,7 @@ export async function listVisibleOrganizationStudentSummaries(
       (enrollment) =>
         enrollment.organizationId === organizationId &&
         enrollment.studentId === student.id &&
-        visibleCourseIds.has(enrollment.courseId),
+        enrollmentMatchesAnyAssignment(dataset, enrollment, visibleAssignments),
     );
     return [studentSummaryFromEnrollments(dataset, student, enrollments)];
   }
@@ -1383,19 +1787,38 @@ export async function listVisibleOrganizationStudentSummaries(
     dataset.enrollments
       .filter(
         (enrollment) =>
-          enrollment.organizationId === organizationId && visibleCourseIds.has(enrollment.courseId),
+          enrollment.organizationId === organizationId &&
+          enrollmentMatchesAnyAssignment(dataset, enrollment, visibleAssignments),
       )
       .map((enrollment) => enrollment.studentId),
   );
+  const visibleCohortIds = new Set(
+    visibleAssignments
+      .map((assignment) => assignment.cohortId)
+      .filter((cohortId): cohortId is string => Boolean(cohortId)),
+  );
+  const hasOrganizationWideAssignment = visibleAssignments.some(
+    (assignment) => !assignment.cohortId,
+  );
 
   return dataset.students
-    .filter((student) => student.organizationId === organizationId && studentIds.has(student.id))
+    .filter((student) => {
+      if (student.organizationId !== organizationId) return false;
+      if (studentIds.has(student.id)) return true;
+      if (
+        hasOrganizationWideAssignment &&
+        studentMatchesAnyAssignment(student, visibleAssignments)
+      ) {
+        return true;
+      }
+      return Boolean(student.cohortId && visibleCohortIds.has(student.cohortId));
+    })
     .map((student) => {
       const enrollments = dataset.enrollments.filter(
         (enrollment) =>
           enrollment.organizationId === organizationId &&
           enrollment.studentId === student.id &&
-          visibleCourseIds.has(enrollment.courseId),
+          enrollmentMatchesAnyAssignment(dataset, enrollment, visibleAssignments),
       );
       return studentSummaryFromEnrollments(dataset, student, enrollments);
     });
@@ -1421,7 +1844,11 @@ export async function getOrganizationStudentDetail(
   if (!organization || !student) return undefined;
 
   const progress = dataset.assignments
-    .filter((assignment) => assignment.organizationId === organizationId)
+    .filter(
+      (assignment) =>
+        assignment.organizationId === organizationId &&
+        studentMatchesAssignment(student, assignment),
+    )
     .map((assignment): StudentCourseProgress | null => {
       const course = dataset.courses.find((item) => item.id === assignment.courseId);
       if (!course) return null;
@@ -1432,7 +1859,12 @@ export async function getOrganizationStudentDetail(
           item.studentId === student.id,
       );
       const accessCode = enrollment?.accessCodeId
-        ? dataset.accessCodes.find((code) => code.id === enrollment.accessCodeId)
+        ? dataset.accessCodes.find(
+            (code) =>
+              code.id === enrollment.accessCodeId &&
+              code.organizationId === organizationId &&
+              code.courseId === course.id,
+          )
         : undefined;
       return {
         course,
@@ -1462,18 +1894,35 @@ export async function getVisibleOrganizationStudentDetail(
 ): Promise<Awaited<ReturnType<typeof getOrganizationStudentDetail>>> {
   if (user.role === 'student' && user.studentId !== studentId) return undefined;
   const dataset = await readDataset();
+  const student = dataset.students.find(
+    (item) => item.id === studentId && item.organizationId === organizationId,
+  );
+  if (!student) return undefined;
+
   const visibleAssignments = visibleAssignmentsForUser(dataset, user, organizationId);
-  const visibleCourseIds = new Set(visibleAssignments.map((assignment) => assignment.courseId));
   const hasVisibleEnrollment = dataset.enrollments.some(
     (enrollment) =>
       enrollment.organizationId === organizationId &&
       enrollment.studentId === studentId &&
-      visibleCourseIds.has(enrollment.courseId),
+      enrollmentMatchesAnyAssignment(dataset, enrollment, visibleAssignments),
+  );
+  const visibleCohortIds = new Set(
+    visibleAssignments
+      .map((assignment) => assignment.cohortId)
+      .filter((cohortId): cohortId is string => Boolean(cohortId)),
+  );
+  const hasOrganizationWideAssignment = visibleAssignments.some(
+    (assignment) => !assignment.cohortId,
+  );
+  const hasVisibleCohortAssignment = Boolean(
+    student.cohortId && visibleCohortIds.has(student.cohortId),
   );
   if (
     user.role !== 'platform-admin' &&
     user.role !== 'organization-admin' &&
-    !hasVisibleEnrollment
+    !hasVisibleEnrollment &&
+    !hasOrganizationWideAssignment &&
+    !hasVisibleCohortAssignment
   ) {
     return undefined;
   }
@@ -1482,12 +1931,19 @@ export async function getVisibleOrganizationStudentDetail(
 
   return {
     ...detail,
-    progress: detail.progress.filter((item) => visibleCourseIds.has(item.course.id)),
+    progress: detail.progress.filter((item) =>
+      visibleAssignments.some(
+        (assignment) =>
+          assignment.courseId === item.course.id && studentMatchesAssignment(student, assignment),
+      ),
+    ),
     activity: detail.activity.filter((activity) => {
       if (!activity.courseId) {
         return user.role === 'platform-admin' || user.role === 'organization-admin';
       }
-      return visibleCourseIds.has(activity.courseId);
+      return activityMatchesAssignments(dataset, activity, visibleAssignments, {
+        includeUnscoped: user.role === 'platform-admin' || user.role === 'organization-admin',
+      });
     }),
   };
 }
@@ -1506,21 +1962,21 @@ export async function listVisibleOrganizationAccessCodes(
   user: PortalUser,
   organizationId: string,
 ): Promise<AccessCodeView[]> {
+  if (user.role === 'student') return [];
   if (user.role === 'platform-admin' || user.role === 'organization-admin') {
     return listOrganizationAccessCodes(organizationId);
   }
 
   const dataset = await readDataset();
-  const visibleCourseIds = new Set(
-    visibleAssignmentsForUser(dataset, user, organizationId).map(
-      (assignment) => assignment.courseId,
-    ),
-  );
+  const visibleAssignments = visibleAssignmentsForUser(dataset, user, organizationId);
 
   return dataset.accessCodes
     .filter(
       (accessCode) =>
-        accessCode.organizationId === organizationId && visibleCourseIds.has(accessCode.courseId),
+        accessCode.organizationId === organizationId &&
+        visibleAssignments.some((assignment) =>
+          accessCodeMatchesAssignment(accessCode, assignment),
+        ),
     )
     .map((accessCode) => toAccessCodeView(dataset, accessCode))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -1530,6 +1986,26 @@ export async function listOrganizationCohorts(organizationId: string): Promise<C
   const dataset = await readDataset();
   return dataset.cohorts
     .filter((cohort) => cohort.organizationId === organizationId)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function listVisibleOrganizationCohorts(
+  user: PortalUser,
+  organizationId: string,
+): Promise<Cohort[]> {
+  if (user.role === 'platform-admin' || user.role === 'organization-admin') {
+    return listOrganizationCohorts(organizationId);
+  }
+
+  const dataset = await readDataset();
+  const visibleCohortIds = new Set(
+    visibleAssignmentsForUser(dataset, user, organizationId)
+      .map((assignment) => assignment.cohortId)
+      .filter((cohortId): cohortId is string => Boolean(cohortId)),
+  );
+
+  return dataset.cohorts
+    .filter((cohort) => cohort.organizationId === organizationId && visibleCohortIds.has(cohort.id))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -1554,9 +2030,10 @@ export async function createOrganizationAccessCode(params: {
         (item) => item.id === params.cohortId && item.organizationId === params.organizationId,
       )
     : undefined;
+  const organizationWideAssignment = assignments.find((item) => !item.cohortId);
   const assignment = params.cohortId
     ? assignments.find((item) => item.cohortId === params.cohortId)
-    : assignments[0];
+    : organizationWideAssignment || (assignments.length === 1 ? assignments[0] : undefined);
   const student = params.studentId
     ? dataset.students.find(
         (item) => item.id === params.studentId && item.organizationId === params.organizationId,
@@ -1570,7 +2047,13 @@ export async function createOrganizationAccessCode(params: {
     return { error: 'Access-code creator cannot manage this organization.' };
   }
   if (params.cohortId && !cohort) return { error: 'Cohort does not belong to this organization.' };
-  if (!assignment) return { error: 'Selected cohort is not assigned to this course.' };
+  if (!assignment) {
+    return {
+      error: params.cohortId
+        ? 'Selected cohort is not assigned to this course.'
+        : 'Cohort is required when this course has multiple cohort assignments.',
+    };
+  }
   if (creator.role === 'student') return { error: 'Access-code management is not allowed.' };
   if (creator.role === 'teacher-manager') {
     if (!creator.canGenerateAccessCodes) {
@@ -1582,6 +2065,17 @@ export async function createOrganizationAccessCode(params: {
   }
   if (params.studentId && !student)
     return { error: 'Student does not belong to this organization.' };
+  if (params.maxUses !== undefined && (!Number.isInteger(params.maxUses) || params.maxUses < 1)) {
+    return { error: 'Maximum uses must be a positive whole number.' };
+  }
+  const expiresAtDate = params.expiresAt ? new Date(params.expiresAt) : undefined;
+  if (expiresAtDate && Number.isNaN(expiresAtDate.getTime())) {
+    return { error: 'Expiration date is invalid.' };
+  }
+  if (expiresAtDate && expiresAtDate.getTime() <= Date.now()) {
+    return { error: 'Expiration date must be in the future.' };
+  }
+  const normalizedExpiresAt = expiresAtDate?.toISOString();
   const codeCohortId = params.cohortId || assignment.cohortId;
   if (student && codeCohortId && student.cohortId !== codeCohortId) {
     return { error: 'Student is not in the selected cohort.' };
@@ -1596,7 +2090,7 @@ export async function createOrganizationAccessCode(params: {
     cohortId: codeCohortId,
     studentId: params.studentId,
     createdByUserId: creator.id,
-    expiresAt: params.expiresAt || undefined,
+    expiresAt: normalizedExpiresAt,
     maxUses: params.maxUses,
     currentUses: 0,
     isActive: true,
@@ -1612,16 +2106,29 @@ export async function assignCourseToOrganization(params: {
   organizationId: string;
   courseId: string;
   cohortId?: string;
+  teacherUserId?: string;
   assignedByUserId: string;
 }): Promise<CourseAssignment | { error: string }> {
   const dataset = await readDataset();
   const organization = dataset.organizations.find((item) => item.id === params.organizationId);
   const course = dataset.courses.find((item) => item.id === params.courseId);
   const assignedBy = dataset.users.find((item) => item.id === params.assignedByUserId);
+  const teacherManager = params.teacherUserId
+    ? dataset.users.find(
+        (item) =>
+          item.id === params.teacherUserId &&
+          item.organizationId === params.organizationId &&
+          item.role === 'teacher-manager',
+      )
+    : undefined;
 
   if (!organization) return { error: 'Organization not found.' };
   if (!course) return { error: 'Course not found.' };
   if (!assignedBy) return { error: 'Assigning user not found.' };
+  if (assignedBy.role !== 'platform-admin') return { error: 'Platform admin required.' };
+  if (params.teacherUserId && !teacherManager) {
+    return { error: 'Teacher manager does not belong to this organization.' };
+  }
 
   const existing = dataset.assignments.find(
     (item) =>
@@ -1629,7 +2136,18 @@ export async function assignCourseToOrganization(params: {
       item.courseId === course.id &&
       item.cohortId === params.cohortId,
   );
-  if (existing) return existing;
+  if (existing) {
+    const nextTeacherUserId = teacherManager?.id;
+    if (existing.teacherUserId !== nextTeacherUserId) {
+      if (nextTeacherUserId) {
+        existing.teacherUserId = nextTeacherUserId;
+      } else {
+        delete existing.teacherUserId;
+      }
+      await writeDataset(dataset);
+    }
+    return existing;
+  }
 
   if (params.cohortId) {
     const cohort = dataset.cohorts.find(
@@ -1645,6 +2163,7 @@ export async function assignCourseToOrganization(params: {
     cohortId: params.cohortId,
     assignedAt: new Date().toISOString(),
     assignedByUserId: assignedBy.id,
+    teacherUserId: teacherManager?.id,
   };
 
   dataset.assignments.push(assignment);
@@ -1675,8 +2194,8 @@ export async function disableOrganizationAccessCode(params: {
     const assignedToTeacher = dataset.assignments.some(
       (assignment) =>
         assignment.organizationId === params.organizationId &&
-        assignment.courseId === accessCode.courseId &&
-        assignment.teacherUserId === disabler.id,
+        assignment.teacherUserId === disabler.id &&
+        accessCodeMatchesAssignment(accessCode, assignment),
     );
     if (!assignedToTeacher) return { error: 'Course is not assigned to this teacher manager.' };
   }
@@ -1685,6 +2204,55 @@ export async function disableOrganizationAccessCode(params: {
   accessCode.disabledAt = new Date().toISOString();
   await writeDataset(dataset);
   return toAccessCodeView(dataset, accessCode);
+}
+
+export async function isCourseAccessSessionValid(params: {
+  organizationId: string;
+  courseId: string;
+  cohortId?: string;
+  codeId: string;
+  studentId?: string;
+  enrollmentId?: string;
+}): Promise<boolean> {
+  const dataset = await readDataset();
+  const accessCode = dataset.accessCodes.find(
+    (item) =>
+      item.id === params.codeId &&
+      item.organizationId === params.organizationId &&
+      item.courseId === params.courseId &&
+      item.cohortId === params.cohortId,
+  );
+  if (!accessCode || !isActiveAccessCode(accessCode)) return false;
+
+  const matchingAssignments = dataset.assignments.filter(
+    (assignment) =>
+      assignment.organizationId === params.organizationId &&
+      assignment.courseId === params.courseId &&
+      accessCodeMatchesAssignment(accessCode, assignment),
+  );
+  if (matchingAssignments.length === 0) return false;
+
+  if (params.studentId) {
+    const student = dataset.students.find(
+      (item) => item.id === params.studentId && item.organizationId === params.organizationId,
+    );
+    if (!student || !studentMatchesAnyAssignment(student, matchingAssignments)) return false;
+  }
+
+  if (params.enrollmentId) {
+    const enrollment = dataset.enrollments.find(
+      (item) =>
+        item.id === params.enrollmentId &&
+        item.organizationId === params.organizationId &&
+        item.courseId === params.courseId &&
+        (!params.studentId || item.studentId === params.studentId),
+    );
+    if (!enrollment || !enrollmentMatchesAnyAssignment(dataset, enrollment, matchingAssignments)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 export async function validateCourseAccessGrant(
@@ -1728,7 +2296,13 @@ export async function validateCourseAccessGrant(
   }
 
   const codeHash = hashAccessCode(enteredCode);
-  const code = dataset.accessCodes.find((item) => item.codeHash === codeHash);
+  const code =
+    dataset.accessCodes.find(
+      (item) =>
+        item.codeHash === codeHash &&
+        item.courseId === course.id &&
+        item.organizationId === organization.id,
+    ) ?? dataset.accessCodes.find((item) => item.codeHash === codeHash);
   if (!code) {
     return {
       valid: false,
@@ -1802,14 +2376,6 @@ export async function validateCourseAccessGrant(
     return { valid: false, reason: 'code-expired', message: 'This access code has expired.' };
   }
 
-  if (code.maxUses !== undefined && code.currentUses >= code.maxUses) {
-    return {
-      valid: false,
-      reason: 'usage-limit-reached',
-      message: 'This access code has reached its usage limit.',
-    };
-  }
-
   const enrollment = linkedStudentId
     ? dataset.enrollments.find(
         (item) =>
@@ -1818,6 +2384,18 @@ export async function validateCourseAccessGrant(
           item.studentId === linkedStudentId,
       )
     : undefined;
+
+  if (
+    code.maxUses !== undefined &&
+    code.currentUses >= code.maxUses &&
+    enrollment?.accessCodeId !== code.id
+  ) {
+    return {
+      valid: false,
+      reason: 'usage-limit-reached',
+      message: 'This access code has reached its usage limit.',
+    };
+  }
 
   return {
     valid: true,
@@ -1842,7 +2420,11 @@ export async function consumeCourseAccessGrant(
   if (!result.valid) return result;
 
   const dataset = await readDataset();
-  const accessCode = dataset.accessCodes.find((item) => item.id === result.grant.accessCode.id);
+  const accessCode = dataset.accessCodes.find(
+    (item) =>
+      item.id === result.grant.accessCode.id &&
+      accessCodeMatchesAssignment(item, result.grant.assignment),
+  );
   if (!accessCode) {
     return {
       valid: false,
@@ -1851,7 +2433,6 @@ export async function consumeCourseAccessGrant(
     };
   }
 
-  accessCode.currentUses += 1;
   let studentId = input.studentId || accessCode.studentId;
   let enrollment: Enrollment | undefined;
 
@@ -1887,6 +2468,7 @@ export async function consumeCourseAccessGrant(
       item.courseId === result.grant.course.id &&
       item.studentId === student.id,
   );
+  let createdEnrollment = false;
   if (!enrollment) {
     enrollment = {
       id: `enroll-${Date.now()}-${randomBytes(3).toString('hex')}`,
@@ -1899,7 +2481,9 @@ export async function consumeCourseAccessGrant(
       startedAt: new Date().toISOString(),
     };
     dataset.enrollments.push(enrollment);
+    createdEnrollment = true;
   }
+  if (createdEnrollment) accessCode.currentUses += 1;
 
   dataset.activityLogs.push({
     id: `activity-${Date.now()}-${randomBytes(3).toString('hex')}`,
@@ -1936,18 +2520,32 @@ export async function trackStudentActivity(params: {
   const organization = dataset.organizations.find((item) => item.id === params.organizationId);
   if (!organization) return { error: 'Organization not found.' };
 
+  if (
+    params.progressPercentage !== undefined &&
+    (typeof params.progressPercentage !== 'number' || !Number.isFinite(params.progressPercentage))
+  ) {
+    return { error: 'Progress percentage must be a finite number.' };
+  }
+
+  const student = params.studentId
+    ? dataset.students.find(
+        (item) => item.id === params.studentId && item.organizationId === params.organizationId,
+      )
+    : undefined;
   if (params.studentId) {
-    const student = dataset.students.find(
-      (item) => item.id === params.studentId && item.organizationId === params.organizationId,
-    );
     if (!student) return { error: 'Student does not belong to this organization.' };
   }
 
+  const courseAssignments = params.courseId
+    ? dataset.assignments.filter(
+        (item) =>
+          item.courseId === params.courseId && item.organizationId === params.organizationId,
+      )
+    : [];
   if (params.courseId) {
-    const assignment = dataset.assignments.find(
-      (item) => item.courseId === params.courseId && item.organizationId === params.organizationId,
-    );
-    if (!assignment) return { error: 'Course is not assigned to this organization.' };
+    if (courseAssignments.length === 0) {
+      return { error: 'Course is not assigned to this organization.' };
+    }
   }
 
   const enrollment =
@@ -1961,6 +2559,9 @@ export async function trackStudentActivity(params: {
       : undefined;
   if (params.studentId && params.courseId && !enrollment) {
     return { error: 'Student is not enrolled in this course.' };
+  }
+  if (enrollment && !enrollmentMatchesAnyAssignment(dataset, enrollment, courseAssignments)) {
+    return { error: 'Student is not assigned to this course cohort.' };
   }
 
   if (params.studentId && params.courseId && typeof params.progressPercentage === 'number') {

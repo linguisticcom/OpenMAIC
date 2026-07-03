@@ -5,6 +5,7 @@ import { type GenerateClassroomInput } from '@/lib/server/classroom-generation';
 import { runClassroomGenerationJob } from '@/lib/server/classroom-job-runner';
 import { createClassroomGenerationJob } from '@/lib/server/classroom-job-store';
 import { buildRequestOrigin } from '@/lib/server/classroom-storage';
+import { requirePlatformApiSession } from '@/lib/server/tenant-api-auth';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('GenerateClassroom API');
@@ -14,6 +15,9 @@ export const maxDuration = 30;
 export async function POST(req: NextRequest) {
   let requirementSnippet: string | undefined;
   try {
+    const authError = await requirePlatformApiSession();
+    if (authError) return authError;
+
     const rawBody = (await req.json()) as Partial<GenerateClassroomInput>;
     requirementSnippet = rawBody.requirement?.substring(0, 60);
     const body: GenerateClassroomInput = {
@@ -32,6 +36,27 @@ export async function POST(req: NextRequest) {
         : {}),
       ...(rawBody.enableTTS != null ? { enableTTS: rawBody.enableTTS } : {}),
       ...(rawBody.agentMode ? { agentMode: rawBody.agentMode } : {}),
+      ...(rawBody.portalCourse
+        ? {
+            portalCourse: {
+              ...(typeof rawBody.portalCourse.title === 'string'
+                ? { title: rawBody.portalCourse.title }
+                : {}),
+              ...(typeof rawBody.portalCourse.description === 'string'
+                ? { description: rawBody.portalCourse.description }
+                : {}),
+              ...(typeof rawBody.portalCourse.category === 'string'
+                ? { category: rawBody.portalCourse.category }
+                : {}),
+              ...(typeof rawBody.portalCourse.level === 'string'
+                ? { level: rawBody.portalCourse.level }
+                : {}),
+              ...(typeof rawBody.portalCourse.estimatedDurationMinutes === 'number'
+                ? { estimatedDurationMinutes: rawBody.portalCourse.estimatedDurationMinutes }
+                : {}),
+            },
+          }
+        : {}),
     };
     const { requirement } = body;
 

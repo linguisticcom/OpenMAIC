@@ -6,7 +6,12 @@ import { createLogger } from '@/lib/logger';
 import { apiError, apiSuccess } from '@/lib/server/api-response';
 import { buildResourceSummaryBlock } from '@/lib/server/course-resources';
 import { resolveModelFromRequest } from '@/lib/server/resolve-model';
-import type { CourseModulePlan, CoursePlan, CoursePlanningRequest } from '@/lib/types/course-studio';
+import { requirePlatformApiSession } from '@/lib/server/tenant-api-auth';
+import type {
+  CourseModulePlan,
+  CoursePlan,
+  CoursePlanningRequest,
+} from '@/lib/types/course-studio';
 
 const log = createLogger('Course Plan API');
 
@@ -29,7 +34,9 @@ function buildFallbackModules(
   moduleDurationMinutes: number,
 ): CourseModulePlan[] {
   const moduleCount = Math.max(1, Math.ceil((totalDurationHours * 60) / moduleDurationMinutes));
-  const isAiCourse = /\b(ai|artificial intelligence|machine learning|ml|generative ai)\b/i.test(topic);
+  const isAiCourse = /\b(ai|artificial intelligence|machine learning|ml|generative ai)\b/i.test(
+    topic,
+  );
   const aiTopics = [
     'Introduction to AI Concepts',
     'Types of AI',
@@ -117,7 +124,9 @@ function buildFallbackModules(
 
 function normalizeCoursePlan(
   raw: unknown,
-  request: Required<Pick<CoursePlanningRequest, 'topic' | 'totalDurationHours' | 'moduleDurationMinutes'>> &
+  request: Required<
+    Pick<CoursePlanningRequest, 'topic' | 'totalDurationHours' | 'moduleDurationMinutes'>
+  > &
     Pick<CoursePlanningRequest, 'audience'>,
 ): CoursePlan {
   const value = raw && typeof raw === 'object' ? (raw as Partial<CoursePlan>) : {};
@@ -133,7 +142,10 @@ function normalizeCoursePlan(
     const order = Number((module as Partial<CourseModulePlan>).order);
     let index = Number.isFinite(order) && order > 0 ? order - 1 : -1;
     if (index < 0 || index >= fallbackModules.length) {
-      while (nextEmptyIndex < moduleSlots.length && moduleSlots[nextEmptyIndex] !== fallbackModules[nextEmptyIndex]) {
+      while (
+        nextEmptyIndex < moduleSlots.length &&
+        moduleSlots[nextEmptyIndex] !== fallbackModules[nextEmptyIndex]
+      ) {
         nextEmptyIndex++;
       }
       index = nextEmptyIndex;
@@ -173,6 +185,9 @@ export async function POST(req: NextRequest) {
   let topicSnippet: string | undefined;
 
   try {
+    const authError = await requirePlatformApiSession();
+    if (authError) return authError;
+
     const body = (await req.json()) as CoursePlanningRequest;
     const topic = body.topic?.trim();
     topicSnippet = topic?.substring(0, 80);
@@ -181,9 +196,12 @@ export async function POST(req: NextRequest) {
       return apiError('MISSING_REQUIRED_FIELD', 400, 'topic is required');
     }
 
-    const totalDurationHours = body.totalDurationHours && body.totalDurationHours > 0 ? body.totalDurationHours : 15;
+    const totalDurationHours =
+      body.totalDurationHours && body.totalDurationHours > 0 ? body.totalDurationHours : 15;
     const moduleDurationMinutes =
-      body.moduleDurationMinutes && body.moduleDurationMinutes > 0 ? body.moduleDurationMinutes : 30;
+      body.moduleDurationMinutes && body.moduleDurationMinutes > 0
+        ? body.moduleDurationMinutes
+        : 30;
     const expectedModuleCount = Math.ceil((totalDurationHours * 60) / moduleDurationMinutes);
     const storedResourceSummary =
       Array.isArray(body.resourceIds) && body.resourceIds.length > 0

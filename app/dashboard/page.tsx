@@ -9,6 +9,7 @@ import {
 } from '@/components/tenant-portal/tenant-shell';
 import { Button } from '@/components/ui/button';
 import { getVisibleOrganizationDashboardSummary } from '@/lib/server/course-portal-data';
+import { canManageAccessCodes } from '@/lib/server/organization-session';
 import { requireOrganizationPageSession } from '@/lib/server/tenant-page-auth';
 
 export const dynamic = 'force-dynamic';
@@ -21,8 +22,7 @@ export default async function DashboardPage() {
   );
   if (!summary) return null;
 
-  const canGenerateAccessCodes =
-    session.user.role === 'organization-admin' || !!session.user.canGenerateAccessCodes;
+  const canGenerateAccessCodes = canManageAccessCodes(session.user, session.organization.id);
   const canViewStudents =
     session.user.role === 'organization-admin' || session.user.role === 'teacher-manager';
 

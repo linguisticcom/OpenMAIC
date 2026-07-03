@@ -46,6 +46,8 @@ export async function POST(request: Request) {
     universityId: grant.organization.id,
     cohortId: grant.assignment.cohortId,
     codeId: grant.accessCode.id,
+    studentId: grant.enrollment?.studentId,
+    enrollmentId: result.enrollmentId,
     codeExpiresAt: grant.accessCode.expiresAt,
   });
 

@@ -1,6 +1,7 @@
 import { type NextRequest } from 'next/server';
 import { randomUUID } from 'crypto';
 import { apiSuccess, apiError, API_ERROR_CODES } from '@/lib/server/api-response';
+import { canReadClassroom } from '@/lib/server/classroom-access';
 import {
   buildRequestOrigin,
   isValidClassroomId,
@@ -62,6 +63,10 @@ export async function GET(request: NextRequest) {
 
     if (!isValidClassroomId(id)) {
       return apiError(API_ERROR_CODES.INVALID_REQUEST, 400, 'Invalid classroom id');
+    }
+
+    if (!(await canReadClassroom(id))) {
+      return apiError(API_ERROR_CODES.INVALID_REQUEST, 403, 'Course access required.');
     }
 
     const classroom = await readClassroom(id);

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Organization, PortalUser } from '@/lib/types/course-portal';
 import { GET as getOrganizationCourses } from '@/app/api/organization/courses/route';
 import { GET as getOrganizationStudents } from '@/app/api/organization/students/route';
+import { GET as getOrganizationStudentDetail } from '@/app/api/organization/students/[studentId]/route';
 import {
   GET as getOrganizationAccessCodes,
   POST as postOrganizationAccessCodes,
@@ -25,6 +26,7 @@ vi.mock('@/lib/server/organization-session', () => ({
       (user.role === 'organization-admin' || user.role === 'teacher-manager')),
   isOrganizationAdmin: (user: PortalUser) => user.role === 'organization-admin',
   isPlatformAdmin: (user: PortalUser) => user.role === 'platform-admin',
+  isTeacherManager: (user: PortalUser) => user.role === 'teacher-manager',
   isStudent: (user: PortalUser) => user.role === 'student',
 }));
 
@@ -178,6 +180,29 @@ describe('organization API tenant scope', () => {
     });
   });
 
+  it('rejects invalid access-code usage limits through the API', async () => {
+    setOrganizationAdminSession();
+
+    const response = await postOrganizationAccessCodes(
+      new Request('http://localhost/api/organization/access-codes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: 'org-esilv',
+          courseId: 'course-cloud-devsecops',
+          cohortId: 'cohort-esilv-m2-cyber-cloud',
+          maxUses: 0,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: 'Maximum uses must be a positive whole number.',
+    });
+  });
+
   it('denies teacher-manager access-code disables for unassigned courses', async () => {
     setTeacherManagerSession();
 
@@ -234,6 +259,45 @@ describe('organization API tenant scope', () => {
     await expect(response.json()).resolves.toMatchObject({
       success: false,
       error: 'Students can only track their own activity.',
+    });
+  });
+
+  it('denies student-management detail access to student accounts', async () => {
+    setStudentSession();
+
+    const response = await getOrganizationStudentDetail(
+      new Request('http://localhost/api/organization/students/student-esilv-1'),
+      { params: Promise.resolve({ studentId: 'student-esilv-1' }) },
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: 'Student management is not allowed.',
+    });
+  });
+
+  it('denies teacher-manager activity writes for unassigned courses', async () => {
+    setTeacherManagerSession();
+
+    const response = await postOrganizationActivity(
+      new Request('http://localhost/api/organization/activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: 'org-esilv',
+          studentId: 'student-esilv-1',
+          courseId: 'course-ai-foundations',
+          action: 'course.started',
+          progressPercentage: 20,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: 'Course is not assigned to this teacher manager.',
     });
   });
 

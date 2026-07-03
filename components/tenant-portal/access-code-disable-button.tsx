@@ -16,28 +16,54 @@ export function AccessCodeDisableButton({
 }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function disableCode() {
     if (disabled || isSubmitting) return;
+    setError(null);
     setIsSubmitting(true);
-    await fetch(`/api/organization/access-codes/${accessCodeId}/disable`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ organizationId }),
-    });
-    router.refresh();
-    setIsSubmitting(false);
+
+    try {
+      const response = await fetch(`/api/organization/access-codes/${accessCodeId}/disable`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        success?: boolean;
+        error?: string;
+      };
+      if (!response.ok || payload.success === false) {
+        throw new Error(payload.error || 'Unable to disable this access code.');
+      }
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to disable this access code.');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      disabled={disabled || isSubmitting}
-      onClick={disableCode}
-    >
-      {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <XCircle className="size-4" />}
-      Disable
-    </Button>
+    <div className="grid gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        disabled={disabled || isSubmitting}
+        onClick={disableCode}
+      >
+        {isSubmitting ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <XCircle className="size-4" />
+        )}
+        Disable
+      </Button>
+      {error && (
+        <p role="alert" className="max-w-48 text-xs leading-5 text-red-700">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }

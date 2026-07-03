@@ -23,6 +23,7 @@ import { buildSearchQuery } from '@/lib/server/search-query-builder';
 import { formatSearchResultsAsContext, searchWeb } from '@/lib/web-search';
 import type { BaiduSubSources, WebSearchProviderId } from '@/lib/web-search/types';
 import { persistClassroom } from '@/lib/server/classroom-storage';
+import { registerGeneratedClassroomCourse } from '@/lib/server/course-portal-data';
 import {
   generateMediaForClassroom,
   replaceMediaPlaceholders,
@@ -31,6 +32,7 @@ import {
 import { buildVideoManifestFromOutlines } from '@/lib/media/video-manifest';
 import type { UserRequirements } from '@/lib/types/generation';
 import type { Scene, Stage } from '@/lib/types/stage';
+import type { GeneratedPortalCourseMetadata } from '@/lib/types/course-studio';
 import { AGENT_COLOR_PALETTE, AGENT_DEFAULT_AVATARS } from '@/lib/constants/agent-defaults';
 
 const log = createLogger('Classroom');
@@ -46,6 +48,7 @@ export interface GenerateClassroomInput {
   enableVideoGeneration?: boolean;
   enableTTS?: boolean;
   agentMode?: 'default' | 'generate';
+  portalCourse?: GeneratedPortalCourseMetadata;
 }
 
 export type ClassroomGenerationStep =
@@ -468,6 +471,12 @@ export async function generateClassroom(
     },
     options.baseUrl,
   );
+  await registerGeneratedClassroomCourse({
+    classroomId: persisted.id,
+    stage,
+    scenes,
+    metadata: input.portalCourse,
+  });
 
   log.info(`Classroom persisted: ${persisted.id}, URL: ${persisted.url}`);
 

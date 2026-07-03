@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { MetricCard, PageHeader, TenantShell } from '@/components/tenant-portal/tenant-shell';
+import { OrganizationCreateForm } from '@/components/tenant-portal/organization-create-form';
 import {
   getOrganizationDashboardSummary,
   listOrganizations,
@@ -42,6 +43,7 @@ export default async function AdminOrganizationsPage() {
             tone="emerald"
           />
         </section>
+        <OrganizationCreateForm />
         <section className="grid gap-4 lg:grid-cols-3">
           {organizations.map((organization) => {
             const summary = summaries.find((item) => item?.organization.id === organization.id);

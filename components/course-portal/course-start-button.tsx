@@ -8,13 +8,20 @@ type CourseStartButtonProps = {
   href: string;
   organizationId: string;
   courseId: string;
+  cohortId?: string;
 };
 
-export function CourseStartButton({ href, organizationId, courseId }: CourseStartButtonProps) {
+export function CourseStartButton({
+  href,
+  organizationId,
+  courseId,
+  cohortId,
+}: CourseStartButtonProps) {
   function trackCourseStart() {
     const body = JSON.stringify({
       organizationId,
       courseId,
+      cohortId,
       action: 'course.started',
       metadata: { source: 'course-detail' },
       progressPercentage: 1,

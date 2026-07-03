@@ -116,6 +116,7 @@ export function CourseDetail({
                 href={startHref}
                 organizationId={university.id}
                 courseId={course.id}
+                cohortId={assignment.cohortId}
               />
             </div>
           ) : (
@@ -124,7 +125,6 @@ export function CourseDetail({
                 compact
                 courseId={course.id}
                 universityId={university.id}
-                cohortId={assignment.cohortId}
                 courseTitle={course.title}
                 universityName={university.name}
               />

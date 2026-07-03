@@ -1,7 +1,7 @@
 import { AccessCodeCreator } from '@/components/tenant-portal/access-code-creator';
 import { PageHeader, TenantShell } from '@/components/tenant-portal/tenant-shell';
 import {
-  listOrganizationCohorts,
+  listVisibleOrganizationCohorts,
   listVisibleOrganizationCourseSummaries,
   listVisibleOrganizationStudentSummaries,
 } from '@/lib/server/course-portal-data';
@@ -19,7 +19,7 @@ export default async function NewAccessCodePage({
     searchParams,
     listVisibleOrganizationCourseSummaries(session.user, session.organization.id),
     listVisibleOrganizationStudentSummaries(session.user, session.organization.id),
-    listOrganizationCohorts(session.organization.id),
+    listVisibleOrganizationCohorts(session.user, session.organization.id),
   ]);
 
   return (

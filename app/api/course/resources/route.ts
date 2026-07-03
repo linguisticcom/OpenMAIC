@@ -9,6 +9,7 @@ import {
 } from '@/lib/server/course-resources';
 import { apiError, apiSuccess } from '@/lib/server/api-response';
 import { resolveModelFromHeaders } from '@/lib/server/resolve-model';
+import { requirePlatformApiSession } from '@/lib/server/tenant-api-auth';
 
 const log = createLogger('Course Resources API');
 
@@ -46,6 +47,9 @@ async function summarizeResource(req: NextRequest, name: string, text: string): 
 
 export async function GET() {
   try {
+    const authError = await requirePlatformApiSession();
+    if (authError) return authError;
+
     const resources = await listCourseResources();
     return apiSuccess({ resources });
   } catch (error) {
@@ -63,6 +67,9 @@ export async function POST(req: NextRequest) {
   let fileName: string | undefined;
 
   try {
+    const authError = await requirePlatformApiSession();
+    if (authError) return authError;
+
     const contentType = req.headers.get('content-type') || '';
     if (!contentType.includes('multipart/form-data')) {
       return apiError('INVALID_REQUEST', 400, 'Expected multipart/form-data');

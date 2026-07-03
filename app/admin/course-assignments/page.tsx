@@ -21,6 +21,14 @@ export default async function AdminCourseAssignmentsPage() {
           organizations={dataset.organizations}
           courses={dataset.courses}
           cohorts={dataset.cohorts}
+          teacherManagers={dataset.users
+            .filter((user) => user.role === 'teacher-manager')
+            .map((user) => ({
+              id: user.id,
+              organizationId: user.organizationId,
+              name: user.name,
+              email: user.email,
+            }))}
         />
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
@@ -29,6 +37,7 @@ export default async function AdminCourseAssignmentsPage() {
                 <th className="px-4 py-3">Organization</th>
                 <th className="px-4 py-3">Course</th>
                 <th className="px-4 py-3">Cohort</th>
+                <th className="px-4 py-3">Teacher</th>
                 <th className="px-4 py-3">Assigned</th>
               </tr>
             </thead>
@@ -41,6 +50,9 @@ export default async function AdminCourseAssignmentsPage() {
                 const cohort = assignment.cohortId
                   ? dataset.cohorts.find((item) => item.id === assignment.cohortId)
                   : undefined;
+                const teacher = assignment.teacherUserId
+                  ? dataset.users.find((item) => item.id === assignment.teacherUserId)
+                  : undefined;
                 return (
                   <tr key={assignment.id}>
                     <td className="px-4 py-3 font-semibold text-slate-950">
@@ -50,6 +62,7 @@ export default async function AdminCourseAssignmentsPage() {
                       {course?.title || assignment.courseId}
                     </td>
                     <td className="px-4 py-3 text-slate-600">{cohort?.name || 'All students'}</td>
+                    <td className="px-4 py-3 text-slate-600">{teacher?.name || 'Unassigned'}</td>
                     <td className="px-4 py-3 text-slate-600">
                       {formatPortalDate(assignment.assignedAt)}
                     </td>

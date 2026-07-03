@@ -1,6 +1,7 @@
 import { promises as fs, createReadStream } from 'fs';
 import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
+import { canReadClassroom } from '@/lib/server/classroom-access';
 import { CLASSROOMS_DIR, isValidClassroomId } from '@/lib/server/classroom-storage';
 import { createLogger } from '@/lib/logger';
 
@@ -41,6 +42,10 @@ export async function GET(
   const subDir = pathSegments[0];
   if (subDir !== 'media' && subDir !== 'audio') {
     return NextResponse.json({ error: 'Invalid path' }, { status: 404 });
+  }
+
+  if (!(await canReadClassroom(classroomId))) {
+    return NextResponse.json({ error: 'Course access required.' }, { status: 403 });
   }
 
   const filePath = path.join(CLASSROOMS_DIR, classroomId, ...pathSegments);

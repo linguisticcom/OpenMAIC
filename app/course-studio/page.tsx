@@ -61,7 +61,9 @@ export default function CourseStudioPage() {
   const [enableClassroomTts, setEnableClassroomTts] = useState(false);
   const [hasServerTts, setHasServerTts] = useState<boolean | null>(null);
 
-  const [editInstruction, setEditInstruction] = useState('Make slide 3 simpler and add a short debate after it.');
+  const [editInstruction, setEditInstruction] = useState(
+    'Make slide 3 simpler and add a short debate after it.',
+  );
   const [classroomJson, setClassroomJson] = useState('');
   const [editPlan, setEditPlan] = useState<ClassroomEditPlan | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
@@ -114,8 +116,7 @@ export default function CourseStudioPage() {
         if (!response.ok || !json.success) return;
         const usableTtsProviders = Object.entries(json.tts || {}).filter(
           ([id, info]) =>
-            id !== 'browser-native-tts' &&
-            !(info as { disabled?: boolean } | undefined)?.disabled,
+            id !== 'browser-native-tts' && !(info as { disabled?: boolean } | undefined)?.disabled,
         );
         setHasServerTts(usableTtsProviders.length > 0);
       } catch {
@@ -207,7 +208,8 @@ export default function CourseStudioPage() {
           jobId: json.jobId,
           status: json.status,
           progress: json.progress ?? current[moduleId]?.progress ?? 0,
-          message: json.error || json.message || current[moduleId]?.message || 'Generating classroom',
+          message:
+            json.error || json.message || current[moduleId]?.message || 'Generating classroom',
           url:
             json.result?.url && enableLocalComputerVoice
               ? `${json.result.url}?tts=browser`
@@ -282,6 +284,15 @@ export default function CourseStudioPage() {
           enableVideoGeneration: enableClassroomVideo,
           enableImageGeneration: enableClassroomImages,
           enableTTS: enableClassroomTts && !enableLocalComputerVoice,
+          portalCourse: {
+            title: `${coursePlan.title}: Module ${courseModule.order} - ${courseModule.title}`,
+            description:
+              courseModule.learningObjectives.length > 0
+                ? courseModule.learningObjectives.join(' ')
+                : courseModule.classroomPrompt,
+            category: coursePlan.title,
+            estimatedDurationMinutes: courseModule.durationMinutes,
+          },
         }),
       });
       const json = await response.json();
@@ -412,11 +423,19 @@ export default function CourseStudioPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
                 <Label htmlFor="topic">Topic</Label>
-                <Input id="topic" value={topic} onChange={(event) => setTopic(event.target.value)} />
+                <Input
+                  id="topic"
+                  value={topic}
+                  onChange={(event) => setTopic(event.target.value)}
+                />
               </div>
               <div>
                 <Label htmlFor="hours">Hours</Label>
-                <Input id="hours" value={hours} onChange={(event) => setHours(event.target.value)} />
+                <Input
+                  id="hours"
+                  value={hours}
+                  onChange={(event) => setHours(event.target.value)}
+                />
               </div>
               <div>
                 <Label htmlFor="moduleMinutes">Module minutes</Label>
@@ -460,7 +479,11 @@ export default function CourseStudioPage() {
                     ) : (
                       <Upload className="size-4" />
                     )}
-                    <span>{isUploadingResource ? 'Uploading and summarizing' : 'Upload PDF, text, or Markdown'}</span>
+                    <span>
+                      {isUploadingResource
+                        ? 'Uploading and summarizing'
+                        : 'Upload PDF, text, or Markdown'}
+                    </span>
                     <Input
                       id="resourceUpload"
                       type="file"
@@ -504,7 +527,9 @@ export default function CourseStudioPage() {
                               </p>
                               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                                 <span>{Math.max(1, Math.round(resource.size / 1024))} KB</span>
-                                {resource.pageCount ? <span>{resource.pageCount} pages</span> : null}
+                                {resource.pageCount ? (
+                                  <span>{resource.pageCount} pages</span>
+                                ) : null}
                                 <span>{resource.textLength.toLocaleString()} chars</span>
                               </div>
                             </div>
@@ -593,7 +618,8 @@ export default function CourseStudioPage() {
                 )}
                 {enableClassroomVideo && (
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Video clips are visual media. Spoken narration comes from Local computer voice or Server voice.
+                    Video clips are visual media. Spoken narration comes from Local computer voice
+                    or Server voice.
                   </p>
                 )}
                 {enableClassroomTts && hasServerTts === false && (
@@ -606,7 +632,11 @@ export default function CourseStudioPage() {
 
             <div className="mt-4 flex items-center gap-3">
               <Button onClick={planCourse} disabled={isPlanning || !topic.trim()} className="gap-2">
-                {isPlanning ? <Loader2 className="size-4 animate-spin" /> : <WandSparkles className="size-4" />}
+                {isPlanning ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <WandSparkles className="size-4" />
+                )}
                 Generate plan
               </Button>
               {courseError && <p className="text-sm text-destructive">{courseError}</p>}
@@ -716,7 +746,11 @@ export default function CourseStudioPage() {
                 disabled={isEditing || !editInstruction.trim() || !classroomJson.trim()}
                 className="gap-2"
               >
-                {isEditing ? <Loader2 className="size-4 animate-spin" /> : <PenLine className="size-4" />}
+                {isEditing ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <PenLine className="size-4" />
+                )}
                 Draft patches
               </Button>
               {editError && <p className="text-sm text-destructive">{editError}</p>}

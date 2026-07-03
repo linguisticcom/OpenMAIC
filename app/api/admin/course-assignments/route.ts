@@ -26,7 +26,12 @@ export async function POST(request: Request) {
   if (!isPlatformAdmin(session.user))
     return apiError('INVALID_REQUEST', 403, 'Platform admin required.');
 
-  let body: { organizationId?: string; courseId?: string; cohortId?: string };
+  let body: {
+    organizationId?: string;
+    courseId?: string;
+    cohortId?: string;
+    teacherUserId?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -41,6 +46,7 @@ export async function POST(request: Request) {
     organizationId: body.organizationId,
     courseId: body.courseId,
     cohortId: body.cohortId || undefined,
+    teacherUserId: body.teacherUserId || undefined,
     assignedByUserId: session.user.id,
   });
 

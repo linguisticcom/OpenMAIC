@@ -35,42 +35,56 @@ export default async function DashboardStudentDetailPage({
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-xl font-semibold tracking-normal">Course progress</h2>
           <div className="mt-5 grid gap-4">
-            {detail.progress.map((item) => (
-              <div key={item.course.id} className="rounded-lg border border-slate-200 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-violet-700">{item.course.category}</p>
-                    <h3 className="mt-1 text-lg font-semibold">{item.course.title}</h3>
+            {detail.progress.length > 0 ? (
+              detail.progress.map((item) => (
+                <div key={item.course.id} className="rounded-lg border border-slate-200 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-violet-700">
+                        {item.course.category}
+                      </p>
+                      <h3 className="mt-1 text-lg font-semibold">{item.course.title}</h3>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize text-slate-700">
+                      {(item.enrollment?.status || 'not_started').replace('_', ' ')}
+                    </span>
                   </div>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize text-slate-700">
-                    {(item.enrollment?.status || 'not_started').replace('_', ' ')}
-                  </span>
+                  <div className="mt-4 h-2 rounded-full bg-slate-100">
+                    <div
+                      className={`h-2 rounded-full ${progressTone(item.enrollment?.progressPercentage || 0)}`}
+                      style={{ width: `${item.enrollment?.progressPercentage || 0}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">
+                    {item.enrollment?.progressPercentage || 0}% progress - Last activity{' '}
+                    {formatPortalDate(item.enrollment?.lastActivityAt)}
+                  </p>
                 </div>
-                <div className="mt-4 h-2 rounded-full bg-slate-100">
-                  <div
-                    className={`h-2 rounded-full ${progressTone(item.enrollment?.progressPercentage || 0)}`}
-                    style={{ width: `${item.enrollment?.progressPercentage || 0}%` }}
-                  />
-                </div>
-                <p className="mt-2 text-xs text-slate-500">
-                  {item.enrollment?.progressPercentage || 0}% progress - Last activity{' '}
-                  {formatPortalDate(item.enrollment?.lastActivityAt)}
-                </p>
+              ))
+            ) : (
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                No assigned course progress is available for this student.
               </div>
-            ))}
+            )}
           </div>
         </section>
         <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-xl font-semibold tracking-normal">Activity</h2>
           <div className="mt-5 grid gap-3">
-            {detail.activity.map((activity) => (
-              <div key={activity.id} className="rounded-md bg-slate-50 p-3">
-                <p className="text-sm font-semibold">{activity.action}</p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {formatPortalDate(activity.createdAt)}
-                </p>
+            {detail.activity.length > 0 ? (
+              detail.activity.map((activity) => (
+                <div key={activity.id} className="rounded-md bg-slate-50 p-3">
+                  <p className="text-sm font-semibold">{activity.action}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {formatPortalDate(activity.createdAt)}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-md bg-slate-50 p-4 text-sm text-slate-500">
+                No activity has been recorded for this student.
               </div>
-            ))}
+            )}
           </div>
         </aside>
       </div>

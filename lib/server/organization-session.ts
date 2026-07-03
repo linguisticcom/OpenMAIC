@@ -147,7 +147,7 @@ export function isStudent(user: PortalUser): boolean {
 export function canManageAccessCodes(user: PortalUser, organizationId: string): boolean {
   if (isPlatformAdmin(user)) return true;
   if (user.organizationId !== organizationId) return false;
-  return user.role === 'organization-admin' || !!user.canGenerateAccessCodes;
+  return isOrganizationAdmin(user) || (isTeacherManager(user) && !!user.canGenerateAccessCodes);
 }
 
 export function canAccessOrganization(user: PortalUser, organizationId: string): boolean {

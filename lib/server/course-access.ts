@@ -1,15 +1,20 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { cookies } from 'next/headers';
-import { hasPortalAccountCourseAccess } from '@/lib/server/course-portal-data';
+import {
+  hasPortalAccountCourseAccess,
+  isCourseAccessSessionValid,
+} from '@/lib/server/course-portal-data';
 import { getCurrentPortalSession } from '@/lib/server/organization-session';
 
 const DEFAULT_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
 
-interface CourseAccessTokenPayload {
+export interface CourseAccessTokenPayload {
   courseId: string;
   universityId: string;
   cohortId?: string;
   codeId: string;
+  studentId?: string;
+  enrollmentId?: string;
   issuedAt: number;
   expiresAt: number;
 }
@@ -54,6 +59,8 @@ export function createCourseAccessToken(params: {
   universityId: string;
   cohortId?: string;
   codeId: string;
+  studentId?: string;
+  enrollmentId?: string;
   codeExpiresAt?: string;
 }): { token: string; maxAge: number } {
   const nowSeconds = Math.floor(Date.now() / 1000);
@@ -69,6 +76,8 @@ export function createCourseAccessToken(params: {
     universityId: params.universityId,
     cohortId: params.cohortId,
     codeId: params.codeId,
+    studentId: params.studentId,
+    enrollmentId: params.enrollmentId,
     issuedAt: nowSeconds,
     expiresAt,
   };
@@ -113,7 +122,17 @@ export async function hasCourseAccess(params: {
   const token = cookieStore.get(
     getCourseAccessCookieName(params.courseId, params.universityId, params.cohortId),
   )?.value;
-  return !!verifyCourseAccessToken(token, params);
+  const payload = verifyCourseAccessToken(token, params);
+  if (!payload) return false;
+
+  return isCourseAccessSessionValid({
+    organizationId: payload.universityId,
+    courseId: payload.courseId,
+    cohortId: payload.cohortId,
+    codeId: payload.codeId,
+    studentId: payload.studentId,
+    enrollmentId: payload.enrollmentId,
+  });
 }
 
 export async function hasCourseAccessOrAccount(params: {
@@ -131,4 +150,22 @@ export async function hasCourseAccessOrAccount(params: {
     courseId: params.courseId,
     cohortId: params.cohortId,
   });
+}
+
+export async function findCourseAccessAssignment<
+  TAssignment extends { cohortId?: string },
+>(params: {
+  courseId: string;
+  universityId: string;
+  assignments: TAssignment[];
+}): Promise<TAssignment | undefined> {
+  for (const assignment of params.assignments) {
+    const hasAccess = await hasCourseAccessOrAccount({
+      courseId: params.courseId,
+      universityId: params.universityId,
+      cohortId: assignment.cohortId,
+    });
+    if (hasAccess) return assignment;
+  }
+  return undefined;
 }

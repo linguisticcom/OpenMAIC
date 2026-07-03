@@ -6,19 +6,29 @@ import { Loader2, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Cohort, Course, Organization } from '@/lib/types/course-portal';
 
+type TeacherManagerOption = {
+  id: string;
+  organizationId?: string;
+  name: string;
+  email: string;
+};
+
 export function CourseAssignmentForm({
   organizations,
   courses,
   cohorts,
+  teacherManagers,
 }: {
   organizations: Organization[];
   courses: Course[];
   cohorts: Cohort[];
+  teacherManagers: TeacherManagerOption[];
 }) {
   const router = useRouter();
   const [organizationId, setOrganizationId] = useState(organizations[0]?.id || '');
   const [courseId, setCourseId] = useState(courses[0]?.id || '');
   const [cohortId, setCohortId] = useState('');
+  const [teacherUserId, setTeacherUserId] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,6 +36,10 @@ export function CourseAssignmentForm({
   const organizationCohorts = useMemo(
     () => cohorts.filter((cohort) => cohort.organizationId === organizationId),
     [cohorts, organizationId],
+  );
+  const organizationTeacherManagers = useMemo(
+    () => teacherManagers.filter((teacher) => teacher.organizationId === organizationId),
+    [organizationId, teacherManagers],
   );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -43,6 +57,7 @@ export function CourseAssignmentForm({
           organizationId,
           courseId,
           cohortId: cohortId || undefined,
+          teacherUserId: teacherUserId || undefined,
         }),
       });
       const payload = (await response.json()) as { success: boolean; error?: string };
@@ -63,7 +78,7 @@ export function CourseAssignmentForm({
       onSubmit={handleSubmit}
       className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
     >
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-4">
         <label className="grid gap-2 text-sm font-medium text-slate-700">
           Organization
           <select
@@ -71,6 +86,7 @@ export function CourseAssignmentForm({
             onChange={(event) => {
               setOrganizationId(event.target.value);
               setCohortId('');
+              setTeacherUserId('');
             }}
             className="h-11 rounded-md border border-slate-200 px-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100"
           >
@@ -109,6 +125,26 @@ export function CourseAssignmentForm({
               </option>
             ))}
           </select>
+        </label>
+        <label className="grid gap-2 text-sm font-medium text-slate-700">
+          Teacher optional
+          <select
+            value={teacherUserId}
+            onChange={(event) => setTeacherUserId(event.target.value)}
+            className="h-11 rounded-md border border-slate-200 px-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100"
+          >
+            <option value="">No assigned teacher</option>
+            {organizationTeacherManagers.map((teacher) => (
+              <option key={teacher.id} value={teacher.id}>
+                {teacher.name} - {teacher.email}
+              </option>
+            ))}
+          </select>
+          {organizationTeacherManagers.length === 0 && (
+            <span className="text-xs leading-5 text-slate-500">
+              This organization has no teacher-manager accounts yet.
+            </span>
+          )}
         </label>
       </div>
       {message && (
