@@ -8,13 +8,16 @@ export async function PATCH(request: Request, context: { params: Promise<{ cours
   if (!isPlatformAdmin(session.user))
     return apiError('INVALID_REQUEST', 403, 'Platform admin required.');
 
-  let body: { status?: string };
+  let body: Partial<Record<'status', unknown>>;
   try {
     body = await request.json();
   } catch {
     return apiError('INVALID_REQUEST', 400, 'Invalid JSON body');
   }
 
+  if (body.status !== undefined && typeof body.status !== 'string') {
+    return apiError('INVALID_REQUEST', 400, 'status must be a string.');
+  }
   if (!body.status) return apiError('INVALID_REQUEST', 400, 'status is required.');
 
   const { courseId } = await context.params;

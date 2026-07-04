@@ -26,27 +26,44 @@ export async function POST(request: Request) {
   if (!isPlatformAdmin(session.user))
     return apiError('INVALID_REQUEST', 403, 'Platform admin required.');
 
-  let body: {
-    organizationId?: string;
-    courseId?: string;
-    cohortId?: string;
-    teacherUserId?: string;
-  };
+  let body: Partial<Record<'organizationId' | 'courseId' | 'cohortId' | 'teacherUserId', unknown>>;
   try {
     body = await request.json();
   } catch {
     return apiError('INVALID_REQUEST', 400, 'Invalid JSON body');
   }
 
-  if (!body.organizationId || !body.courseId) {
+  const stringField = (field: keyof typeof body): { value?: string; error?: Response } => {
+    const value = body[field];
+    if (value === undefined) return {};
+    if (typeof value !== 'string') {
+      return {
+        error: apiError('INVALID_REQUEST', 400, 'Course assignment fields must be strings.'),
+      };
+    }
+    return { value };
+  };
+
+  const organizationIdField = stringField('organizationId');
+  const courseIdField = stringField('courseId');
+  const cohortIdField = stringField('cohortId');
+  const teacherUserIdField = stringField('teacherUserId');
+  const fieldError =
+    organizationIdField.error ||
+    courseIdField.error ||
+    cohortIdField.error ||
+    teacherUserIdField.error;
+  if (fieldError) return fieldError;
+
+  if (!organizationIdField.value || !courseIdField.value) {
     return apiError('INVALID_REQUEST', 400, 'organizationId and courseId are required.');
   }
 
   const assignment = await assignCourseToOrganization({
-    organizationId: body.organizationId,
-    courseId: body.courseId,
-    cohortId: body.cohortId || undefined,
-    teacherUserId: body.teacherUserId || undefined,
+    organizationId: organizationIdField.value,
+    courseId: courseIdField.value,
+    cohortId: cohortIdField.value || undefined,
+    teacherUserId: teacherUserIdField.value || undefined,
     assignedByUserId: session.user.id,
   });
 

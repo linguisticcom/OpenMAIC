@@ -88,4 +88,19 @@ describe('admin course status API', () => {
       error: 'Invalid course status.',
     });
   });
+
+  it('rejects malformed course statuses before calling the data layer', async () => {
+    mocks.getCurrentPortalSession.mockResolvedValue({
+      user: { id: 'user-platform-admin', role: 'platform-admin' },
+    });
+
+    const response = await PATCH(request({ status: { value: 'locked' } }), params());
+
+    expect(response.status).toBe(400);
+    expect(mocks.updateGlobalCourseStatus).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: 'status must be a string.',
+    });
+  });
 });

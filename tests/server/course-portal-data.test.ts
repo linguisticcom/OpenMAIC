@@ -6,14 +6,17 @@ import {
   assignCourseToOrganization,
   createOrganizationAccessCode,
   disableOrganizationAccessCode,
+  getCoursePortalDataset,
   getOrganizationDashboardSummary,
   getPortalUserByEmail,
+  getVisibleOrganizationDashboardSummary,
   getVisibleOrganizationCourseDetail,
   getVisibleOrganizationStudentDetail,
   hasPortalAccountCourseAccess,
   hashAccessCode,
   listOrganizationAccessCodes,
   listVisibleOrganizationAccessCodes,
+  listVisibleOrganizationCohorts,
   listVisibleOrganizationCourseSummaries,
   listVisibleOrganizationStudentSummaries,
   trackStudentActivity,
@@ -52,7 +55,7 @@ describe('validateCourseAccessGrant', () => {
     }
   });
 
-  it('rejects a real code linked to another course or university', async () => {
+  it('does not reveal whether a submitted code belongs to another course or university', async () => {
     const result = await validateCourseAccessGrant({
       courseId: 'course-ai-foundations',
       organizationId: 'org-esilv',
@@ -61,7 +64,7 @@ describe('validateCourseAccessGrant', () => {
 
     expect(result.valid).toBe(false);
     if (!result.valid) {
-      expect(result.reason).toBe('code-not-linked');
+      expect(result.reason).toBe('invalid-code');
     }
   });
 
@@ -78,7 +81,7 @@ describe('validateCourseAccessGrant', () => {
     }
   });
 
-  it('rejects a code for the right course but wrong organization', async () => {
+  it('does not reveal whether a submitted code belongs to another organization', async () => {
     const result = await validateCourseAccessGrant({
       courseId: 'course-cloud-devsecops',
       organizationId: 'org-esilv',
@@ -88,7 +91,7 @@ describe('validateCourseAccessGrant', () => {
 
     expect(result.valid).toBe(false);
     if (!result.valid) {
-      expect(result.reason).toBe('code-not-linked');
+      expect(result.reason).toBe('invalid-code');
     }
   });
 
@@ -549,7 +552,15 @@ describe('validateCourseAccessGrant', () => {
           modules: [],
         },
       ],
-      assignments: [],
+      assignments: [
+        {
+          id: 'assign-org-b-cloud',
+          organizationId: 'org-b',
+          courseId: 'course-cloud',
+          assignedAt: now,
+          assignedByUserId: 'platform-admin',
+        },
+      ],
       students: [
         {
           id: 'student-shared',
@@ -1155,6 +1166,35 @@ describe('tenant visibility rules', () => {
     expect(studentDetail?.progress.every((item) => item.enrollment === undefined)).toBe(true);
   });
 
+  it('fails closed when organization-scoped users are passed another organization id', async () => {
+    const admin = await getPortalUserByEmail('admin@esilv.local');
+    const platform = await getPortalUserByEmail('platform@openmaic.local');
+    expect(admin).toBeDefined();
+    expect(platform).toBeDefined();
+    if (!admin || !platform) return;
+
+    await expect(getVisibleOrganizationDashboardSummary(admin, 'org-psb')).resolves.toBeUndefined();
+    await expect(listVisibleOrganizationCourseSummaries(admin, 'org-psb')).resolves.toEqual([]);
+    await expect(
+      getVisibleOrganizationCourseDetail(admin, 'org-psb', 'course-business-genai'),
+    ).resolves.toBeUndefined();
+    await expect(listVisibleOrganizationStudentSummaries(admin, 'org-psb')).resolves.toEqual([]);
+    await expect(
+      getVisibleOrganizationStudentDetail(admin, 'org-psb', 'student-psb-1'),
+    ).resolves.toBeUndefined();
+    await expect(listVisibleOrganizationAccessCodes(admin, 'org-psb')).resolves.toEqual([]);
+    await expect(listVisibleOrganizationCohorts(admin, 'org-psb')).resolves.toEqual([]);
+
+    await expect(
+      getVisibleOrganizationDashboardSummary(platform, 'org-psb'),
+    ).resolves.toMatchObject({
+      organization: { id: 'org-psb' },
+    });
+    await expect(listVisibleOrganizationCourseSummaries(platform, 'org-psb')).resolves.not.toEqual(
+      [],
+    );
+  });
+
   it('limits student accounts to their own enrolled course and enrollment detail', async () => {
     const student = await getPortalUserByEmail('student@esilv.local');
     expect(student).toBeDefined();
@@ -1322,6 +1362,12 @@ describe('tenant visibility rules', () => {
         scopedData.hasPortalAccountCourseAccess(studentUser, {
           organizationId: 'org-school',
           courseId: 'course-cloud',
+        }),
+      ).resolves.toBe(true);
+      await expect(
+        scopedData.hasPortalAccountCourseAccess(studentUser, {
+          organizationId: 'org-school',
+          courseId: 'course-cloud',
           cohortId: 'cohort-alpha',
         }),
       ).resolves.toBe(true);
@@ -1339,12 +1385,207 @@ describe('tenant visibility rules', () => {
     }
   });
 
+  it('ignores same-organization enrollments and codes that do not match any course assignment', async () => {
+    const originalCwd = process.cwd();
+    const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'openmaic-assignment-integrity-'));
+    const now = '2026-07-03T08:00:00.000Z';
+    const adminUser: PortalUser = {
+      id: 'user-school-admin',
+      organizationId: 'org-school',
+      name: 'School Admin',
+      email: 'admin@school.example',
+      passwordHash: 'hashed',
+      role: 'organization-admin',
+      createdAt: now,
+      updatedAt: now,
+    };
+    const dataset: CoursePortalDataset = {
+      organizations: [
+        {
+          id: 'org-school',
+          name: 'School',
+          slug: 'school',
+          description: 'School tenant',
+          contactEmail: 'admin@school.example',
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+      users: [adminUser],
+      courses: [
+        {
+          id: 'course-cloud',
+          title: 'Cloud Delivery Lab',
+          slug: 'cloud-delivery-lab',
+          description: 'Cloud course.',
+          category: 'Cloud',
+          status: 'active',
+          generatedBy: 'OpenMAIC',
+          createdAt: now,
+          updatedAt: now,
+          modules: [],
+        },
+      ],
+      assignments: [
+        {
+          id: 'assign-alpha',
+          organizationId: 'org-school',
+          courseId: 'course-cloud',
+          cohortId: 'cohort-alpha',
+          assignedAt: now,
+          assignedByUserId: 'platform-admin',
+        },
+      ],
+      students: [
+        {
+          id: 'student-alpha',
+          organizationId: 'org-school',
+          cohortId: 'cohort-alpha',
+          name: 'Alpha Student',
+          email: 'alpha@example.edu',
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: 'student-beta',
+          organizationId: 'org-school',
+          cohortId: 'cohort-beta',
+          name: 'Beta Student',
+          email: 'beta@example.edu',
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+      enrollments: [
+        {
+          id: 'enroll-alpha',
+          organizationId: 'org-school',
+          studentId: 'student-alpha',
+          courseId: 'course-cloud',
+          accessCodeId: 'code-alpha',
+          status: 'in_progress',
+          progressPercentage: 50,
+          startedAt: now,
+          lastActivityAt: now,
+        },
+        {
+          id: 'enroll-stale-beta',
+          organizationId: 'org-school',
+          studentId: 'student-beta',
+          courseId: 'course-cloud',
+          accessCodeId: 'code-stale-beta',
+          status: 'completed',
+          progressPercentage: 100,
+          startedAt: now,
+          completedAt: now,
+          lastActivityAt: now,
+        },
+      ],
+      accessCodes: [
+        {
+          id: 'code-alpha',
+          codeHash: hashAccessCode('ALPHA-CLOUD'),
+          organizationId: 'org-school',
+          courseId: 'course-cloud',
+          cohortId: 'cohort-alpha',
+          createdByUserId: 'user-school-admin',
+          currentUses: 1,
+          isActive: true,
+          createdAt: now,
+        },
+        {
+          id: 'code-stale-beta',
+          codeHash: hashAccessCode('BETA-CLOUD'),
+          organizationId: 'org-school',
+          courseId: 'course-cloud',
+          cohortId: 'cohort-beta',
+          createdByUserId: 'user-school-admin',
+          currentUses: 1,
+          isActive: true,
+          createdAt: now,
+        },
+      ],
+      cohorts: [
+        {
+          id: 'cohort-alpha',
+          organizationId: 'org-school',
+          name: 'Alpha cohort',
+          createdAt: now,
+        },
+        {
+          id: 'cohort-beta',
+          organizationId: 'org-school',
+          name: 'Beta cohort',
+          createdAt: now,
+        },
+      ],
+      activityLogs: [],
+    };
+
+    try {
+      await mkdir(path.join(tempRoot, 'data', 'course-portal'), { recursive: true });
+      await writeFile(
+        path.join(tempRoot, 'data', 'course-portal', 'catalog.json'),
+        `${JSON.stringify(dataset, null, 2)}\n`,
+        'utf-8',
+      );
+      process.chdir(tempRoot);
+      vi.resetModules();
+      const scopedData = await import('@/lib/server/course-portal-data');
+
+      const summary = await scopedData.getOrganizationDashboardSummary('org-school');
+      expect(summary).toMatchObject({
+        enrolledStudents: 1,
+        activeAccessCodes: 1,
+      });
+
+      const courseDetail = await scopedData.getOrganizationCourseDetail(
+        'org-school',
+        'course-cloud',
+      );
+      expect(courseDetail?.enrollments.map((enrollment) => enrollment.id)).toEqual([
+        'enroll-alpha',
+      ]);
+      expect(courseDetail?.students.map((student) => student.id)).toEqual(['student-alpha']);
+      expect(courseDetail?.accessCodes.map((accessCode) => accessCode.id)).toEqual(['code-alpha']);
+      expect(courseDetail?.completionRate).toBe(50);
+
+      const accessCodes = await scopedData.listOrganizationAccessCodes('org-school');
+      expect(accessCodes.map((accessCode) => accessCode.id)).toEqual(['code-alpha']);
+
+      const students = await scopedData.listVisibleOrganizationStudentSummaries(
+        adminUser,
+        'org-school',
+      );
+      expect(students.find((item) => item.student.id === 'student-alpha')).toMatchObject({
+        coursesEnrolled: 1,
+        averageProgress: 50,
+      });
+      expect(students.find((item) => item.student.id === 'student-beta')).toMatchObject({
+        coursesEnrolled: 0,
+        averageProgress: 0,
+        completionStatus: 'not_started',
+      });
+    } finally {
+      process.chdir(originalCwd);
+      vi.resetModules();
+      await rm(tempRoot, { recursive: true, force: true });
+    }
+  });
+
   it('grants public course account access only to enrolled student accounts', async () => {
     const student = await getPortalUserByEmail('student@esilv.local');
     const teacher = await getPortalUserByEmail('teacher@esilv.local');
     expect(student).toBeDefined();
     expect(teacher).toBeDefined();
     if (!student || !teacher) return;
+
+    await expect(
+      hasPortalAccountCourseAccess(student, {
+        organizationId: 'org-esilv',
+        courseId: 'course-cloud-devsecops',
+      }),
+    ).resolves.toBe(true);
 
     await expect(
       hasPortalAccountCourseAccess(student, {
@@ -1383,7 +1624,7 @@ describe('tenant visibility rules', () => {
     ).resolves.toEqual({ error: 'Student is not enrolled in this course.' });
   });
 
-  it('rejects non-finite progress values without mutating enrollment progress', async () => {
+  it('rejects invalid progress values without mutating enrollment progress', async () => {
     const originalCwd = process.cwd();
     const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'openmaic-activity-progress-'));
     const now = '2026-07-03T08:00:00.000Z';
@@ -1470,6 +1711,24 @@ describe('tenant visibility rules', () => {
           progressPercentage: Number.POSITIVE_INFINITY,
         }),
       ).resolves.toEqual({ error: 'Progress percentage must be a finite number.' });
+      await expect(
+        scopedData.trackStudentActivity({
+          organizationId: 'org-school',
+          studentId: 'student-school',
+          courseId: 'course-cloud',
+          action: 'lesson.viewed',
+          progressPercentage: -1,
+        }),
+      ).resolves.toEqual({ error: 'Progress percentage must be between 0 and 100.' });
+      await expect(
+        scopedData.trackStudentActivity({
+          organizationId: 'org-school',
+          studentId: 'student-school',
+          courseId: 'course-cloud',
+          action: 'lesson.viewed',
+          progressPercentage: 101,
+        }),
+      ).resolves.toEqual({ error: 'Progress percentage must be between 0 and 100.' });
 
       const persisted = await scopedData.getCoursePortalDataset();
       expect(persisted.enrollments[0]).toMatchObject({
@@ -1484,6 +1743,50 @@ describe('tenant visibility rules', () => {
       vi.resetModules();
       await rm(tempRoot, { recursive: true, force: true });
     }
+  });
+
+  it('rejects non-object activity metadata without writing an activity log', async () => {
+    const before = await getCoursePortalDataset();
+
+    await expect(
+      trackStudentActivity({
+        organizationId: 'org-esilv',
+        action: 'lesson.viewed',
+        metadata: 'module-cloud-1',
+      }),
+    ).resolves.toEqual({ error: 'Activity metadata must be an object.' });
+
+    const dataset = await getCoursePortalDataset();
+    expect(dataset.activityLogs).toHaveLength(before.activityLogs.length);
+  });
+
+  it('rejects blank activity actions without writing an activity log', async () => {
+    const before = await getCoursePortalDataset();
+
+    await expect(
+      trackStudentActivity({
+        organizationId: 'org-esilv',
+        action: '   ',
+        metadata: { source: 'course-detail' },
+      }),
+    ).resolves.toEqual({ error: 'Activity action must be a non-empty string.' });
+
+    const dataset = await getCoursePortalDataset();
+    expect(dataset.activityLogs).toHaveLength(before.activityLogs.length);
+  });
+
+  it('normalizes activity actions before writing activity logs', async () => {
+    const activity = await trackStudentActivity({
+      organizationId: 'org-esilv',
+      action: '  lesson.viewed  ',
+      metadata: { source: 'course-detail' },
+    });
+
+    expect(activity).toMatchObject({
+      organizationId: 'org-esilv',
+      action: 'lesson.viewed',
+      metadata: { source: 'course-detail' },
+    });
   });
 
   it('rejects student activity when enrollment does not match an assigned cohort', async () => {

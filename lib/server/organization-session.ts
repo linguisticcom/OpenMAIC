@@ -25,12 +25,17 @@ export interface PortalSession {
 }
 
 function getSessionSecret(): string {
-  return (
+  const secret =
     process.env.ORGANIZATION_SESSION_SECRET ||
     process.env.COURSE_ACCESS_SECRET ||
-    process.env.ACCESS_CODE ||
-    'openmaic-organization-session-dev-secret'
-  );
+    process.env.ACCESS_CODE;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'ORGANIZATION_SESSION_SECRET, COURSE_ACCESS_SECRET, or ACCESS_CODE must be set in production.',
+    );
+  }
+  return 'openmaic-organization-session-dev-secret';
 }
 
 function sign(value: string): string {
@@ -45,6 +50,24 @@ function safeEqual(a: string, b: string): boolean {
   } catch {
     return false;
   }
+}
+
+function safeHexHashEqual(a: string, b: string): boolean {
+  if (!/^[a-f0-9]{64}$/i.test(a) || !/^[a-f0-9]{64}$/i.test(b)) {
+    return false;
+  }
+
+  try {
+    const left = Buffer.from(a, 'hex');
+    const right = Buffer.from(b, 'hex');
+    return left.length === right.length && timingSafeEqual(left, right);
+  } catch {
+    return false;
+  }
+}
+
+export function verifyPortalPasswordHash(passwordHash: string, password: string): boolean {
+  return safeHexHashEqual(passwordHash, hashPortalPassword(password));
 }
 
 function createSessionToken(user: PortalUser): string {
@@ -91,7 +114,7 @@ export async function loginPortalUser(params: {
   password: string;
 }): Promise<{ ok: true; session: PortalSession } | { ok: false; error: string }> {
   const user = await getPortalUserByEmail(params.email);
-  if (!user || user.passwordHash !== hashPortalPassword(params.password)) {
+  if (!user || !verifyPortalPasswordHash(user.passwordHash, params.password)) {
     return { ok: false, error: 'Invalid email or password.' };
   }
 

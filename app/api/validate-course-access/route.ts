@@ -8,24 +8,28 @@ import { createLogger } from '@/lib/logger';
 
 const log = createLogger('CourseAccess');
 
+function stringField(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
 export async function POST(req: Request) {
   let courseId: string | undefined;
   let universityId: string | undefined;
   try {
-    const body = (await req.json()) as Partial<CourseAccessValidationInput>;
-    courseId = body.courseId;
-    universityId = body.universityId;
+    const body = (await req.json()) as Partial<Record<keyof CourseAccessValidationInput, unknown>>;
+    courseId = stringField(body.courseId);
+    universityId = stringField(body.universityId);
     const session = await getCurrentPortalSession();
     const studentId = session && isStudent(session.user) ? session.user.studentId : undefined;
 
     const result = await consumeCourseAccessGrant({
-      organizationId: body.organizationId,
-      organizationSlug: body.organizationSlug,
-      courseId: body.courseId,
-      courseSlug: body.courseSlug,
-      universityId: body.universityId,
-      cohortId: body.cohortId || undefined,
-      accessCode: body.accessCode || '',
+      organizationId: stringField(body.organizationId),
+      organizationSlug: stringField(body.organizationSlug),
+      courseId,
+      courseSlug: stringField(body.courseSlug),
+      universityId,
+      cohortId: stringField(body.cohortId),
+      accessCode: stringField(body.accessCode) || '',
       studentId,
     });
 

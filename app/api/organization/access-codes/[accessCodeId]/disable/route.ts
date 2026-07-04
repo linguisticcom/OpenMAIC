@@ -9,11 +9,17 @@ export async function PATCH(
   const session = await getCurrentPortalSession();
   if (!session) return apiError('INVALID_REQUEST', 401, 'Authentication required.');
 
-  let body: { organizationId?: string } = {};
+  let body: Partial<Record<'organizationId', unknown>> = {};
   try {
     body = await request.json();
   } catch {
     body = {};
+  }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return apiError('INVALID_REQUEST', 400, 'Invalid JSON body');
+  }
+  if (body.organizationId !== undefined && typeof body.organizationId !== 'string') {
+    return apiError('INVALID_REQUEST', 400, 'organizationId must be a string.');
   }
 
   const organizationId = body.organizationId || session.user.organizationId;

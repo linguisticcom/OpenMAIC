@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { promises as fs } from 'fs';
 import { mkdir, mkdtemp, rm, writeFile } from 'fs/promises';
 import os from 'os';
 import path from 'path';
@@ -7,6 +8,10 @@ import type { CoursePortalDataset } from '@/lib/types/course-portal';
 
 function hashAccessCode(code: string): string {
   return createHash('sha256').update(code.trim().toUpperCase()).digest('hex');
+}
+
+function cloneDataset(dataset: CoursePortalDataset): CoursePortalDataset {
+  return JSON.parse(JSON.stringify(dataset)) as CoursePortalDataset;
 }
 
 describe('course access enrollment creation', () => {
@@ -246,6 +251,96 @@ describe('course access enrollment creation', () => {
         }),
       ]);
     } finally {
+      process.chdir(originalCwd);
+      vi.resetModules();
+      await rm(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('rechecks usage limits before creating no-login enrollments', async () => {
+    const originalCwd = process.cwd();
+    const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'openmaic-access-stale-limit-'));
+    const now = '2026-07-03T08:00:00.000Z';
+    const validDataset: CoursePortalDataset = {
+      organizations: [
+        {
+          id: 'org-school',
+          name: 'School',
+          slug: 'school',
+          description: 'School tenant',
+          contactEmail: 'admin@school.example',
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+      users: [],
+      courses: [
+        {
+          id: 'course-cloud',
+          title: 'Cloud Delivery Lab',
+          slug: 'cloud-delivery-lab',
+          description: 'Cloud course.',
+          category: 'Cloud',
+          status: 'active',
+          generatedBy: 'OpenMAIC',
+          createdAt: now,
+          updatedAt: now,
+          modules: [],
+        },
+      ],
+      assignments: [
+        {
+          id: 'assign-cloud',
+          organizationId: 'org-school',
+          courseId: 'course-cloud',
+          assignedAt: now,
+          assignedByUserId: 'platform-admin',
+        },
+      ],
+      students: [],
+      enrollments: [],
+      accessCodes: [
+        {
+          id: 'code-cloud',
+          codeHash: hashAccessCode('SCHOOL-CLOUD'),
+          organizationId: 'org-school',
+          courseId: 'course-cloud',
+          createdByUserId: 'platform-admin',
+          currentUses: 0,
+          maxUses: 1,
+          isActive: true,
+          createdAt: now,
+        },
+      ],
+      cohorts: [],
+      activityLogs: [],
+    };
+    const maxedDataset = cloneDataset(validDataset);
+    maxedDataset.accessCodes[0].currentUses = 1;
+
+    const readFileSpy = vi.spyOn(fs, 'readFile');
+
+    try {
+      process.chdir(tempRoot);
+      vi.resetModules();
+      readFileSpy
+        .mockResolvedValueOnce(`${JSON.stringify(validDataset, null, 2)}\n` as never)
+        .mockResolvedValue(`${JSON.stringify(maxedDataset, null, 2)}\n` as never);
+      const scopedData = await import('@/lib/server/course-portal-data');
+
+      const result = await scopedData.consumeCourseAccessGrant({
+        organizationSlug: 'school',
+        courseSlug: 'cloud-delivery-lab',
+        accessCode: 'SCHOOL-CLOUD',
+      });
+
+      expect(result).toEqual({
+        valid: false,
+        reason: 'usage-limit-reached',
+        message: 'This access code has reached its usage limit.',
+      });
+    } finally {
+      readFileSpy.mockRestore();
       process.chdir(originalCwd);
       vi.resetModules();
       await rm(tempRoot, { recursive: true, force: true });

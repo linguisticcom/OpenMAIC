@@ -76,4 +76,56 @@ describe('organization settings API', () => {
       },
     });
   });
+
+  it('rejects malformed settings fields before updating the tenant', async () => {
+    mocks.getCurrentPortalSession.mockResolvedValue({
+      user: {
+        id: 'user-psb-admin',
+        name: 'PSB Learning Admin',
+        email: 'admin@psb.local',
+        role: 'organization-admin',
+        organizationId: 'org-psb',
+      },
+    });
+
+    const response = await PATCH(
+      request({
+        organizationId: 'org-psb',
+        name: 'Paris School of Business',
+        contactEmail: { address: 'faculty-success@psb.example' },
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.updateOrganizationSettings).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: 'Organization settings fields must be strings.',
+    });
+  });
+
+  it('rejects malformed organization ids before the access check', async () => {
+    mocks.getCurrentPortalSession.mockResolvedValue({
+      user: {
+        id: 'user-platform-admin',
+        name: 'OpenMAIC Platform Admin',
+        email: 'platform@openmaic.local',
+        role: 'platform-admin',
+      },
+    });
+
+    const response = await PATCH(
+      request({
+        organizationId: ['org-psb'],
+        name: 'Paris School of Business',
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.updateOrganizationSettings).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: 'Organization settings fields must be strings.',
+    });
+  });
 });

@@ -105,4 +105,24 @@ describe('admin course assignments API', () => {
       error: 'Teacher manager does not belong to this organization.',
     });
   });
+
+  it('rejects malformed assignment fields before calling the data layer', async () => {
+    mocks.getCurrentPortalSession.mockResolvedValue({
+      user: { id: 'user-platform-admin', role: 'platform-admin' },
+    });
+
+    const response = await POST(
+      request({
+        organizationId: 'org-esilv',
+        courseId: ['course-cloud-devsecops'],
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.assignCourseToOrganization).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: 'Course assignment fields must be strings.',
+    });
+  });
 });

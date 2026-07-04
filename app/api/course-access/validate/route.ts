@@ -4,14 +4,18 @@ import { consumeCourseAccessGrant } from '@/lib/server/course-portal-data';
 import { getCurrentPortalSession, isStudent } from '@/lib/server/organization-session';
 import { cookies } from 'next/headers';
 
+function stringField(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
 export async function POST(request: Request) {
   let body: {
-    organizationId?: string;
-    organizationSlug?: string;
-    courseId?: string;
-    courseSlug?: string;
-    accessCode?: string;
-    cohortId?: string;
+    organizationId?: unknown;
+    organizationSlug?: unknown;
+    courseId?: unknown;
+    courseSlug?: unknown;
+    accessCode?: unknown;
+    cohortId?: unknown;
   };
   try {
     body = await request.json();
@@ -23,12 +27,12 @@ export async function POST(request: Request) {
   const studentId = session && isStudent(session.user) ? session.user.studentId : undefined;
 
   const result = await consumeCourseAccessGrant({
-    organizationId: body.organizationId,
-    organizationSlug: body.organizationSlug,
-    courseId: body.courseId,
-    courseSlug: body.courseSlug,
-    accessCode: body.accessCode || '',
-    cohortId: body.cohortId,
+    organizationId: stringField(body.organizationId),
+    organizationSlug: stringField(body.organizationSlug),
+    courseId: stringField(body.courseId),
+    courseSlug: stringField(body.courseSlug),
+    accessCode: stringField(body.accessCode) || '',
+    cohortId: stringField(body.cohortId),
     studentId,
   });
 

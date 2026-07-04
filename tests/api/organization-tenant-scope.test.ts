@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Organization, PortalUser } from '@/lib/types/course-portal';
 import { GET as getOrganizationCourses } from '@/app/api/organization/courses/route';
+import { GET as getOrganizationCourseDetail } from '@/app/api/organization/courses/[courseId]/route';
 import { GET as getOrganizationStudents } from '@/app/api/organization/students/route';
 import { GET as getOrganizationStudentDetail } from '@/app/api/organization/students/[studentId]/route';
 import {
@@ -116,6 +117,65 @@ describe('organization API tenant scope', () => {
     await expectForbidden(response);
   });
 
+  it('denies cross-tenant course detail requests with a controlled 403', async () => {
+    setOrganizationAdminSession();
+
+    const response = await getOrganizationCourseDetail(
+      new Request(
+        'http://localhost/api/organization/courses/course-business-genai?organizationId=org-psb',
+      ),
+      { params: Promise.resolve({ courseId: 'course-business-genai' }) },
+    );
+
+    await expectForbidden(response);
+  });
+
+  it('limits teacher-manager course details to assigned courses', async () => {
+    setTeacherManagerSession();
+
+    const assignedResponse = await getOrganizationCourseDetail(
+      new Request('http://localhost/api/organization/courses/course-cloud-devsecops'),
+      { params: Promise.resolve({ courseId: 'course-cloud-devsecops' }) },
+    );
+
+    expect(assignedResponse.status).toBe(200);
+    await expect(assignedResponse.json()).resolves.toMatchObject({
+      success: true,
+      detail: {
+        course: { id: 'course-cloud-devsecops' },
+        assignment: { teacherUserId: 'user-esilv-teacher' },
+        accessCodes: [expect.objectContaining({ id: 'code-esilv-cloud' })],
+      },
+    });
+
+    const unassignedResponse = await getOrganizationCourseDetail(
+      new Request('http://localhost/api/organization/courses/course-ai-foundations'),
+      { params: Promise.resolve({ courseId: 'course-ai-foundations' }) },
+    );
+
+    expect(unassignedResponse.status).toBe(404);
+  });
+
+  it('limits student course details to their own enrollment and hides access codes', async () => {
+    setStudentSession();
+
+    const response = await getOrganizationCourseDetail(
+      new Request('http://localhost/api/organization/courses/course-cloud-devsecops'),
+      { params: Promise.resolve({ courseId: 'course-cloud-devsecops' }) },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      detail: {
+        course: { id: 'course-cloud-devsecops' },
+        students: [expect.objectContaining({ id: 'student-esilv-1' })],
+        enrollments: [expect.objectContaining({ studentId: 'student-esilv-1' })],
+        accessCodes: [],
+      },
+    });
+  });
+
   it('denies cross-tenant student list requests with a controlled 403', async () => {
     setOrganizationAdminSession();
 
@@ -203,6 +263,51 @@ describe('organization API tenant scope', () => {
     });
   });
 
+  it('rejects malformed access-code creation fields before lookup', async () => {
+    setOrganizationAdminSession();
+
+    const response = await postOrganizationAccessCodes(
+      new Request('http://localhost/api/organization/access-codes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: 'org-esilv',
+          courseId: ['course-cloud-devsecops'],
+          cohortId: 'cohort-esilv-m2-cyber-cloud',
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: 'Access-code fields must be strings.',
+    });
+  });
+
+  it('rejects non-numeric access-code usage limits through the API', async () => {
+    setOrganizationAdminSession();
+
+    const response = await postOrganizationAccessCodes(
+      new Request('http://localhost/api/organization/access-codes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: 'org-esilv',
+          courseId: 'course-cloud-devsecops',
+          cohortId: 'cohort-esilv-m2-cyber-cloud',
+          maxUses: '25',
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: 'Maximum uses must be a finite number.',
+    });
+  });
+
   it('denies teacher-manager access-code disables for unassigned courses', async () => {
     setTeacherManagerSession();
 
@@ -219,6 +324,25 @@ describe('organization API tenant scope', () => {
     await expect(response.json()).resolves.toMatchObject({
       success: false,
       error: 'Course is not assigned to this teacher manager.',
+    });
+  });
+
+  it('rejects malformed access-code disable organization ids', async () => {
+    setOrganizationAdminSession();
+
+    const response = await patchDisableOrganizationAccessCode(
+      new Request('http://localhost/api/organization/access-codes/code-esilv-cloud/disable', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId: { id: 'org-esilv' } }),
+      }),
+      { params: Promise.resolve({ accessCodeId: 'code-esilv-cloud' }) },
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: 'organizationId must be a string.',
     });
   });
 

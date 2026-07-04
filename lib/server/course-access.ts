@@ -20,11 +20,14 @@ export interface CourseAccessTokenPayload {
 }
 
 function getSecret(): string {
-  return (
-    process.env.COURSE_ACCESS_SECRET ||
-    process.env.ACCESS_CODE ||
-    'openmaic-course-access-dev-secret'
-  );
+  const secret = process.env.COURSE_ACCESS_SECRET || process.env.ACCESS_CODE;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'COURSE_ACCESS_SECRET or ACCESS_CODE must be set before issuing course access tokens in production.',
+    );
+  }
+  return 'openmaic-course-access-dev-secret';
 }
 
 function sign(value: string): string {

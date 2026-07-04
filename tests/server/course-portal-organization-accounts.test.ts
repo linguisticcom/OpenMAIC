@@ -101,6 +101,16 @@ describe('organization account provisioning', () => {
           logoUrl: '/logos/new-school.svg',
         }),
       ).resolves.toMatchObject({ id: 'org-new-school', logoUrl: '/logos/new-school.svg' });
+
+      await expect(
+        scopedData.updateOrganizationSettings({
+          organizationId: 'org-new-school',
+          contactEmail: 'Admissions@New-School.Example',
+        }),
+      ).resolves.toMatchObject({
+        id: 'org-new-school',
+        contactEmail: 'admissions@new-school.example',
+      });
     } finally {
       process.chdir(originalCwd);
       vi.resetModules();

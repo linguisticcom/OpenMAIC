@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useMemo, useState } from 'react';
-import { Loader2, PlusCircle } from 'lucide-react';
+import { GraduationCap, Loader2, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Cohort, OrganizationCourseSummary, Student } from '@/lib/types/course-portal';
 
@@ -42,6 +42,23 @@ export function AccessCodeCreator({
     if (!selectedAssignment?.cohortId) return students;
     return students.filter((student) => student.cohortId === selectedAssignment.cohortId);
   }, [selectedAssignment?.cohortId, students]);
+
+  if (courses.length === 0) {
+    return (
+      <section className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-md bg-violet-50 text-violet-700">
+          <GraduationCap className="size-6" />
+        </div>
+        <h2 className="mt-4 text-lg font-semibold tracking-normal text-slate-950">
+          No assignable courses available
+        </h2>
+        <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">
+          Access codes can only be generated after a platform admin assigns an OpenMAIC-generated
+          course to this organization or teacher scope.
+        </p>
+      </section>
+    );
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

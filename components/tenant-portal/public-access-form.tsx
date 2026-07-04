@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { KeyRound, Loader2, ShieldAlert } from 'lucide-react';
+import { GraduationCap, KeyRound, Loader2, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function PublicAccessForm({
@@ -21,6 +21,23 @@ export function PublicAccessForm({
   );
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (!courseSlug && courses.length === 0) {
+    return (
+      <section className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-md bg-violet-50 text-violet-700">
+          <GraduationCap className="size-6" />
+        </div>
+        <h2 className="mt-4 text-lg font-semibold tracking-normal text-slate-950">
+          No courses are available yet
+        </h2>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+          Access codes can be used after this organization has at least one assigned OpenMAIC
+          course.
+        </p>
+      </section>
+    );
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

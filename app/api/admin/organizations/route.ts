@@ -45,35 +45,72 @@ export async function POST(request: Request) {
     return apiError('INVALID_REQUEST', 403, 'Platform admin required.');
   }
 
-  let body: {
-    name?: string;
-    slug?: string;
-    logoUrl?: string;
-    description?: string;
-    contactEmail?: string;
-    subscriptionStatus?: string;
-    welcomeMessage?: string;
-    adminName?: string;
-    adminEmail?: string;
-    adminPassword?: string;
-  };
+  let body: Partial<
+    Record<
+      | 'name'
+      | 'slug'
+      | 'logoUrl'
+      | 'description'
+      | 'contactEmail'
+      | 'subscriptionStatus'
+      | 'welcomeMessage'
+      | 'adminName'
+      | 'adminEmail'
+      | 'adminPassword',
+      unknown
+    >
+  >;
   try {
     body = await request.json();
   } catch {
     return apiError('INVALID_REQUEST', 400, 'Invalid JSON body');
   }
 
+  const stringField = (field: keyof typeof body): { value?: string; error?: Response } => {
+    const value = body[field];
+    if (value === undefined) return {};
+    if (typeof value !== 'string') {
+      return {
+        error: apiError('INVALID_REQUEST', 400, 'Organization creation fields must be strings.'),
+      };
+    }
+    return { value };
+  };
+
+  const nameField = stringField('name');
+  const slugField = stringField('slug');
+  const logoUrlField = stringField('logoUrl');
+  const descriptionField = stringField('description');
+  const contactEmailField = stringField('contactEmail');
+  const subscriptionStatusField = stringField('subscriptionStatus');
+  const welcomeMessageField = stringField('welcomeMessage');
+  const adminNameField = stringField('adminName');
+  const adminEmailField = stringField('adminEmail');
+  const adminPasswordField = stringField('adminPassword');
+  const fieldError =
+    nameField.error ||
+    slugField.error ||
+    logoUrlField.error ||
+    descriptionField.error ||
+    contactEmailField.error ||
+    subscriptionStatusField.error ||
+    welcomeMessageField.error ||
+    adminNameField.error ||
+    adminEmailField.error ||
+    adminPasswordField.error;
+  if (fieldError) return fieldError;
+
   const result = await createOrganizationWithAdmin({
-    name: body.name,
-    slug: body.slug,
-    logoUrl: body.logoUrl,
-    description: body.description,
-    contactEmail: body.contactEmail,
-    subscriptionStatus: body.subscriptionStatus,
-    welcomeMessage: body.welcomeMessage,
-    adminName: body.adminName,
-    adminEmail: body.adminEmail,
-    adminPassword: body.adminPassword,
+    name: nameField.value,
+    slug: slugField.value,
+    logoUrl: logoUrlField.value,
+    description: descriptionField.value,
+    contactEmail: contactEmailField.value,
+    subscriptionStatus: subscriptionStatusField.value,
+    welcomeMessage: welcomeMessageField.value,
+    adminName: adminNameField.value,
+    adminEmail: adminEmailField.value,
+    adminPassword: adminPasswordField.value,
   });
 
   if ('error' in result) return apiError('INVALID_REQUEST', 400, result.error);

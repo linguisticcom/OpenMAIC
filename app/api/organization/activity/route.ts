@@ -15,24 +15,57 @@ import {
 import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
-  let body: {
-    organizationId?: string;
-    studentId?: string;
-    courseId?: string;
-    cohortId?: string;
-    action?: string;
-    metadata?: Record<string, unknown>;
-    progressPercentage?: number;
-  };
+  let body: Partial<
+    Record<
+      | 'organizationId'
+      | 'studentId'
+      | 'courseId'
+      | 'cohortId'
+      | 'action'
+      | 'metadata'
+      | 'progressPercentage',
+      unknown
+    >
+  >;
   try {
     body = await request.json();
   } catch {
     return apiError('INVALID_REQUEST', 400, 'Invalid JSON body');
   }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return apiError('INVALID_REQUEST', 400, 'Invalid JSON body');
+  }
+
+  const stringField = (field: keyof typeof body): { value?: string; error?: Response } => {
+    const value = body[field];
+    if (value === undefined) return {};
+    if (typeof value !== 'string') {
+      return {
+        error: apiError('INVALID_REQUEST', 400, 'Activity reference fields must be strings.'),
+      };
+    }
+    return { value };
+  };
+  const organizationIdField = stringField('organizationId');
+  const studentIdField = stringField('studentId');
+  const courseIdField = stringField('courseId');
+  const cohortIdField = stringField('cohortId');
+  const fieldError =
+    organizationIdField.error || studentIdField.error || courseIdField.error || cohortIdField.error;
+  if (fieldError) return fieldError;
+
+  if (
+    body.progressPercentage !== undefined &&
+    (typeof body.progressPercentage !== 'number' || !Number.isFinite(body.progressPercentage))
+  ) {
+    return apiError('INVALID_REQUEST', 400, 'Progress percentage must be a finite number.');
+  }
+  const progressPercentage =
+    typeof body.progressPercentage === 'number' ? body.progressPercentage : undefined;
 
   const session = await getCurrentPortalSession();
-  const organizationId = body.organizationId || session?.user.organizationId;
-  if (!organizationId || !body.action) {
+  const organizationId = organizationIdField.value || session?.user.organizationId;
+  if (!organizationId || body.action === undefined) {
     return apiError('INVALID_REQUEST', 400, 'organizationId and action are required.');
   }
 
@@ -42,16 +75,20 @@ export async function POST(request: Request) {
     if (!canAccessOrganization(session.user, organizationId)) {
       return apiError('INVALID_REQUEST', 403, 'Organization access denied.');
     }
-    if (isStudent(session.user) && body.studentId && body.studentId !== session.user.studentId) {
+    if (
+      isStudent(session.user) &&
+      studentIdField.value &&
+      studentIdField.value !== session.user.studentId
+    ) {
       return apiError('INVALID_REQUEST', 403, 'Students can only track their own activity.');
     }
-    studentId = isStudent(session.user) ? session.user.studentId : body.studentId;
+    studentId = isStudent(session.user) ? session.user.studentId : studentIdField.value;
     if (isTeacherManager(session.user)) {
-      if (body.courseId) {
+      if (courseIdField.value) {
         const courseDetail = await getVisibleOrganizationCourseDetail(
           session.user,
           organizationId,
-          body.courseId,
+          courseIdField.value,
         );
         if (!courseDetail) {
           return apiError(
@@ -77,18 +114,19 @@ export async function POST(request: Request) {
       }
     }
   } else {
-    if (!body.courseId) {
+    if (!courseIdField.value) {
       return apiError('INVALID_REQUEST', 401, 'Authentication or course access is required.');
     }
 
     const cookieStore = await cookies();
     const accessPayload = verifyCourseAccessToken(
-      cookieStore.get(getCourseAccessCookieName(body.courseId, organizationId, body.cohortId))
-        ?.value,
+      cookieStore.get(
+        getCourseAccessCookieName(courseIdField.value, organizationId, cohortIdField.value),
+      )?.value,
       {
-        courseId: body.courseId,
+        courseId: courseIdField.value,
         universityId: organizationId,
-        cohortId: body.cohortId,
+        cohortId: cohortIdField.value,
       },
     );
 
@@ -100,8 +138,8 @@ export async function POST(request: Request) {
     }
     const accessSessionIsCurrent = await isCourseAccessSessionValid({
       organizationId,
-      courseId: body.courseId,
-      cohortId: body.cohortId,
+      courseId: courseIdField.value,
+      cohortId: cohortIdField.value,
       codeId: accessPayload.codeId,
       studentId: accessPayload.studentId,
       enrollmentId: accessPayload.enrollmentId,
@@ -115,10 +153,10 @@ export async function POST(request: Request) {
   const activity = await trackStudentActivity({
     organizationId,
     studentId,
-    courseId: body.courseId,
+    courseId: courseIdField.value,
     action: body.action,
     metadata: body.metadata,
-    progressPercentage: body.progressPercentage,
+    progressPercentage,
   });
 
   if ('error' in activity) return apiError('INVALID_REQUEST', 400, activity.error);

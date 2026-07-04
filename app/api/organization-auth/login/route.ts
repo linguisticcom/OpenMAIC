@@ -2,18 +2,21 @@ import { apiError, apiSuccess } from '@/lib/server/api-response';
 import { loginPortalUser, serializeSession } from '@/lib/server/organization-session';
 
 export async function POST(request: Request) {
-  let body: { email?: string; password?: string };
+  let body: { email?: unknown; password?: unknown };
   try {
     body = await request.json();
   } catch {
     return apiError('INVALID_REQUEST', 400, 'Invalid JSON body');
   }
 
-  if (!body.email || !body.password) {
+  const email = typeof body.email === 'string' ? body.email.trim() : '';
+  const password = typeof body.password === 'string' ? body.password : '';
+
+  if (!email || !password) {
     return apiError('INVALID_REQUEST', 400, 'Email and password are required.');
   }
 
-  const result = await loginPortalUser({ email: body.email, password: body.password });
+  const result = await loginPortalUser({ email, password });
   if (!result.ok) {
     return apiError('INVALID_REQUEST', 401, result.error);
   }

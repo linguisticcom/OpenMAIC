@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 
 export function LoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState('admin@esilv.local');
-  const [password, setPassword] = useState('openmaic-demo');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -51,6 +51,9 @@ export function LoginForm() {
           Email
           <input
             value={email}
+            type="email"
+            autoComplete="email"
+            required
             onChange={(event) => setEmail(event.target.value)}
             className="h-11 rounded-md border border-slate-200 px-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100"
           />
@@ -60,6 +63,8 @@ export function LoginForm() {
           <input
             value={password}
             type="password"
+            autoComplete="current-password"
+            required
             onChange={(event) => setPassword(event.target.value)}
             className="h-11 rounded-md border border-slate-200 px-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100"
           />
@@ -68,18 +73,12 @@ export function LoginForm() {
       {error && <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
       <Button
         type="submit"
-        disabled={isSubmitting}
+        disabled={isSubmitting || !email.trim() || !password}
         className="mt-5 min-h-10 w-full bg-violet-700 text-white hover:bg-violet-800"
       >
         {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />}
         Sign in
       </Button>
-      <div className="mt-5 rounded-md bg-slate-50 p-3 text-xs leading-5 text-slate-500">
-        Demo accounts use password{' '}
-        <span className="font-semibold text-slate-700">openmaic-demo</span>:
-        platform@openmaic.local, admin@esilv.local, teacher@esilv.local, student@esilv.local,
-        admin@ingetis.local, admin@psb.local.
-      </div>
     </form>
   );
 }

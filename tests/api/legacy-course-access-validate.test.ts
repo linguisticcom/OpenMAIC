@@ -116,6 +116,41 @@ describe('legacy course access validation API', () => {
     expect(payload).not.toHaveProperty('accessToken');
   });
 
+  it('normalizes malformed request fields before validating access', async () => {
+    mocks.getCurrentPortalSession.mockResolvedValue(null);
+    mocks.consumeCourseAccessGrant.mockResolvedValue({
+      valid: false,
+      reason: 'missing-fields',
+      message: 'Organization, course, and access code are required.',
+    });
+
+    const response = await POST(
+      request({
+        universityId: { value: 'org-esilv' },
+        courseId: ['course-cloud-devsecops'],
+        accessCode: { value: 'ESILV-CLOUD-M2' },
+        cohortId: 42,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      valid: false,
+      reason: 'missing-fields',
+    });
+    expect(mocks.consumeCourseAccessGrant).toHaveBeenCalledWith({
+      organizationId: undefined,
+      organizationSlug: undefined,
+      courseId: undefined,
+      courseSlug: undefined,
+      universityId: undefined,
+      cohortId: undefined,
+      accessCode: '',
+      studentId: undefined,
+    });
+  });
+
   it('uses the authenticated student identity instead of a spoofed request studentId', async () => {
     mocks.getCurrentPortalSession.mockResolvedValue({
       user: {

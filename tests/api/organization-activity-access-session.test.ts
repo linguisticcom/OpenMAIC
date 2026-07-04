@@ -30,7 +30,7 @@ vi.mock('@/lib/server/organization-session', () => ({
   isStudent: (user: { role: string }) => user.role === 'student',
 }));
 
-function request(body: Record<string, unknown>) {
+function request(body: unknown) {
   return new Request('http://localhost/api/organization/activity', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -151,5 +151,61 @@ describe('organization activity access-session authorization', () => {
 
     expect(response.status).toBe(401);
     expect(mocks.trackStudentActivity).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed no-login activity references before cookie lookup', async () => {
+    mocks.getCurrentPortalSession.mockResolvedValue(null);
+
+    const response = await POST(
+      request({
+        organizationId: 'org-esilv',
+        courseId: ['course-cloud-devsecops'],
+        action: 'course.started',
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.cookieGet).not.toHaveBeenCalled();
+    expect(mocks.isCourseAccessSessionValid).not.toHaveBeenCalled();
+    expect(mocks.trackStudentActivity).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: 'Activity reference fields must be strings.',
+    });
+  });
+
+  it('rejects malformed progress before activity persistence', async () => {
+    mocks.getCurrentPortalSession.mockResolvedValue(null);
+
+    const response = await POST(
+      request({
+        organizationId: 'org-esilv',
+        courseId: 'course-cloud-devsecops',
+        action: 'course.started',
+        progressPercentage: Number.POSITIVE_INFINITY,
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.cookieGet).not.toHaveBeenCalled();
+    expect(mocks.trackStudentActivity).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: 'Progress percentage must be a finite number.',
+    });
+  });
+
+  it('rejects non-object JSON bodies', async () => {
+    mocks.getCurrentPortalSession.mockResolvedValue(null);
+
+    const response = await POST(request(null));
+
+    expect(response.status).toBe(400);
+    expect(mocks.cookieGet).not.toHaveBeenCalled();
+    expect(mocks.trackStudentActivity).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: 'Invalid JSON body',
+    });
   });
 });

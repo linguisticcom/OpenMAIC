@@ -167,4 +167,28 @@ describe('admin organizations API', () => {
     });
     expect(JSON.stringify(payload)).not.toContain('passwordHash');
   });
+
+  it('rejects malformed organization creation fields before calling the data layer', async () => {
+    mocks.getCurrentPortalSession.mockResolvedValue({
+      user: { id: 'user-platform-admin', role: 'platform-admin' },
+    });
+
+    const response = await POST(
+      request({
+        name: { value: 'New School' },
+        description: 'Client institution.',
+        contactEmail: 'contact@new-school.example',
+        adminName: 'New School Admin',
+        adminEmail: 'admin@new-school.example',
+        adminPassword: 'temporary-demo-password',
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.createOrganizationWithAdmin).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: 'Organization creation fields must be strings.',
+    });
+  });
 });
