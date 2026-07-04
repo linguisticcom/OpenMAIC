@@ -67,6 +67,18 @@ describe('LAN110 produced course artifacts', () => {
         `${courseModule.id} has no narrated speech actions`,
       ).toBeGreaterThan(4);
       expect(
+        speechActions.every((action) => action.audioId && action.audioUrl?.includes('/audio/')),
+        `${courseModule.id} has speech actions without generated audio files`,
+      ).toBe(true);
+      for (const action of speechActions) {
+        const audioUrl = action.audioUrl ?? '';
+        const audioPath = audioUrl.slice(audioUrl.indexOf('/audio/') + 1);
+        expect(
+          existsSync(path.join(root, 'data/classrooms', courseModule.classroomId!, audioPath)),
+          `${courseModule.id} is missing generated audio file for ${action.audioId}`,
+        ).toBe(true);
+      }
+      expect(
         speechActions.some((action) => /smoke run|very short/i.test(action.text ?? '')),
         `${courseModule.id} still contains smoke-test narration`,
       ).toBe(false);

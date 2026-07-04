@@ -156,7 +156,10 @@
         {
           "id": "action_scene_lan110_module_09_1_orientation_speech_0",
           "type": "speech",
-          "text": "Welcome to module 9: Cash flow and funds-flow statements. This lesson connects finance concepts with the business English you need for LAN110."
+          "text": "Welcome to module 9: Cash flow and funds-flow statements. This lesson connects finance concepts with the business English you need for LAN110.",
+          "audioId": "tts_s1_action_scene_lan110_module_09_1_orientation_speech_0",
+          "audioUrl": "https://academy.linguistic-communication.com/api/classroom-media/lan110_module_09/audio/tts_s1_action_scene_lan110_module_09_1_orientation_speech_0.mp3",
+          "voice": "Daniel (macOS generated MP3)"
         },
         {
           "id": "action_scene_lan110_module_09_1_orientation_spot_1",
@@ -166,7 +169,10 @@
         {
           "id": "action_scene_lan110_module_09_1_orientation_speech_1",
           "type": "speech",
-          "text": "Read cash-flow and funds-flow information, distinguish cash from profit, and discuss liquidity using finance vocabulary."
+          "text": "Read cash-flow and funds-flow information, distinguish cash from profit, and discuss liquidity using finance vocabulary.",
+          "audioId": "tts_s1_action_scene_lan110_module_09_1_orientation_speech_1",
+          "audioUrl": "https://academy.linguistic-communication.com/api/classroom-media/lan110_module_09/audio/tts_s1_action_scene_lan110_module_09_1_orientation_speech_1.mp3",
+          "voice": "Daniel (macOS generated MP3)"
         },
         {
           "id": "action_scene_lan110_module_09_1_orientation_spot_2",
@@ -176,7 +182,10 @@
         {
           "id": "action_scene_lan110_module_09_1_orientation_speech_2",
           "type": "speech",
-          "text": "By the end, you should be able to define the key terms, apply them to a realistic company case, and give a clear assessment-style explanation."
+          "text": "By the end, you should be able to define the key terms, apply them to a realistic company case, and give a clear assessment-style explanation.",
+          "audioId": "tts_s1_action_scene_lan110_module_09_1_orientation_speech_2",
+          "audioUrl": "https://academy.linguistic-communication.com/api/classroom-media/lan110_module_09/audio/tts_s1_action_scene_lan110_module_09_1_orientation_speech_2.mp3",
+          "voice": "Daniel (macOS generated MP3)"
         }
       ],
       "createdAt": 1783202700001,
@@ -302,7 +311,10 @@
         {
           "id": "action_scene_lan110_module_09_2_language_speech_0",
           "type": "speech",
-          "text": "Let us build the vocabulary first. These are the terms you should be able to define without hesitation."
+          "text": "Let us build the vocabulary first. These are the terms you should be able to define without hesitation.",
+          "audioId": "tts_s2_action_scene_lan110_module_09_2_language_speech_0",
+          "audioUrl": "https://academy.linguistic-communication.com/api/classroom-media/lan110_module_09/audio/tts_s2_action_scene_lan110_module_09_2_language_speech_0.mp3",
+          "voice": "Daniel (macOS generated MP3)"
         },
         {
           "id": "action_scene_lan110_module_09_2_language_spot_1",
@@ -312,7 +324,10 @@
         {
           "id": "action_scene_lan110_module_09_2_language_speech_1",
           "type": "speech",
-          "text": "A strong LAN110 answer does more than translate a word. It explains the role of the term in a company situation."
+          "text": "A strong LAN110 answer does more than translate a word. It explains the role of the term in a company situation.",
+          "audioId": "tts_s2_action_scene_lan110_module_09_2_language_speech_1",
+          "audioUrl": "https://academy.linguistic-communication.com/api/classroom-media/lan110_module_09/audio/tts_s2_action_scene_lan110_module_09_2_language_speech_1.mp3",
+          "voice": "Daniel (macOS generated MP3)"
         },
         {
           "id": "action_scene_lan110_module_09_2_language_spot_2",
@@ -322,7 +337,10 @@
         {
           "id": "action_scene_lan110_module_09_2_language_speech_2",
           "type": "speech",
-          "text": "Use a sentence such as: this matters because. That forces you to connect vocabulary to business meaning."
+          "text": "Use a sentence such as: this matters because. That forces you to connect vocabulary to business meaning.",
+          "audioId": "tts_s2_action_scene_lan110_module_09_2_language_speech_2",
+          "audioUrl": "https://academy.linguistic-communication.com/api/classroom-media/lan110_module_09/audio/tts_s2_action_scene_lan110_module_09_2_language_speech_2.mp3",
+          "voice": "Daniel (macOS generated MP3)"
         }
       ],
       "createdAt": 1783202700002,
@@ -444,7 +462,10 @@
         {
           "id": "action_scene_lan110_module_09_3_case_speech_0",
           "type": "speech",
-          "text": "Now apply the language to a realistic company case."
+          "text": "Now apply the language to a realistic company case.",
+          "audioId": "tts_s3_action_scene_lan110_module_09_3_case_speech_0",
+          "audioUrl": "https://academy.linguistic-communication.com/api/classroom-media/lan110_module_09/audio/tts_s3_action_scene_lan110_module_09_3_case_speech_0.mp3",
+          "voice": "Daniel (macOS generated MP3)"
         },
         {
           "id": "action_scene_lan110_module_09_3_case_spot_1",
@@ -454,7 +475,10 @@
         {
           "id": "action_scene_lan110_module_09_3_case_speech_1",
           "type": "speech",
-          "text": "A profitable company struggles to pay suppliers because customers are paying late and inventory is absorbing cash."
+          "text": "A profitable company struggles to pay suppliers because customers are paying late and inventory is absorbing cash.",
+          "audioId": "tts_s3_action_scene_lan110_module_09_3_case_speech_1",
+          "audioUrl": "https://academy.linguistic-communication.com/api/classroom-media/lan110_module_09/audio/tts_s3_action_scene_lan110_module_09_3_case_speech_1.mp3",
+          "voice": "Daniel (macOS generated MP3)"
         },
         {
           "id": "action_scene_lan110_module_09_3_case_spot_2",
@@ -464,7 +488,10 @@
         {
           "id": "action_scene_lan110_module_09_3_case_speech_2",
           "type": "speech",
-          "text": "Use the three-step answer method: define the term, apply it to the facts, then explain the business consequence."
+          "text": "Use the three-step answer method: define the term, apply it to the facts, then explain the business consequence.",
+          "audioId": "tts_s3_action_scene_lan110_module_09_3_case_speech_2",
+          "audioUrl": "https://academy.linguistic-communication.com/api/classroom-media/lan110_module_09/audio/tts_s3_action_scene_lan110_module_09_3_case_speech_2.mp3",
+          "voice": "Daniel (macOS generated MP3)"
         }
       ],
       "createdAt": 1783202700003,
@@ -514,12 +541,18 @@
         {
           "id": "action_lan110_module_09_quiz_intro",
           "type": "speech",
-          "text": "Now test your understanding of cash flow and funds-flow statements. Choose the answer that best fits the business situation."
+          "text": "Now test your understanding of cash flow and funds-flow statements. Choose the answer that best fits the business situation.",
+          "audioId": "tts_s4_action_lan110_module_09_quiz_intro",
+          "audioUrl": "https://academy.linguistic-communication.com/api/classroom-media/lan110_module_09/audio/tts_s4_action_lan110_module_09_quiz_intro.mp3",
+          "voice": "Daniel (macOS generated MP3)"
         },
         {
           "id": "action_lan110_module_09_quiz_feedback",
           "type": "speech",
-          "text": "The correct answer is A. Revenue and expenses may be recognized before cash is received or paid. Late collections, inventory, and supplier timing can create liquidity pressure."
+          "text": "The correct answer is A. Revenue and expenses may be recognized before cash is received or paid. Late collections, inventory, and supplier timing can create liquidity pressure.",
+          "audioId": "tts_s4_action_lan110_module_09_quiz_feedback",
+          "audioUrl": "https://academy.linguistic-communication.com/api/classroom-media/lan110_module_09/audio/tts_s4_action_lan110_module_09_quiz_feedback.mp3",
+          "voice": "Daniel (macOS generated MP3)"
         }
       ],
       "createdAt": 1783202700004,
@@ -641,7 +674,10 @@
         {
           "id": "action_scene_lan110_module_09_5_recap_speech_0",
           "type": "speech",
-          "text": "Let us close with the key takeaway."
+          "text": "Let us close with the key takeaway.",
+          "audioId": "tts_s5_action_scene_lan110_module_09_5_recap_speech_0",
+          "audioUrl": "https://academy.linguistic-communication.com/api/classroom-media/lan110_module_09/audio/tts_s5_action_scene_lan110_module_09_5_recap_speech_0.mp3",
+          "voice": "Daniel (macOS generated MP3)"
         },
         {
           "id": "action_scene_lan110_module_09_5_recap_spot_1",
@@ -651,7 +687,10 @@
         {
           "id": "action_scene_lan110_module_09_5_recap_speech_1",
           "type": "speech",
-          "text": "Profit is not cash. Cash-flow language explains whether a business can meet obligations and finance operations."
+          "text": "Profit is not cash. Cash-flow language explains whether a business can meet obligations and finance operations.",
+          "audioId": "tts_s5_action_scene_lan110_module_09_5_recap_speech_1",
+          "audioUrl": "https://academy.linguistic-communication.com/api/classroom-media/lan110_module_09/audio/tts_s5_action_scene_lan110_module_09_5_recap_speech_1.mp3",
+          "voice": "Daniel (macOS generated MP3)"
         },
         {
           "id": "action_scene_lan110_module_09_5_recap_spot_2",
@@ -661,7 +700,10 @@
         {
           "id": "action_scene_lan110_module_09_5_recap_speech_2",
           "type": "speech",
-          "text": "Before you move to the next module, practise one concise spoken definition and one short written application paragraph."
+          "text": "Before you move to the next module, practise one concise spoken definition and one short written application paragraph.",
+          "audioId": "tts_s5_action_scene_lan110_module_09_5_recap_speech_2",
+          "audioUrl": "https://academy.linguistic-communication.com/api/classroom-media/lan110_module_09/audio/tts_s5_action_scene_lan110_module_09_5_recap_speech_2.mp3",
+          "voice": "Daniel (macOS generated MP3)"
         }
       ],
       "createdAt": 1783202700005,
