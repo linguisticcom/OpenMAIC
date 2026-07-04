@@ -297,7 +297,7 @@
       "status": "active",
       "generatedBy": "OpenMAIC",
       "createdAt": "2026-07-04T12:05:00.000Z",
-      "updatedAt": "2026-07-04T12:05:00.000Z",
+      "updatedAt": "2026-07-04T18:03:00.861Z",
       "estimatedDurationMinutes": 540,
       "coverAsset": "/avatars/teacher.svg",
       "coverTone": "amber",
@@ -306,7 +306,8 @@
           "id": "module-lan110-1",
           "title": "Course orientation: finance language and reporting goals",
           "description": "Set the LAN110 context, define the expected business-English outcomes, and connect corporate finance vocabulary to financial reporting tasks.",
-          "durationMinutes": 45
+          "durationMinutes": 10,
+          "classroomId": "a1wNxs34ed"
         },
         {
           "id": "module-lan110-2",
@@ -728,6 +729,24 @@
         "progressPercentage": 48
       },
       "createdAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": "activity-1783192455851-6b8818",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-04T19:14:15.852Z"
+    },
+    {
+      "id": "activity-1783192498066-20cae3",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-04T19:14:58.066Z"
     }
   ]
 }

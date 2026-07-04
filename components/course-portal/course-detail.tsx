@@ -1,7 +1,8 @@
+import Link from 'next/link';
 import { Building2, Clock3, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { CourseAccessForm } from '@/components/course-portal/course-access-form';
 import { CourseStartButton } from '@/components/course-portal/course-start-button';
-import type { Course, CourseAssignment, University } from '@/lib/types/course-portal';
+import type { Course, CourseAssignment, CourseModule, University } from '@/lib/types/course-portal';
 
 function formatDuration(minutes?: number) {
   if (!minutes) return 'Duration pending';
@@ -9,6 +10,28 @@ function formatDuration(minutes?: number) {
   const mins = minutes % 60;
   if (!hours) return `${mins} min`;
   return mins ? `${hours}h ${mins}m` : `${hours}h`;
+}
+
+function getClassroomPlaybackHref(classroomId: string) {
+  return `/classroom/${classroomId}?tts=browser`;
+}
+
+export function getCourseModuleHref(
+  course: Course,
+  university: University,
+  moduleOrId: CourseModule | string,
+) {
+  if (typeof moduleOrId !== 'string' && moduleOrId.classroomId) {
+    return getClassroomPlaybackHref(moduleOrId.classroomId);
+  }
+  const moduleId = typeof moduleOrId === 'string' ? moduleOrId : moduleOrId.id;
+  return `/u/${university.slug}/courses/${course.slug}/modules/${moduleId}`;
+}
+
+export function getCourseStartHref(course: Course, university: University) {
+  if (course.classroomId) return getClassroomPlaybackHref(course.classroomId);
+  const firstModule = course.modules[0];
+  return firstModule ? getCourseModuleHref(course, university, firstModule) : '#modules';
 }
 
 export function CourseDetail({
@@ -22,7 +45,7 @@ export function CourseDetail({
   assignment: CourseAssignment;
   accessGranted: boolean;
 }) {
-  const startHref = course.classroomId ? `/classroom/${course.classroomId}` : '#modules';
+  const startHref = getCourseStartHref(course, university);
 
   return (
     <section className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_380px] lg:px-8">
@@ -75,25 +98,39 @@ export function CourseDetail({
         <div id="modules" className="mt-8">
           <h2 className="text-2xl font-semibold tracking-normal text-slate-950">Modules</h2>
           <div className="mt-4 divide-y divide-slate-200 rounded-lg border border-slate-200">
-            {course.modules.map((module, index) => (
-              <div
-                key={module.id}
-                className="grid gap-3 p-4 sm:grid-cols-[44px_1fr_110px] sm:items-start"
-              >
-                <div className="flex size-10 items-center justify-center rounded-md bg-violet-50 text-sm font-semibold text-violet-700">
-                  {index + 1}
+            {course.modules.map((module, index) => {
+              const className = 'grid gap-3 p-4 sm:grid-cols-[44px_1fr_110px] sm:items-start';
+              const moduleContent = (
+                <>
+                  <div className="flex size-10 items-center justify-center rounded-md bg-violet-50 text-sm font-semibold text-violet-700">
+                    {index + 1}
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold tracking-normal text-slate-950">
+                      {module.title}
+                    </h3>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">{module.description}</p>
+                  </div>
+                  <div className="text-sm font-medium text-slate-500">
+                    {module.durationMinutes} min
+                  </div>
+                </>
+              );
+
+              return accessGranted ? (
+                <Link
+                  key={module.id}
+                  href={getCourseModuleHref(course, university, module)}
+                  className={`${className} transition hover:bg-violet-50/50 focus:outline-none focus:ring-2 focus:ring-violet-300`}
+                >
+                  {moduleContent}
+                </Link>
+              ) : (
+                <div key={module.id} className={className}>
+                  {moduleContent}
                 </div>
-                <div>
-                  <h3 className="text-base font-semibold tracking-normal text-slate-950">
-                    {module.title}
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">{module.description}</p>
-                </div>
-                <div className="text-sm font-medium text-slate-500">
-                  {module.durationMinutes} min
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </article>

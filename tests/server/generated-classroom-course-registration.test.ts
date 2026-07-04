@@ -156,8 +156,75 @@ describe('registerGeneratedClassroomCourse', () => {
       });
       expect(persisted.courses).toHaveLength(1);
       expect(persisted.assignments).toMatchObject([
-        { organizationId: 'org-school', courseId: course.id, assignedByUserId: 'user-platform-admin' },
+        {
+          organizationId: 'org-school',
+          courseId: course.id,
+          assignedByUserId: 'user-platform-admin',
+        },
       ]);
+    });
+  });
+
+  it('attaches a generated classroom to an existing course module instead of creating an orphan course', async () => {
+    const dataset = baseDataset();
+    dataset.courses.push({
+      id: 'course-lan110-corporate-finance',
+      title: 'LAN110 Corporate Finance',
+      slug: 'lan110-corporate-finance',
+      description: 'Corporate finance course shell.',
+      category: 'Corporate Finance',
+      status: 'draft',
+      generatedBy: 'OpenMAIC',
+      createdAt: now,
+      updatedAt: now,
+      modules: [
+        {
+          id: 'module-lan110-1',
+          title: 'Course orientation',
+          description: 'Start here.',
+          durationMinutes: 45,
+        },
+      ],
+    });
+
+    await withTempCatalog(dataset, async () => {
+      const coursePortalData = await import('@/lib/server/course-portal-data');
+
+      const course = await coursePortalData.registerGeneratedClassroomCourse({
+        classroomId: 'classroom-lan110-1',
+        stage: generatedStage({ id: 'classroom-lan110-1', name: 'LAN110 module 1' }),
+        scenes: generatedScenes(['Orientation', 'Vocabulary practice']),
+        metadata: {
+          attachToCourseId: 'course-lan110-corporate-finance',
+          attachToModuleId: 'module-lan110-1',
+          estimatedDurationMinutes: 45,
+          publishToOrganizationId: 'org-school',
+          publishStatus: 'active',
+        },
+      });
+
+      const persisted = await coursePortalData.getCoursePortalDataset();
+      expect(course.id).toBe('course-lan110-corporate-finance');
+      expect(persisted.courses).toHaveLength(1);
+      expect(persisted.courses[0]).toMatchObject({
+        id: 'course-lan110-corporate-finance',
+        status: 'active',
+        modules: [
+          {
+            id: 'module-lan110-1',
+            classroomId: 'classroom-lan110-1',
+          },
+        ],
+      });
+      expect(persisted.assignments).toMatchObject([
+        { organizationId: 'org-school', courseId: 'course-lan110-corporate-finance' },
+      ]);
+      await expect(
+        coursePortalData.getClassroomCourseAccessContext('classroom-lan110-1'),
+      ).resolves.toMatchObject({
+        course: { id: 'course-lan110-corporate-finance' },
+        assignments: [{ organizationId: 'org-school' }],
+      });
     });
   });
 

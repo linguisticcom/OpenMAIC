@@ -67,6 +67,8 @@ export interface GeneratedPortalCourseMetadata {
   category?: string;
   level?: string;
   estimatedDurationMinutes?: number;
+  attachToCourseId?: string;
+  attachToModuleId?: string;
   publishToOrganizationId?: string;
   publishToCohortId?: string;
   publishToTeacherUserId?: string;

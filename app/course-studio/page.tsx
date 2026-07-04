@@ -19,7 +19,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { Cohort, Organization } from '@/lib/types/course-portal';
+import type { Cohort, Course, Organization } from '@/lib/types/course-portal';
 import type { ClassroomEditPlan, CoursePlan, CourseResource } from '@/lib/types/course-studio';
 
 function buildHeaders() {
@@ -47,6 +47,7 @@ interface DashboardCatalogResponse {
   details?: string;
   organizations?: Organization[];
   cohorts?: Cohort[];
+  courses?: Course[];
 }
 
 export default function CourseStudioPage() {
@@ -71,9 +72,11 @@ export default function CourseStudioPage() {
   const [hasServerTts, setHasServerTts] = useState<boolean | null>(null);
   const [dashboardOrganizations, setDashboardOrganizations] = useState<Organization[]>([]);
   const [dashboardCohorts, setDashboardCohorts] = useState<Cohort[]>([]);
+  const [dashboardCourses, setDashboardCourses] = useState<Course[]>([]);
   const [publishToDashboard, setPublishToDashboard] = useState(false);
   const [publishOrganizationId, setPublishOrganizationId] = useState('');
   const [publishCohortId, setPublishCohortId] = useState('');
+  const [attachToCourseId, setAttachToCourseId] = useState('');
   const [dashboardCatalogError, setDashboardCatalogError] = useState<string | null>(null);
 
   const [editInstruction, setEditInstruction] = useState(
@@ -99,6 +102,11 @@ export default function CourseStudioPage() {
   const publishCohorts = useMemo(
     () => dashboardCohorts.filter((cohort) => cohort.organizationId === publishOrganizationId),
     [dashboardCohorts, publishOrganizationId],
+  );
+
+  const attachCourse = useMemo(
+    () => dashboardCourses.find((course) => course.id === attachToCourseId),
+    [attachToCourseId, dashboardCourses],
   );
 
   const loadResources = async () => {
@@ -139,9 +147,14 @@ export default function CourseStudioPage() {
           throw new Error(getApiErrorMessage(json, 'Failed to load dashboard publish targets'));
         }
         const organizations = json.organizations || [];
+        const courses = json.courses || [];
         setDashboardOrganizations(organizations);
         setDashboardCohorts(json.cohorts || []);
+        setDashboardCourses(courses);
         setPublishOrganizationId((current) => current || organizations[0]?.id || '');
+        setAttachToCourseId((current) =>
+          current && courses.some((course) => course.id === current) ? current : '',
+        );
       } catch (error) {
         setDashboardCatalogError(error instanceof Error ? error.message : String(error));
       }
@@ -315,6 +328,7 @@ export default function CourseStudioPage() {
     ]
       .filter(Boolean)
       .join('\n\n');
+    const attachModule = attachCourse?.modules[courseModule.order - 1];
 
     try {
       const response = await fetch('/api/generate-classroom', {
@@ -334,6 +348,12 @@ export default function CourseStudioPage() {
                 : courseModule.classroomPrompt,
             category: coursePlan.title,
             estimatedDurationMinutes: courseModule.durationMinutes,
+            ...(attachCourse && attachModule
+              ? {
+                  attachToCourseId: attachCourse.id,
+                  attachToModuleId: attachModule.id,
+                }
+              : {}),
             ...(publishToDashboard && publishOrganizationId
               ? {
                   publishToOrganizationId: publishOrganizationId,
@@ -689,10 +709,33 @@ export default function CourseStudioPage() {
                       className="mt-0.5 size-4 accent-primary"
                     />
                     <span>
-                      Publish each generated classroom to a client dashboard as an active assigned
-                      course.
+                      Publish generated classrooms to a client dashboard as active assigned course
+                      material.
                     </span>
                   </label>
+                  <label className="grid gap-2 text-xs font-medium text-muted-foreground">
+                    Attach generated module classrooms to existing course
+                    <select
+                      value={attachToCourseId}
+                      onChange={(event) => setAttachToCourseId(event.target.value)}
+                      disabled={dashboardCourses.length === 0}
+                      className="h-10 rounded-md border border-border bg-white px-3 text-sm text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100 disabled:opacity-60"
+                    >
+                      <option value="">Create separate generated courses</option>
+                      {dashboardCourses.map((course) => (
+                        <option key={course.id} value={course.id}>
+                          {course.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {attachCourse && (
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      Module classrooms will be attached by order to {attachCourse.title}; module 1
+                      updates {attachCourse.modules[0]?.title || 'the first module'}, module 2 the
+                      next module, and so on.
+                    </p>
+                  )}
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="grid gap-2 text-xs font-medium text-muted-foreground">
                       Client organization
@@ -733,8 +776,8 @@ export default function CourseStudioPage() {
                     <p className="text-xs text-destructive">{dashboardCatalogError}</p>
                   ) : (
                     <p className="text-xs leading-5 text-muted-foreground">
-                      If enabled, Course Studio creates the classroom, registers it as an active
-                      portal course, and assigns it to the selected client dashboard automatically.
+                      If enabled, Course Studio creates the classroom, attaches it to the selected
+                      course module when chosen, and assigns that course to the selected dashboard.
                     </p>
                   )}
                 </div>

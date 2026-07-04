@@ -43,6 +43,7 @@ export interface CourseModule {
   title: string;
   description: string;
   durationMinutes: number;
+  classroomId?: string;
 }
 
 export interface Course {

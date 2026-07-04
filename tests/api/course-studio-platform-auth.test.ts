@@ -162,6 +162,8 @@ describe('Course Studio API platform authorization', () => {
             description: 'Visible to the client dashboard.',
             category: 'AI',
             estimatedDurationMinutes: 30,
+            attachToCourseId: 'course-lan110',
+            attachToModuleId: 'module-lan110-1',
             publishToOrganizationId: 'org-esilv',
             publishToCohortId: 'cohort-esilv-m2',
             publishStatus: 'active',
@@ -176,6 +178,8 @@ describe('Course Studio API platform authorization', () => {
       expect.objectContaining({
         portalCourse: expect.objectContaining({
           title: 'Published module',
+          attachToCourseId: 'course-lan110',
+          attachToModuleId: 'module-lan110-1',
           publishToOrganizationId: 'org-esilv',
           publishToCohortId: 'cohort-esilv-m2',
           publishStatus: 'active',

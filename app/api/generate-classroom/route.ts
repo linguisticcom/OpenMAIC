@@ -54,6 +54,12 @@ export async function POST(req: NextRequest) {
               ...(typeof rawBody.portalCourse.estimatedDurationMinutes === 'number'
                 ? { estimatedDurationMinutes: rawBody.portalCourse.estimatedDurationMinutes }
                 : {}),
+              ...(typeof rawBody.portalCourse.attachToCourseId === 'string'
+                ? { attachToCourseId: rawBody.portalCourse.attachToCourseId }
+                : {}),
+              ...(typeof rawBody.portalCourse.attachToModuleId === 'string'
+                ? { attachToModuleId: rawBody.portalCourse.attachToModuleId }
+                : {}),
               ...(typeof rawBody.portalCourse.publishToOrganizationId === 'string'
                 ? { publishToOrganizationId: rawBody.portalCourse.publishToOrganizationId }
                 : {}),

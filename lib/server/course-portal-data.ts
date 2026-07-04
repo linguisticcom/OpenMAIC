@@ -1105,7 +1105,11 @@ export async function getClassroomCourseAccessContext(
   classroomId: string,
 ): Promise<{ course: Course; assignments: CourseAssignment[] } | undefined> {
   const dataset = await readDataset();
-  const course = dataset.courses.find((item) => item.classroomId === classroomId);
+  const course = dataset.courses.find(
+    (item) =>
+      item.classroomId === classroomId ||
+      item.modules.some((module) => module.classroomId === classroomId),
+  );
   if (!course) return undefined;
 
   return {
@@ -1210,6 +1214,74 @@ function buildGeneratedCourseModules(scenes: Scene[]): CourseModule[] {
   ];
 }
 
+function validateGeneratedCoursePublishTarget(params: {
+  dataset: CoursePortalDataset;
+  organizationId?: string;
+  cohortId?: string;
+  teacherUserId?: string;
+}) {
+  if (!params.organizationId) return;
+  const organization = params.dataset.organizations.find(
+    (item) => item.id === params.organizationId,
+  );
+  if (!organization) throw new Error('Publish target organization not found.');
+
+  const cohort = params.cohortId
+    ? params.dataset.cohorts.find(
+        (item) => item.id === params.cohortId && item.organizationId === organization.id,
+      )
+    : undefined;
+  if (params.cohortId && !cohort) throw new Error('Publish target cohort not found.');
+
+  const teacherManager = params.teacherUserId
+    ? params.dataset.users.find(
+        (item) =>
+          item.id === params.teacherUserId &&
+          item.organizationId === organization.id &&
+          item.role === 'teacher-manager',
+      )
+    : undefined;
+  if (params.teacherUserId && !teacherManager) {
+    throw new Error('Publish target teacher manager not found.');
+  }
+}
+
+function upsertGeneratedCourseAssignment(params: {
+  dataset: CoursePortalDataset;
+  courseId: string;
+  organizationId: string;
+  cohortId?: string;
+  teacherUserId?: string;
+  now: string;
+}) {
+  const existingAssignment = params.dataset.assignments.find(
+    (item) =>
+      item.organizationId === params.organizationId &&
+      item.courseId === params.courseId &&
+      item.cohortId === params.cohortId,
+  );
+
+  if (existingAssignment) {
+    if (params.teacherUserId) {
+      existingAssignment.teacherUserId = params.teacherUserId;
+    } else {
+      delete existingAssignment.teacherUserId;
+    }
+    return;
+  }
+
+  const assignment: CourseAssignment = {
+    id: `assign-${Date.now()}-${randomBytes(3).toString('hex')}`,
+    organizationId: params.organizationId,
+    courseId: params.courseId,
+    assignedAt: params.now,
+    assignedByUserId: PLATFORM_ADMIN_ID,
+  };
+  if (params.cohortId) assignment.cohortId = params.cohortId;
+  if (params.teacherUserId) assignment.teacherUserId = params.teacherUserId;
+  params.dataset.assignments.push(assignment);
+}
+
 export async function registerGeneratedClassroomCourse(params: {
   classroomId: string;
   stage: Stage;
@@ -1218,6 +1290,48 @@ export async function registerGeneratedClassroomCourse(params: {
 }): Promise<Course> {
   const dataset = await readDataset();
   const now = new Date().toISOString();
+  const publishOrganizationId = params.metadata?.publishToOrganizationId?.trim() || undefined;
+  const publishCohortId = params.metadata?.publishToCohortId?.trim() || undefined;
+  const publishTeacherUserId = params.metadata?.publishToTeacherUserId?.trim() || undefined;
+
+  validateGeneratedCoursePublishTarget({
+    dataset,
+    organizationId: publishOrganizationId,
+    cohortId: publishCohortId,
+    teacherUserId: publishTeacherUserId,
+  });
+
+  const attachCourseRef = params.metadata?.attachToCourseId?.trim();
+  const attachModuleId = params.metadata?.attachToModuleId?.trim();
+  const attachCourse = attachCourseRef ? findCourse(dataset, attachCourseRef) : undefined;
+  const attachModule = attachCourse?.modules.find((module) => module.id === attachModuleId);
+  if (attachCourseRef || attachModuleId) {
+    if (!attachCourse || !attachModule) {
+      throw new Error('Generated classroom attach target course/module not found.');
+    }
+
+    attachModule.classroomId = params.classroomId;
+    if (params.metadata?.estimatedDurationMinutes && params.metadata.estimatedDurationMinutes > 0) {
+      attachModule.durationMinutes = Math.round(params.metadata.estimatedDurationMinutes);
+    }
+    attachCourse.updatedAt = now;
+
+    if (publishOrganizationId) {
+      attachCourse.status = params.metadata?.publishStatus === 'draft' ? 'draft' : 'active';
+      upsertGeneratedCourseAssignment({
+        dataset,
+        courseId: attachCourse.id,
+        organizationId: publishOrganizationId,
+        cohortId: publishCohortId,
+        teacherUserId: publishTeacherUserId,
+        now,
+      });
+    }
+
+    await writeDataset(dataset);
+    return attachCourse;
+  }
+
   const courseId = `course-${params.classroomId}`;
   const existing = dataset.courses.find(
     (course) => course.classroomId === params.classroomId || course.id === courseId,
@@ -1261,33 +1375,7 @@ export async function registerGeneratedClassroomCourse(params: {
     classroomId: params.classroomId,
   };
 
-  const publishOrganizationId = params.metadata?.publishToOrganizationId?.trim() || undefined;
-  const publishCohortId = params.metadata?.publishToCohortId?.trim() || undefined;
-  const publishTeacherUserId = params.metadata?.publishToTeacherUserId?.trim() || undefined;
-
   if (publishOrganizationId) {
-    const organization = dataset.organizations.find((item) => item.id === publishOrganizationId);
-    if (!organization) throw new Error('Publish target organization not found.');
-
-    const cohort = publishCohortId
-      ? dataset.cohorts.find(
-          (item) => item.id === publishCohortId && item.organizationId === organization.id,
-        )
-      : undefined;
-    if (publishCohortId && !cohort) throw new Error('Publish target cohort not found.');
-
-    const teacherManager = publishTeacherUserId
-      ? dataset.users.find(
-          (item) =>
-            item.id === publishTeacherUserId &&
-            item.organizationId === organization.id &&
-            item.role === 'teacher-manager',
-        )
-      : undefined;
-    if (publishTeacherUserId && !teacherManager) {
-      throw new Error('Publish target teacher manager not found.');
-    }
-
     course.status = params.metadata?.publishStatus === 'draft' ? 'draft' : 'active';
   }
 
@@ -1298,31 +1386,14 @@ export async function registerGeneratedClassroomCourse(params: {
   }
 
   if (publishOrganizationId) {
-    const existingAssignment = dataset.assignments.find(
-      (item) =>
-        item.organizationId === publishOrganizationId &&
-        item.courseId === course.id &&
-        item.cohortId === publishCohortId,
-    );
-
-    if (existingAssignment) {
-      if (publishTeacherUserId) {
-        existingAssignment.teacherUserId = publishTeacherUserId;
-      } else {
-        delete existingAssignment.teacherUserId;
-      }
-    } else {
-      const assignment: CourseAssignment = {
-        id: `assign-${Date.now()}-${randomBytes(3).toString('hex')}`,
-        organizationId: publishOrganizationId,
-        courseId: course.id,
-        assignedAt: now,
-        assignedByUserId: PLATFORM_ADMIN_ID,
-      };
-      if (publishCohortId) assignment.cohortId = publishCohortId;
-      if (publishTeacherUserId) assignment.teacherUserId = publishTeacherUserId;
-      dataset.assignments.push(assignment);
-    }
+    upsertGeneratedCourseAssignment({
+      dataset,
+      courseId: course.id,
+      organizationId: publishOrganizationId,
+      cohortId: publishCohortId,
+      teacherUserId: publishTeacherUserId,
+      now,
+    });
   }
 
   await writeDataset(dataset);
