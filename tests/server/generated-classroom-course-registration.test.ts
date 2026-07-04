@@ -132,6 +132,35 @@ describe('registerGeneratedClassroomCourse', () => {
     });
   });
 
+  it('can immediately publish a generated classroom to a client dashboard', async () => {
+    await withTempCatalog(baseDataset(), async () => {
+      const coursePortalData = await import('@/lib/server/course-portal-data');
+
+      const course = await coursePortalData.registerGeneratedClassroomCourse({
+        classroomId: 'classroom-ai-2',
+        stage: generatedStage({ id: 'classroom-ai-2', name: 'Client-visible AI Course' }),
+        scenes: generatedScenes(['Kickoff', 'Practice']),
+        metadata: {
+          title: 'Client-visible AI Course',
+          description: 'A course that should appear in the tenant dashboard immediately.',
+          publishToOrganizationId: 'org-school',
+          publishStatus: 'active',
+        },
+      });
+
+      const persisted = await coursePortalData.getCoursePortalDataset();
+      expect(course).toMatchObject({
+        id: 'course-classroom-ai-2',
+        status: 'active',
+        classroomId: 'classroom-ai-2',
+      });
+      expect(persisted.courses).toHaveLength(1);
+      expect(persisted.assignments).toMatchObject([
+        { organizationId: 'org-school', courseId: course.id, assignedByUserId: 'user-platform-admin' },
+      ]);
+    });
+  });
+
   it('updates the same generated classroom without resetting admin-managed state', async () => {
     await withTempCatalog(baseDataset(), async () => {
       const coursePortalData = await import('@/lib/server/course-portal-data');

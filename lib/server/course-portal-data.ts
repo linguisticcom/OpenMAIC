@@ -1261,10 +1261,68 @@ export async function registerGeneratedClassroomCourse(params: {
     classroomId: params.classroomId,
   };
 
+  const publishOrganizationId = params.metadata?.publishToOrganizationId?.trim() || undefined;
+  const publishCohortId = params.metadata?.publishToCohortId?.trim() || undefined;
+  const publishTeacherUserId = params.metadata?.publishToTeacherUserId?.trim() || undefined;
+
+  if (publishOrganizationId) {
+    const organization = dataset.organizations.find((item) => item.id === publishOrganizationId);
+    if (!organization) throw new Error('Publish target organization not found.');
+
+    const cohort = publishCohortId
+      ? dataset.cohorts.find(
+          (item) => item.id === publishCohortId && item.organizationId === organization.id,
+        )
+      : undefined;
+    if (publishCohortId && !cohort) throw new Error('Publish target cohort not found.');
+
+    const teacherManager = publishTeacherUserId
+      ? dataset.users.find(
+          (item) =>
+            item.id === publishTeacherUserId &&
+            item.organizationId === organization.id &&
+            item.role === 'teacher-manager',
+        )
+      : undefined;
+    if (publishTeacherUserId && !teacherManager) {
+      throw new Error('Publish target teacher manager not found.');
+    }
+
+    course.status = params.metadata?.publishStatus === 'draft' ? 'draft' : 'active';
+  }
+
   if (existing) {
     Object.assign(existing, course);
   } else {
     dataset.courses.push(course);
+  }
+
+  if (publishOrganizationId) {
+    const existingAssignment = dataset.assignments.find(
+      (item) =>
+        item.organizationId === publishOrganizationId &&
+        item.courseId === course.id &&
+        item.cohortId === publishCohortId,
+    );
+
+    if (existingAssignment) {
+      if (publishTeacherUserId) {
+        existingAssignment.teacherUserId = publishTeacherUserId;
+      } else {
+        delete existingAssignment.teacherUserId;
+      }
+    } else {
+      const assignment: CourseAssignment = {
+        id: `assign-${Date.now()}-${randomBytes(3).toString('hex')}`,
+        organizationId: publishOrganizationId,
+        courseId: course.id,
+        assignedAt: now,
+        assignedByUserId: PLATFORM_ADMIN_ID,
+      };
+      if (publishCohortId) assignment.cohortId = publishCohortId;
+      if (publishTeacherUserId) assignment.teacherUserId = publishTeacherUserId;
+      dataset.assignments.push(assignment);
+    }
   }
 
   await writeDataset(dataset);

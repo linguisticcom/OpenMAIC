@@ -19,6 +19,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import type { Cohort, Organization } from '@/lib/types/course-portal';
 import type { ClassroomEditPlan, CoursePlan, CourseResource } from '@/lib/types/course-studio';
 
 function buildHeaders() {
@@ -38,6 +39,14 @@ interface ModuleGenerationJob {
   message: string;
   url?: string;
   error?: string;
+}
+
+interface DashboardCatalogResponse {
+  success: boolean;
+  error?: string;
+  details?: string;
+  organizations?: Organization[];
+  cohorts?: Cohort[];
 }
 
 export default function CourseStudioPage() {
@@ -60,6 +69,12 @@ export default function CourseStudioPage() {
   const [enableLocalComputerVoice, setEnableLocalComputerVoice] = useState(true);
   const [enableClassroomTts, setEnableClassroomTts] = useState(false);
   const [hasServerTts, setHasServerTts] = useState<boolean | null>(null);
+  const [dashboardOrganizations, setDashboardOrganizations] = useState<Organization[]>([]);
+  const [dashboardCohorts, setDashboardCohorts] = useState<Cohort[]>([]);
+  const [publishToDashboard, setPublishToDashboard] = useState(false);
+  const [publishOrganizationId, setPublishOrganizationId] = useState('');
+  const [publishCohortId, setPublishCohortId] = useState('');
+  const [dashboardCatalogError, setDashboardCatalogError] = useState<string | null>(null);
 
   const [editInstruction, setEditInstruction] = useState(
     'Make slide 3 simpler and add a short debate after it.',
@@ -79,6 +94,11 @@ export default function CourseStudioPage() {
   const selectedResources = useMemo(
     () => resources.filter((resource) => selectedResourceIds.includes(resource.id)),
     [resources, selectedResourceIds],
+  );
+
+  const publishCohorts = useMemo(
+    () => dashboardCohorts.filter((cohort) => cohort.organizationId === publishOrganizationId),
+    [dashboardCohorts, publishOrganizationId],
   );
 
   const loadResources = async () => {
@@ -106,6 +126,28 @@ export default function CourseStudioPage() {
 
   useEffect(() => {
     void loadResources();
+  }, []);
+
+  useEffect(() => {
+    const loadDashboardCatalog = async () => {
+      setDashboardCatalogError(null);
+
+      try {
+        const response = await fetch('/api/admin/course-assignments');
+        const json = (await response.json()) as DashboardCatalogResponse;
+        if (!response.ok || !json.success) {
+          throw new Error(getApiErrorMessage(json, 'Failed to load dashboard publish targets'));
+        }
+        const organizations = json.organizations || [];
+        setDashboardOrganizations(organizations);
+        setDashboardCohorts(json.cohorts || []);
+        setPublishOrganizationId((current) => current || organizations[0]?.id || '');
+      } catch (error) {
+        setDashboardCatalogError(error instanceof Error ? error.message : String(error));
+      }
+    };
+
+    void loadDashboardCatalog();
   }, []);
 
   useEffect(() => {
@@ -292,6 +334,13 @@ export default function CourseStudioPage() {
                 : courseModule.classroomPrompt,
             category: coursePlan.title,
             estimatedDurationMinutes: courseModule.durationMinutes,
+            ...(publishToDashboard && publishOrganizationId
+              ? {
+                  publishToOrganizationId: publishOrganizationId,
+                  ...(publishCohortId ? { publishToCohortId: publishCohortId } : {}),
+                  publishStatus: 'active' as const,
+                }
+              : {}),
           },
         }),
       });
@@ -627,6 +676,68 @@ export default function CourseStudioPage() {
                     Server voice is selected, but no server TTS provider is configured.
                   </p>
                 )}
+              </div>
+              <div className="md:col-span-2">
+                <Label>Dashboard publishing</Label>
+                <div className="mt-2 grid gap-3 rounded-md border border-border p-3 text-sm text-muted-foreground">
+                  <label className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      checked={publishToDashboard}
+                      onChange={(event) => setPublishToDashboard(event.target.checked)}
+                      disabled={dashboardOrganizations.length === 0}
+                      className="mt-0.5 size-4 accent-primary"
+                    />
+                    <span>
+                      Publish each generated classroom to a client dashboard as an active assigned
+                      course.
+                    </span>
+                  </label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="grid gap-2 text-xs font-medium text-muted-foreground">
+                      Client organization
+                      <select
+                        value={publishOrganizationId}
+                        onChange={(event) => {
+                          setPublishOrganizationId(event.target.value);
+                          setPublishCohortId('');
+                        }}
+                        disabled={!publishToDashboard || dashboardOrganizations.length === 0}
+                        className="h-10 rounded-md border border-border bg-white px-3 text-sm text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100 disabled:opacity-60"
+                      >
+                        {dashboardOrganizations.map((organization) => (
+                          <option key={organization.id} value={organization.id}>
+                            {organization.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="grid gap-2 text-xs font-medium text-muted-foreground">
+                      Cohort scope
+                      <select
+                        value={publishCohortId}
+                        onChange={(event) => setPublishCohortId(event.target.value)}
+                        disabled={!publishToDashboard || publishCohorts.length === 0}
+                        className="h-10 rounded-md border border-border bg-white px-3 text-sm text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100 disabled:opacity-60"
+                      >
+                        <option value="">All students in organization</option>
+                        {publishCohorts.map((cohort) => (
+                          <option key={cohort.id} value={cohort.id}>
+                            {cohort.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  {dashboardCatalogError ? (
+                    <p className="text-xs text-destructive">{dashboardCatalogError}</p>
+                  ) : (
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      If enabled, Course Studio creates the classroom, registers it as an active
+                      portal course, and assigns it to the selected client dashboard automatically.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 

@@ -135,4 +135,52 @@ describe('Course Studio API platform authorization', () => {
       await createClassroomGenerationJob(jsonRequest('/api/generate-classroom')),
     );
   });
+
+  it('preserves dashboard publish metadata when creating classroom jobs', async () => {
+    mocks.getCurrentPortalSession.mockResolvedValue({
+      user: { id: 'user-platform-admin', role: 'platform-admin' },
+    });
+    mocks.createClassroomGenerationJob.mockResolvedValue({
+      id: 'job-1',
+      status: 'queued',
+      step: 'queued',
+      message: 'queued',
+    });
+
+    const response = await createClassroomGenerationJob(
+      new Request('http://localhost/api/generate-classroom', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-forwarded-host': 'localhost',
+          'x-forwarded-proto': 'http',
+        },
+        body: JSON.stringify({
+          requirement: 'Create a short course module.',
+          portalCourse: {
+            title: 'Published module',
+            description: 'Visible to the client dashboard.',
+            category: 'AI',
+            estimatedDurationMinutes: 30,
+            publishToOrganizationId: 'org-esilv',
+            publishToCohortId: 'cohort-esilv-m2',
+            publishStatus: 'active',
+          },
+        }),
+      }) as NextRequest,
+    );
+
+    expect(response.status).toBe(202);
+    expect(mocks.createClassroomGenerationJob).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        portalCourse: expect.objectContaining({
+          title: 'Published module',
+          publishToOrganizationId: 'org-esilv',
+          publishToCohortId: 'cohort-esilv-m2',
+          publishStatus: 'active',
+        }),
+      }),
+    );
+  });
 });

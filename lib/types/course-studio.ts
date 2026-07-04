@@ -67,6 +67,10 @@ export interface GeneratedPortalCourseMetadata {
   category?: string;
   level?: string;
   estimatedDurationMinutes?: number;
+  publishToOrganizationId?: string;
+  publishToCohortId?: string;
+  publishToTeacherUserId?: string;
+  publishStatus?: 'active' | 'draft';
 }
 
 export interface CourseMemory {
