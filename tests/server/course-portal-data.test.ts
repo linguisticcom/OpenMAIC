@@ -1187,6 +1187,7 @@ describe('tenant visibility rules', () => {
     expect(studentDetail?.progress.map((item) => item.course.id).sort()).toEqual([
       'course-ai-foundations',
       'course-cloud-devsecops',
+      'course-lan110-corporate-finance',
       'course-secure-automation',
     ]);
     expect(studentDetail?.progress.every((item) => item.enrollment === undefined)).toBe(true);

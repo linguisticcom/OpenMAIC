@@ -105,6 +105,10 @@ jobs:
           rm -rf .next/standalone/.next/static .next/standalone/public
           cp -R .next/static .next/standalone/.next/static
           cp -R public .next/standalone/public
+          if [ -d data ]; then
+            rm -rf .next/standalone/data
+            cp -R data .next/standalone/data
+          fi
           if [ -f .env.local ]; then
             cp .env.local .next/standalone/.env.local
           fi
