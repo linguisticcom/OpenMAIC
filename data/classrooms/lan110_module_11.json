@@ -1,9 +1,9 @@
 {
-  "id": "a1wNxs34ed",
+  "id": "lan110_module_11",
   "stage": {
-    "id": "a1wNxs34ed",
-    "name": "Course orientation: finance language and reporting goals",
-    "description": "Set the LAN110 context, define the expected business-English outcomes, and connect corporate finance vocabulary to financial reporting tasks.",
+    "id": "lan110_module_11",
+    "name": "Agile finance, budgeting limits, and throughput accounting",
+    "description": "Use the Finance Agile references to discuss why traditional budgeting can constrain innovation and how throughput accounting reframes performance.",
     "languageDirective": "Deliver the LAN110 course in clear professional business English for ESILV M2 learners. Define finance vocabulary, use realistic company examples, and prepare learners for spoken and written assessment tasks.",
     "videoManifest": {},
     "style": "interactive",
@@ -41,15 +41,15 @@
   },
   "scenes": [
     {
-      "id": "scene_a1wNxs34ed_1_orientation",
-      "stageId": "a1wNxs34ed",
+      "id": "scene_lan110_module_11_1_orientation",
+      "stageId": "lan110_module_11",
       "type": "slide",
-      "title": "Course orientation: finance language and reporting goals",
+      "title": "Agile finance, budgeting limits, and throughput accounting",
       "order": 1,
       "content": {
         "type": "slide",
         "canvas": {
-          "id": "canvas_text-a1wnxs34ed-title",
+          "id": "canvas_text-lan110-module-11-title",
           "viewportSize": 1000,
           "viewportRatio": 0.5625,
           "theme": {
@@ -77,19 +77,19 @@
           },
           "elements": [
             {
-              "id": "text_a1wNxs34ed_title",
+              "id": "text_lan110_module_11_title",
               "type": "text",
               "left": 60,
               "top": 45,
               "width": 880,
               "height": 70,
-              "content": "<p style=\"font-size: 28px;\"><strong>Course orientation: finance language and reporting goals</strong></p>",
+              "content": "<p style=\"font-size: 28px;\"><strong>Agile finance, budgeting limits, and throughput accounting</strong></p>",
               "defaultFontName": "Microsoft YaHei",
               "defaultColor": "#1a3a5c",
               "rotate": 0
             },
             {
-              "id": "shape_a1wNxs34ed_bar",
+              "id": "shape_lan110_module_11_bar",
               "type": "shape",
               "left": 60,
               "top": 120,
@@ -105,31 +105,31 @@
               "rotate": 0
             },
             {
-              "id": "text_a1wNxs34ed_desc",
+              "id": "text_lan110_module_11_desc",
               "type": "text",
               "left": 60,
               "top": 150,
               "width": 880,
               "height": 88,
-              "content": "<p style=\"font-size: 18px;\">Set the LAN110 context, define the expected business-English outcomes, and connect corporate finance vocabulary to financial reporting tasks.</p>",
+              "content": "<p style=\"font-size: 18px;\">Use the Finance Agile references to discuss why traditional budgeting can constrain innovation and how throughput accounting reframes performance.</p>",
               "defaultFontName": "Microsoft YaHei",
               "defaultColor": "#334155",
               "rotate": 0
             },
             {
-              "id": "text_a1wNxs34ed_outcomes",
+              "id": "text_lan110_module_11_outcomes",
               "type": "text",
               "left": 60,
               "top": 265,
               "width": 880,
               "height": 160,
-              "content": "<p style=\"font-size: 20px;\"><strong>Learning outcomes</strong></p><p style=\"font-size: 16px;\">• Use precise business-English vocabulary for finance and reporting</p><p style=\"font-size: 16px;\">• Explain why reports support decisions by investors, managers, and creditors</p><p style=\"font-size: 16px;\">• Prepare short spoken and written answers for LAN110 assessment tasks</p>",
+              "content": "<p style=\"font-size: 20px;\"><strong>Learning outcomes</strong></p><p style=\"font-size: 16px;\">• Explain limits of traditional annual budgeting</p><p style=\"font-size: 16px;\">• Describe agile finance language for adaptation and feedback</p><p style=\"font-size: 16px;\">• Introduce throughput accounting as a performance lens</p>",
               "defaultFontName": "Microsoft YaHei",
               "defaultColor": "#1f2937",
               "rotate": 0
             },
             {
-              "id": "text_a1wNxs34ed_assessment",
+              "id": "text_lan110_module_11_assessment",
               "type": "text",
               "left": 60,
               "top": 455,
@@ -149,32 +149,32 @@
       },
       "actions": [
         {
-          "id": "action_scene_a1wNxs34ed_1_orientation_spot_0",
+          "id": "action_scene_lan110_module_11_1_orientation_spot_0",
           "type": "spotlight",
-          "elementId": "text_a1wNxs34ed_title"
+          "elementId": "text_lan110_module_11_title"
         },
         {
-          "id": "action_scene_a1wNxs34ed_1_orientation_speech_0",
+          "id": "action_scene_lan110_module_11_1_orientation_speech_0",
           "type": "speech",
-          "text": "Welcome to module 1: Course orientation: finance language and reporting goals. This lesson connects finance concepts with the business English you need for LAN110."
+          "text": "Welcome to module 11: Agile finance, budgeting limits, and throughput accounting. This lesson connects finance concepts with the business English you need for LAN110."
         },
         {
-          "id": "action_scene_a1wNxs34ed_1_orientation_spot_1",
+          "id": "action_scene_lan110_module_11_1_orientation_spot_1",
           "type": "spotlight",
-          "elementId": "shape_a1wNxs34ed_bar"
+          "elementId": "shape_lan110_module_11_bar"
         },
         {
-          "id": "action_scene_a1wNxs34ed_1_orientation_speech_1",
+          "id": "action_scene_lan110_module_11_1_orientation_speech_1",
           "type": "speech",
-          "text": "Set the LAN110 context, define the expected business-English outcomes, and connect corporate finance vocabulary to financial reporting tasks."
+          "text": "Use the Finance Agile references to discuss why traditional budgeting can constrain innovation and how throughput accounting reframes performance."
         },
         {
-          "id": "action_scene_a1wNxs34ed_1_orientation_spot_2",
+          "id": "action_scene_lan110_module_11_1_orientation_spot_2",
           "type": "spotlight",
-          "elementId": "text_a1wNxs34ed_desc"
+          "elementId": "text_lan110_module_11_desc"
         },
         {
-          "id": "action_scene_a1wNxs34ed_1_orientation_speech_2",
+          "id": "action_scene_lan110_module_11_1_orientation_speech_2",
           "type": "speech",
           "text": "By the end, you should be able to define the key terms, apply them to a realistic company case, and give a clear assessment-style explanation."
         }
@@ -183,15 +183,15 @@
       "updatedAt": 1783202700001
     },
     {
-      "id": "scene_a1wNxs34ed_2_language",
-      "stageId": "a1wNxs34ed",
+      "id": "scene_lan110_module_11_2_language",
+      "stageId": "lan110_module_11",
       "type": "slide",
       "title": "Key language and definitions",
       "order": 2,
       "content": {
         "type": "slide",
         "canvas": {
-          "id": "canvas_text-a1wnxs34ed-terms-title",
+          "id": "canvas_text-lan110-module-11-terms-title",
           "viewportSize": 1000,
           "viewportRatio": 0.5625,
           "theme": {
@@ -219,7 +219,7 @@
           },
           "elements": [
             {
-              "id": "text_a1wNxs34ed_terms_title",
+              "id": "text_lan110_module_11_terms_title",
               "type": "text",
               "left": 60,
               "top": 45,
@@ -231,7 +231,7 @@
               "rotate": 0
             },
             {
-              "id": "shape_a1wNxs34ed_terms_box",
+              "id": "shape_lan110_module_11_terms_box",
               "type": "shape",
               "left": 60,
               "top": 115,
@@ -247,19 +247,19 @@
               "rotate": 0
             },
             {
-              "id": "text_a1wNxs34ed_terms",
+              "id": "text_lan110_module_11_terms",
               "type": "text",
               "left": 90,
               "top": 145,
               "width": 330,
               "height": 305,
-              "content": "<p style=\"font-size: 17px;\">• stakeholder</p><p style=\"font-size: 17px;\">• financial reporting</p><p style=\"font-size: 17px;\">• corporate finance</p><p style=\"font-size: 17px;\">• evidence</p><p style=\"font-size: 17px;\">• decision usefulness</p>",
+              "content": "<p style=\"font-size: 17px;\">• agile finance</p><p style=\"font-size: 17px;\">• budgeting</p><p style=\"font-size: 17px;\">• forecast</p><p style=\"font-size: 17px;\">• variance</p><p style=\"font-size: 17px;\">• throughput</p><p style=\"font-size: 17px;\">• constraint</p><p style=\"font-size: 17px;\">• feedback loop</p>",
               "defaultFontName": "Microsoft YaHei",
               "defaultColor": "#1e293b",
               "rotate": 0
             },
             {
-              "id": "shape_a1wNxs34ed_explain_box",
+              "id": "shape_lan110_module_11_explain_box",
               "type": "shape",
               "left": 510,
               "top": 115,
@@ -275,7 +275,7 @@
               "rotate": 0
             },
             {
-              "id": "text_a1wNxs34ed_explain",
+              "id": "text_lan110_module_11_explain",
               "type": "text",
               "left": 540,
               "top": 145,
@@ -295,32 +295,32 @@
       },
       "actions": [
         {
-          "id": "action_scene_a1wNxs34ed_2_language_spot_0",
+          "id": "action_scene_lan110_module_11_2_language_spot_0",
           "type": "spotlight",
-          "elementId": "text_a1wNxs34ed_terms_title"
+          "elementId": "text_lan110_module_11_terms_title"
         },
         {
-          "id": "action_scene_a1wNxs34ed_2_language_speech_0",
+          "id": "action_scene_lan110_module_11_2_language_speech_0",
           "type": "speech",
           "text": "Let us build the vocabulary first. These are the terms you should be able to define without hesitation."
         },
         {
-          "id": "action_scene_a1wNxs34ed_2_language_spot_1",
+          "id": "action_scene_lan110_module_11_2_language_spot_1",
           "type": "spotlight",
-          "elementId": "shape_a1wNxs34ed_terms_box"
+          "elementId": "shape_lan110_module_11_terms_box"
         },
         {
-          "id": "action_scene_a1wNxs34ed_2_language_speech_1",
+          "id": "action_scene_lan110_module_11_2_language_speech_1",
           "type": "speech",
           "text": "A strong LAN110 answer does more than translate a word. It explains the role of the term in a company situation."
         },
         {
-          "id": "action_scene_a1wNxs34ed_2_language_spot_2",
+          "id": "action_scene_lan110_module_11_2_language_spot_2",
           "type": "spotlight",
-          "elementId": "text_a1wNxs34ed_terms"
+          "elementId": "text_lan110_module_11_terms"
         },
         {
-          "id": "action_scene_a1wNxs34ed_2_language_speech_2",
+          "id": "action_scene_lan110_module_11_2_language_speech_2",
           "type": "speech",
           "text": "Use a sentence such as: this matters because. That forces you to connect vocabulary to business meaning."
         }
@@ -329,15 +329,15 @@
       "updatedAt": 1783202700002
     },
     {
-      "id": "scene_a1wNxs34ed_3_case",
-      "stageId": "a1wNxs34ed",
+      "id": "scene_lan110_module_11_3_case",
+      "stageId": "lan110_module_11",
       "type": "slide",
       "title": "Business case practice",
       "order": 3,
       "content": {
         "type": "slide",
         "canvas": {
-          "id": "canvas_text-a1wnxs34ed-case-title",
+          "id": "canvas_text-lan110-module-11-case-title",
           "viewportSize": 1000,
           "viewportRatio": 0.5625,
           "theme": {
@@ -365,7 +365,7 @@
           },
           "elements": [
             {
-              "id": "text_a1wNxs34ed_case_title",
+              "id": "text_lan110_module_11_case_title",
               "type": "text",
               "left": 60,
               "top": 45,
@@ -377,7 +377,7 @@
               "rotate": 0
             },
             {
-              "id": "shape_a1wNxs34ed_case_box",
+              "id": "shape_lan110_module_11_case_box",
               "type": "shape",
               "left": 60,
               "top": 120,
@@ -393,19 +393,19 @@
               "rotate": 0
             },
             {
-              "id": "text_a1wNxs34ed_case",
+              "id": "text_lan110_module_11_case",
               "type": "text",
               "left": 90,
               "top": 145,
               "width": 820,
               "height": 85,
-              "content": "<p style=\"font-size: 18px;\">A new analyst joins a company finance team and must explain the same quarterly report to managers, creditors, and shareholders.</p>",
+              "content": "<p style=\"font-size: 18px;\">A product team needs to respond to market feedback, but a fixed annual budget makes it difficult to shift resources quickly.</p>",
               "defaultFontName": "Microsoft YaHei",
               "defaultColor": "#431407",
               "rotate": 0
             },
             {
-              "id": "text_a1wNxs34ed_steps",
+              "id": "text_lan110_module_11_steps",
               "type": "text",
               "left": 60,
               "top": 290,
@@ -417,7 +417,7 @@
               "rotate": 0
             },
             {
-              "id": "text_a1wNxs34ed_model",
+              "id": "text_lan110_module_11_model",
               "type": "text",
               "left": 60,
               "top": 480,
@@ -437,32 +437,32 @@
       },
       "actions": [
         {
-          "id": "action_scene_a1wNxs34ed_3_case_spot_0",
+          "id": "action_scene_lan110_module_11_3_case_spot_0",
           "type": "spotlight",
-          "elementId": "text_a1wNxs34ed_case_title"
+          "elementId": "text_lan110_module_11_case_title"
         },
         {
-          "id": "action_scene_a1wNxs34ed_3_case_speech_0",
+          "id": "action_scene_lan110_module_11_3_case_speech_0",
           "type": "speech",
           "text": "Now apply the language to a realistic company case."
         },
         {
-          "id": "action_scene_a1wNxs34ed_3_case_spot_1",
+          "id": "action_scene_lan110_module_11_3_case_spot_1",
           "type": "spotlight",
-          "elementId": "shape_a1wNxs34ed_case_box"
+          "elementId": "shape_lan110_module_11_case_box"
         },
         {
-          "id": "action_scene_a1wNxs34ed_3_case_speech_1",
+          "id": "action_scene_lan110_module_11_3_case_speech_1",
           "type": "speech",
-          "text": "A new analyst joins a company finance team and must explain the same quarterly report to managers, creditors, and shareholders."
+          "text": "A product team needs to respond to market feedback, but a fixed annual budget makes it difficult to shift resources quickly."
         },
         {
-          "id": "action_scene_a1wNxs34ed_3_case_spot_2",
+          "id": "action_scene_lan110_module_11_3_case_spot_2",
           "type": "spotlight",
-          "elementId": "text_a1wNxs34ed_case"
+          "elementId": "text_lan110_module_11_case"
         },
         {
-          "id": "action_scene_a1wNxs34ed_3_case_speech_2",
+          "id": "action_scene_lan110_module_11_3_case_speech_2",
           "type": "speech",
           "text": "Use the three-step answer method: define the term, apply it to the facts, then explain the business consequence."
         }
@@ -471,10 +471,10 @@
       "updatedAt": 1783202700003
     },
     {
-      "id": "scene_a1wNxs34ed_4_quiz",
-      "stageId": "a1wNxs34ed",
+      "id": "scene_lan110_module_11_4_quiz",
+      "stageId": "lan110_module_11",
       "type": "quiz",
-      "title": "Quick Check: Course orientation",
+      "title": "Quick Check: Agile finance, budgeting limits, and throughput accounting",
       "order": 4,
       "content": {
         "type": "quiz",
@@ -482,29 +482,29 @@
           {
             "id": "q1",
             "type": "single",
-            "question": "Why do finance learners need precise reporting language?",
+            "question": "What is one weakness of rigid annual budgeting?",
             "options": [
               {
                 "value": "A",
-                "label": "To decorate reports with technical words"
+                "label": "It can slow adaptation when conditions change"
               },
               {
                 "value": "B",
-                "label": "To help stakeholders understand evidence and decisions"
+                "label": "It always eliminates waste"
               },
               {
                 "value": "C",
-                "label": "To avoid doing calculations"
+                "label": "It removes the need for forecasts"
               },
               {
                 "value": "D",
-                "label": "To replace audited financial statements"
+                "label": "It automatically improves throughput"
               }
             ],
             "answer": [
-              "B"
+              "A"
             ],
-            "analysis": "Precise language connects financial evidence to decisions. It helps managers, creditors, shareholders, and auditors understand the same facts consistently.",
+            "analysis": "Rigid annual budgets can lock resources too early and make it harder to respond to new information or changing constraints.",
             "points": 10,
             "hasAnswer": true
           }
@@ -512,29 +512,29 @@
       },
       "actions": [
         {
-          "id": "action_a1wNxs34ed_quiz_intro",
+          "id": "action_lan110_module_11_quiz_intro",
           "type": "speech",
-          "text": "Now test your understanding of course orientation: finance language and reporting goals. Choose the answer that best fits the business situation."
+          "text": "Now test your understanding of agile finance, budgeting limits, and throughput accounting. Choose the answer that best fits the business situation."
         },
         {
-          "id": "action_a1wNxs34ed_quiz_feedback",
+          "id": "action_lan110_module_11_quiz_feedback",
           "type": "speech",
-          "text": "The correct answer is B. Precise language connects financial evidence to decisions. It helps managers, creditors, shareholders, and auditors understand the same facts consistently."
+          "text": "The correct answer is A. Rigid annual budgets can lock resources too early and make it harder to respond to new information or changing constraints."
         }
       ],
       "createdAt": 1783202700004,
       "updatedAt": 1783202700004
     },
     {
-      "id": "scene_a1wNxs34ed_5_recap",
-      "stageId": "a1wNxs34ed",
+      "id": "scene_lan110_module_11_5_recap",
+      "stageId": "lan110_module_11",
       "type": "slide",
       "title": "Recap and assessment preparation",
       "order": 5,
       "content": {
         "type": "slide",
         "canvas": {
-          "id": "canvas_text-a1wnxs34ed-recap-title",
+          "id": "canvas_text-lan110-module-11-recap-title",
           "viewportSize": 1000,
           "viewportRatio": 0.5625,
           "theme": {
@@ -562,7 +562,7 @@
           },
           "elements": [
             {
-              "id": "text_a1wNxs34ed_recap_title",
+              "id": "text_lan110_module_11_recap_title",
               "type": "text",
               "left": 60,
               "top": 45,
@@ -574,7 +574,7 @@
               "rotate": 0
             },
             {
-              "id": "shape_a1wNxs34ed_takeaway_box",
+              "id": "shape_lan110_module_11_takeaway_box",
               "type": "shape",
               "left": 60,
               "top": 125,
@@ -590,19 +590,19 @@
               "rotate": 0
             },
             {
-              "id": "text_a1wNxs34ed_takeaway",
+              "id": "text_lan110_module_11_takeaway",
               "type": "text",
               "left": 90,
               "top": 155,
               "width": 820,
               "height": 65,
-              "content": "<p style=\"font-size: 19px;\"><strong>LAN110 is not just vocabulary: every term must help you explain a business situation clearly and professionally.</strong></p>",
+              "content": "<p style=\"font-size: 19px;\"><strong>Agile finance emphasizes learning, adaptation, and constraints, not just static budget compliance.</strong></p>",
               "defaultFontName": "Microsoft YaHei",
               "defaultColor": "#14532d",
               "rotate": 0
             },
             {
-              "id": "text_a1wNxs34ed_prep",
+              "id": "text_lan110_module_11_prep",
               "type": "text",
               "left": 60,
               "top": 285,
@@ -614,7 +614,7 @@
               "rotate": 0
             },
             {
-              "id": "text_a1wNxs34ed_next",
+              "id": "text_lan110_module_11_next",
               "type": "text",
               "left": 60,
               "top": 475,
@@ -634,32 +634,32 @@
       },
       "actions": [
         {
-          "id": "action_scene_a1wNxs34ed_5_recap_spot_0",
+          "id": "action_scene_lan110_module_11_5_recap_spot_0",
           "type": "spotlight",
-          "elementId": "text_a1wNxs34ed_recap_title"
+          "elementId": "text_lan110_module_11_recap_title"
         },
         {
-          "id": "action_scene_a1wNxs34ed_5_recap_speech_0",
+          "id": "action_scene_lan110_module_11_5_recap_speech_0",
           "type": "speech",
           "text": "Let us close with the key takeaway."
         },
         {
-          "id": "action_scene_a1wNxs34ed_5_recap_spot_1",
+          "id": "action_scene_lan110_module_11_5_recap_spot_1",
           "type": "spotlight",
-          "elementId": "shape_a1wNxs34ed_takeaway_box"
+          "elementId": "shape_lan110_module_11_takeaway_box"
         },
         {
-          "id": "action_scene_a1wNxs34ed_5_recap_speech_1",
+          "id": "action_scene_lan110_module_11_5_recap_speech_1",
           "type": "speech",
-          "text": "LAN110 is not just vocabulary: every term must help you explain a business situation clearly and professionally."
+          "text": "Agile finance emphasizes learning, adaptation, and constraints, not just static budget compliance."
         },
         {
-          "id": "action_scene_a1wNxs34ed_5_recap_spot_2",
+          "id": "action_scene_lan110_module_11_5_recap_spot_2",
           "type": "spotlight",
-          "elementId": "text_a1wNxs34ed_takeaway"
+          "elementId": "text_lan110_module_11_takeaway"
         },
         {
-          "id": "action_scene_a1wNxs34ed_5_recap_speech_2",
+          "id": "action_scene_lan110_module_11_5_recap_speech_2",
           "type": "speech",
           "text": "Before you move to the next module, practise one concise spoken definition and one short written application paragraph."
         }
