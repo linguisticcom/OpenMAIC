@@ -1,0 +1,434 @@
+{
+  "id": "a1wNxs34ed",
+  "stage": {
+    "id": "a1wNxs34ed",
+    "name": "Net Present Value: Value Creation Principle",
+    "languageDirective": "Deliver the entire course in simple business English. Use clear, concise language suitable for ESILV M2 learners. Keep terminology precise but avoid unnecessary jargon. Assume learners are business students with some finance background.",
+    "videoManifest": {},
+    "style": "interactive",
+    "createdAt": 1783188155750,
+    "updatedAt": 1783188155750,
+    "generatedAgentConfigs": [
+      {
+        "id": "gen-server-0",
+        "name": "Dr. Claire Vance",
+        "role": "teacher",
+        "persona": "Dr. Vance is a patient and clear finance instructor who uses practical business examples to explain concepts. She speaks in simple, direct English and encourages questions to ensure understanding.",
+        "avatar": "/avatars/teacher.png",
+        "color": "#3b82f6",
+        "priority": 10
+      },
+      {
+        "id": "gen-server-1",
+        "name": "Alex Kim",
+        "role": "student",
+        "persona": "Alex is an attentive M2 learner who often asks clarifying questions to connect theory to real-world decisions. He prefers concise explanations with concrete numbers.",
+        "avatar": "/avatars/assist.png",
+        "color": "#10b981",
+        "priority": 5
+      },
+      {
+        "id": "gen-server-2",
+        "name": "Sophie Chen",
+        "role": "student",
+        "persona": "Sophie is a quick learner who likes to test her understanding with short quizzes. She appreciates when complex ideas are broken into simple steps and clear takeaways.",
+        "avatar": "/avatars/curious.png",
+        "color": "#f59e0b",
+        "priority": 5
+      }
+    ]
+  },
+  "scenes": [
+    {
+      "id": "scene_xe-metrHcB",
+      "stageId": "a1wNxs34ed",
+      "type": "slide",
+      "title": "Net Present Value: Value Creation Principle",
+      "order": 1,
+      "content": {
+        "type": "slide",
+        "canvas": {
+          "id": "BRuzHKdUuGIDnapQOMeTf",
+          "viewportSize": 1000,
+          "viewportRatio": 0.5625,
+          "theme": {
+            "backgroundColor": "#ffffff",
+            "themeColors": [
+              "#5b9bd5",
+              "#ed7d31",
+              "#a5a5a5",
+              "#ffc000",
+              "#4472c4"
+            ],
+            "fontColor": "#333333",
+            "fontName": "Microsoft YaHei",
+            "outline": {
+              "color": "#d14424",
+              "width": 2,
+              "style": "solid"
+            },
+            "shadow": {
+              "h": 0,
+              "v": 0,
+              "blur": 10,
+              "color": "#000000"
+            }
+          },
+          "elements": [
+            {
+              "id": "text_EWUa8IEg",
+              "type": "text",
+              "left": 60,
+              "top": 50,
+              "width": 880,
+              "height": 64,
+              "content": "<p style=\"font-size: 28px;\"><strong>Net Present Value: Value Creation Principle</strong></p>",
+              "defaultFontName": "Microsoft YaHei",
+              "defaultColor": "#1a3a5c",
+              "rotate": 0
+            },
+            {
+              "id": "shape_XEZUHcxp",
+              "type": "shape",
+              "left": 60,
+              "top": 124,
+              "width": 120,
+              "height": 4,
+              "path": "M 0 0 L 1 0 L 1 1 L 0 1 Z",
+              "viewBox": [
+                1,
+                1
+              ],
+              "fill": "#2b7a4b",
+              "fixedRatio": false,
+              "rotate": 0
+            },
+            {
+              "id": "shape_A3PTQian",
+              "type": "shape",
+              "left": 60,
+              "top": 160,
+              "width": 420,
+              "height": 90,
+              "path": "M 0 0 L 1 0 L 1 1 L 0 1 Z",
+              "viewBox": [
+                1,
+                1
+              ],
+              "fill": "#eaf2f8",
+              "fixedRatio": false,
+              "rotate": 0
+            },
+            {
+              "id": "text_jpRkFHgI",
+              "type": "text",
+              "left": 80,
+              "top": 168,
+              "width": 380,
+              "height": 76,
+              "content": "<p style=\"font-size: 18px; text-align: center;\"><b>NPV</b> = PV(Future Cash Flows) − Initial Investment</p>",
+              "defaultFontName": "Microsoft YaHei",
+              "defaultColor": "#1a3a5c",
+              "rotate": 0
+            },
+            {
+              "id": "text_ZOQhfLpO",
+              "type": "text",
+              "left": 540,
+              "top": 160,
+              "width": 400,
+              "height": 46,
+              "content": "<p style=\"font-size: 16px;\">✓  <b>NPV &gt; 0</b> → Project creates value</p>",
+              "defaultFontName": "Microsoft YaHei",
+              "defaultColor": "#2b7a4b",
+              "rotate": 0
+            },
+            {
+              "id": "text_Js5_2too",
+              "type": "text",
+              "left": 540,
+              "top": 210,
+              "width": 400,
+              "height": 46,
+              "content": "<p style=\"font-size: 16px;\">✗  <b>NPV &lt; 0</b> → Project destroys value</p>",
+              "defaultFontName": "Microsoft YaHei",
+              "defaultColor": "#c0392b",
+              "rotate": 0
+            },
+            {
+              "id": "shape_YKi_XRzs",
+              "type": "shape",
+              "left": 60,
+              "top": 275,
+              "width": 880,
+              "height": 1,
+              "path": "M 0 0 L 1 0 L 1 1 L 0 1 Z",
+              "viewBox": [
+                1,
+                1
+              ],
+              "fill": "#cccccc",
+              "fixedRatio": false,
+              "rotate": 0
+            },
+            {
+              "id": "text_uGT-lyFc",
+              "type": "text",
+              "left": 60,
+              "top": 290,
+              "width": 880,
+              "height": 46,
+              "content": "<p style=\"font-size: 20px;\"><b>Mini Example: New Equipment Investment</b></p>",
+              "defaultFontName": "Microsoft YaHei",
+              "defaultColor": "#1a3a5c",
+              "rotate": 0
+            },
+            {
+              "id": "text_tM9tjr7M",
+              "type": "text",
+              "left": 60,
+              "top": 340,
+              "width": 420,
+              "height": 76,
+              "content": "<p style=\"font-size: 16px;\">• Invest <b>€100,000</b> today</p><p style=\"font-size: 16px;\">• Receive <b>€55,000</b> per year for 3 years</p><p style=\"font-size: 16px;\">• Discount rate = <b>10%</b></p>",
+              "defaultFontName": "Microsoft YaHei",
+              "defaultColor": "#333333",
+              "rotate": 0
+            },
+            {
+              "id": "shape_YpkuFAyu",
+              "type": "shape",
+              "left": 540,
+              "top": 340,
+              "width": 400,
+              "height": 120,
+              "path": "M 0 0 L 1 0 L 1 1 L 0 1 Z",
+              "viewBox": [
+                1,
+                1
+              ],
+              "fill": "#fef9e7",
+              "fixedRatio": false,
+              "rotate": 0
+            },
+            {
+              "id": "text_4EH9Z_pC",
+              "type": "text",
+              "left": 560,
+              "top": 350,
+              "width": 360,
+              "height": 24,
+              "content": "<p style=\"font-size: 14px;\">NPV Calculation</p>",
+              "defaultFontName": "Microsoft YaHei",
+              "defaultColor": "#7f8c8d",
+              "rotate": 0
+            },
+            {
+              "id": "latex_e5pU2a3M",
+              "type": "latex",
+              "left": 560,
+              "top": 378,
+              "width": 360,
+              "height": 60,
+              "latex": "NPV = -100{,}000 + \\frac{55{,}000}{1.10} + \\frac{55{,}000}{1.10^2} + \\frac{55{,}000}{1.10^3}",
+              "color": "#1a3a5c",
+              "align": "left",
+              "html": "<span class=\"katex-display\"><span class=\"katex\"><span class=\"katex-html\" aria-hidden=\"true\"><span class=\"base\"><span class=\"strut\" style=\"height:0.6833em;\"></span><span class=\"mord mathnormal\" style=\"margin-right:0.10903em;\">N</span><span class=\"mord mathnormal\" style=\"margin-right:0.13889em;\">P</span><span class=\"mord mathnormal\" style=\"margin-right:0.22222em;\">V</span><span class=\"mspace\" style=\"margin-right:0.2778em;\"></span><span class=\"mrel\">=</span><span class=\"mspace\" style=\"margin-right:0.2778em;\"></span></span><span class=\"base\"><span class=\"strut\" style=\"height:0.8389em;vertical-align:-0.1944em;\"></span><span class=\"mord\">−</span><span class=\"mord\">100</span><span class=\"mord\"><span class=\"mpunct\">,</span></span><span class=\"mord\">000</span><span class=\"mspace\" style=\"margin-right:0.2222em;\"></span><span class=\"mbin\">+</span><span class=\"mspace\" style=\"margin-right:0.2222em;\"></span></span><span class=\"base\"><span class=\"strut\" style=\"height:2.0074em;vertical-align:-0.686em;\"></span><span class=\"mord\"><span class=\"mopen nulldelimiter\"></span><span class=\"mfrac\"><span class=\"vlist-t vlist-t2\"><span class=\"vlist-r\"><span class=\"vlist\" style=\"height:1.3214em;\"><span style=\"top:-2.314em;\"><span class=\"pstrut\" style=\"height:3em;\"></span><span class=\"mord\"><span class=\"mord\">1.10</span></span></span><span style=\"top:-3.23em;\"><span class=\"pstrut\" style=\"height:3em;\"></span><span class=\"frac-line\" style=\"border-bottom-width:0.04em;\"></span></span><span style=\"top:-3.677em;\"><span class=\"pstrut\" style=\"height:3em;\"></span><span class=\"mord\"><span class=\"mord\">55</span><span class=\"mord\"><span class=\"mpunct\">,</span></span><span class=\"mord\">000</span></span></span></span><span class=\"vlist-s\">​</span></span><span class=\"vlist-r\"><span class=\"vlist\" style=\"height:0.686em;\"><span></span></span></span></span></span><span class=\"mclose nulldelimiter\"></span></span><span class=\"mspace\" style=\"margin-right:0.2222em;\"></span><span class=\"mbin\">+</span><span class=\"mspace\" style=\"margin-right:0.2222em;\"></span></span><span class=\"base\"><span class=\"strut\" style=\"height:2.0074em;vertical-align:-0.686em;\"></span><span class=\"mord\"><span class=\"mopen nulldelimiter\"></span><span class=\"mfrac\"><span class=\"vlist-t vlist-t2\"><span class=\"vlist-r\"><span class=\"vlist\" style=\"height:1.3214em;\"><span style=\"top:-2.314em;\"><span class=\"pstrut\" style=\"height:3em;\"></span><span class=\"mord\"><span class=\"mord\">1.1</span><span class=\"mord\"><span class=\"mord\">0</span><span class=\"msupsub\"><span class=\"vlist-t\"><span class=\"vlist-r\"><span class=\"vlist\" style=\"height:0.7401em;\"><span style=\"top:-2.989em;margin-right:0.05em;\"><span class=\"pstrut\" style=\"height:2.7em;\"></span><span class=\"sizing reset-size6 size3 mtight\"><span class=\"mord mtight\">2</span></span></span></span></span></span></span></span></span></span><span style=\"top:-3.23em;\"><span class=\"pstrut\" style=\"height:3em;\"></span><span class=\"frac-line\" style=\"border-bottom-width:0.04em;\"></span></span><span style=\"top:-3.677em;\"><span class=\"pstrut\" style=\"height:3em;\"></span><span class=\"mord\"><span class=\"mord\">55</span><span class=\"mord\"><span class=\"mpunct\">,</span></span><span class=\"mord\">000</span></span></span></span><span class=\"vlist-s\">​</span></span><span class=\"vlist-r\"><span class=\"vlist\" style=\"height:0.686em;\"><span></span></span></span></span></span><span class=\"mclose nulldelimiter\"></span></span><span class=\"mspace\" style=\"margin-right:0.2222em;\"></span><span class=\"mbin\">+</span><span class=\"mspace\" style=\"margin-right:0.2222em;\"></span></span><span class=\"base\"><span class=\"strut\" style=\"height:2.0074em;vertical-align:-0.686em;\"></span><span class=\"mord\"><span class=\"mopen nulldelimiter\"></span><span class=\"mfrac\"><span class=\"vlist-t vlist-t2\"><span class=\"vlist-r\"><span class=\"vlist\" style=\"height:1.3214em;\"><span style=\"top:-2.314em;\"><span class=\"pstrut\" style=\"height:3em;\"></span><span class=\"mord\"><span class=\"mord\">1.1</span><span class=\"mord\"><span class=\"mord\">0</span><span class=\"msupsub\"><span class=\"vlist-t\"><span class=\"vlist-r\"><span class=\"vlist\" style=\"height:0.7401em;\"><span style=\"top:-2.989em;margin-right:0.05em;\"><span class=\"pstrut\" style=\"height:2.7em;\"></span><span class=\"sizing reset-size6 size3 mtight\"><span class=\"mord mtight\">3</span></span></span></span></span></span></span></span></span></span><span style=\"top:-3.23em;\"><span class=\"pstrut\" style=\"height:3em;\"></span><span class=\"frac-line\" style=\"border-bottom-width:0.04em;\"></span></span><span style=\"top:-3.677em;\"><span class=\"pstrut\" style=\"height:3em;\"></span><span class=\"mord\"><span class=\"mord\">55</span><span class=\"mord\"><span class=\"mpunct\">,</span></span><span class=\"mord\">000</span></span></span></span><span class=\"vlist-s\">​</span></span><span class=\"vlist-r\"><span class=\"vlist\" style=\"height:0.686em;\"><span></span></span></span></span></span><span class=\"mclose nulldelimiter\"></span></span></span></span></span></span>",
+              "fixedRatio": true,
+              "rotate": 0
+            },
+            {
+              "id": "text_IskV0Dxi",
+              "type": "text",
+              "left": 560,
+              "top": 440,
+              "width": 360,
+              "height": 24,
+              "content": "<p style=\"font-size: 16px;\"><b>NPV ≈ +€36,776</b>  →  Value created!</p>",
+              "defaultFontName": "Microsoft YaHei",
+              "defaultColor": "#2b7a4b",
+              "rotate": 0
+            },
+            {
+              "id": "shape_mMmwbIYj",
+              "type": "shape",
+              "left": 60,
+              "top": 460,
+              "width": 880,
+              "height": 70,
+              "path": "M 0 0 L 1 0 L 1 1 L 0 1 Z",
+              "viewBox": [
+                1,
+                1
+              ],
+              "fill": "#d5f5e3",
+              "fixedRatio": false,
+              "rotate": 0
+            },
+            {
+              "id": "text_mBTts6QK",
+              "type": "text",
+              "left": 80,
+              "top": 478,
+              "width": 840,
+              "height": 46,
+              "content": "<p style=\"font-size: 18px; text-align: center;\"><b>Decision Rule:</b> Accept if NPV &gt; 0  |  Reject if NPV &lt; 0</p>",
+              "defaultFontName": "Microsoft YaHei",
+              "defaultColor": "#1a3a5c",
+              "rotate": 0
+            }
+          ],
+          "background": {
+            "type": "solid",
+            "color": "#ffffff"
+          }
+        }
+      },
+      "actions": [
+        {
+          "id": "action_M2t6Sx45",
+          "type": "spotlight",
+          "elementId": "text_EWUa8IEg"
+        },
+        {
+          "id": "action_O3oRTXDW",
+          "type": "speech",
+          "text": "Next, let's look at the core principle of capital budgeting — Net Present Value, or NPV. Think of it as a simple question: does this project create more value than it costs?"
+        },
+        {
+          "id": "action_zufJIKD0",
+          "type": "spotlight",
+          "elementId": "text_jpRkFHgI"
+        },
+        {
+          "id": "action_yDHF4ft3",
+          "type": "speech",
+          "text": "The formula is straightforward: NPV equals the present value of all future cash flows minus the initial investment. We discount those future cash flows back to today's money, so we're comparing apples to apples."
+        },
+        {
+          "id": "action_tgkDlv0s",
+          "type": "spotlight",
+          "elementId": "text_ZOQhfLpO"
+        },
+        {
+          "id": "action_LMzZP__N",
+          "type": "speech",
+          "text": "If the result is greater than zero — positive NPV — the project creates value. That means it earns more than the required return, and we should move forward."
+        },
+        {
+          "id": "action_YXFA5F_r",
+          "type": "spotlight",
+          "elementId": "text_Js5_2too"
+        },
+        {
+          "id": "action_NhBQFHhI",
+          "type": "speech",
+          "text": "If NPV is negative, the project destroys value. You'd be better off investing elsewhere, or simply not investing at all."
+        },
+        {
+          "id": "action_yWUIjeDE",
+          "type": "spotlight",
+          "elementId": "text_uGT-lyFc"
+        },
+        {
+          "id": "action_z6oM7H5g",
+          "type": "speech",
+          "text": "Let's make this concrete with a mini example. Suppose you invest €100,000 today in new equipment, and you expect to receive €55,000 per year for three years. Assuming a 10% discount rate, what's the NPV?"
+        },
+        {
+          "id": "action_YGDM88It",
+          "type": "spotlight",
+          "elementId": "latex_e5pU2a3M"
+        },
+        {
+          "id": "action_IaRlWvJK",
+          "type": "speech",
+          "text": "Here's the calculation. We place the initial investment as a negative cash flow at time zero, then add each discounted cash flow. After doing the math, the present value of those three future payments is about €136,776, minus our €100,000 investment."
+        },
+        {
+          "id": "action_UPn62_0Q",
+          "type": "spotlight",
+          "elementId": "text_IskV0Dxi"
+        },
+        {
+          "id": "action_hDPw8Ik-",
+          "type": "speech",
+          "text": "That gives us an NPV of approximately €36,776 — clearly positive. This project creates significant value beyond the 10% return we demanded."
+        },
+        {
+          "id": "action_I2o5si54",
+          "type": "spotlight",
+          "elementId": "text_mBTts6QK"
+        },
+        {
+          "id": "action_7j0L1x9a",
+          "type": "speech",
+          "text": "So the decision rule is simple: accept any project where NPV is greater than zero, and reject when it's negative. That's the value creation principle in action."
+        }
+      ],
+      "createdAt": 1783188175147,
+      "updatedAt": 1783188175147
+    },
+    {
+      "id": "scene_FwL_NEi32z",
+      "stageId": "a1wNxs34ed",
+      "type": "quiz",
+      "title": "Quick Check: NPV Interpretation",
+      "order": 2,
+      "content": {
+        "type": "quiz",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "single",
+            "question": "In corporate finance, a positive Net Present Value (NPV) for a project typically means:",
+            "options": [
+              {
+                "value": "A",
+                "label": "The project will generate accounting profit in every year of its life"
+              },
+              {
+                "value": "B",
+                "label": "The project's expected return exceeds the cost of capital, creating shareholder value"
+              },
+              {
+                "value": "C",
+                "label": "The project has zero risk and guaranteed returns"
+              },
+              {
+                "value": "D",
+                "label": "The payback period is shorter than one year"
+              }
+            ],
+            "answer": [
+              "B"
+            ],
+            "analysis": "A positive NPV indicates that the project's expected cash inflows, discounted at the cost of capital, exceed the initial investment. This means the project's rate of return is higher than the required return (cost of capital), therefore it adds value to the firm. Option A is incorrect because accounting profit can vary year to year; NPV focuses on total value over time. Option C is incorrect because a positive NPV does not imply zero risk. Option D is incorrect because NPV is unrelated to payback period length.",
+            "points": 10,
+            "hasAnswer": true
+          }
+        ]
+      },
+      "actions": [
+        {
+          "id": "action_iixWYJki",
+          "type": "speech",
+          "text": "Now let's test your understanding of NPV with a quick question. Think about what a positive NPV really tells us about a project."
+        },
+        {
+          "id": "action_q-ciAZ0y",
+          "type": "speech",
+          "text": "Which option did you pick? The correct answer is B—the project's expected return exceeds the cost of capital, creating shareholder value. A positive NPV doesn't guarantee accounting profit every year, it's not risk-free, and it has nothing to do with a one-year payback period."
+        },
+        {
+          "id": "action_huJgCc6e",
+          "type": "speech",
+          "text": "The key takeaway: NPV measures value creation above and beyond the required return. If NPV is positive, the project adds value for shareholders after covering all costs, including the cost of capital."
+        }
+      ],
+      "createdAt": 1783188180838,
+      "updatedAt": 1783188180838
+    }
+  ],
+  "createdAt": "2026-07-04T18:03:00.853Z"
+}

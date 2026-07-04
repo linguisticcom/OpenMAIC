@@ -42,41 +42,44 @@ export default function ClassroomDetailPage() {
       // If IndexedDB had no data, try server-side storage (API-generated classrooms)
       if (!useStageStore.getState().stage) {
         log.info('No IndexedDB data, trying server-side storage for:', classroomId);
-        try {
-          const res = await fetch(`/api/classroom?id=${encodeURIComponent(classroomId)}`);
-          if (res.ok) {
-            const json = await res.json();
-            if (json.success && json.classroom) {
-              const { stage, scenes } = json.classroom;
-              useStageStore.getState().setStage(stage);
-              // Normalize legacy slide content (missing schemaVersion) on the
-              // way in, same as the store's setScenes/loadFromStorage paths —
-              // server snapshots predate the schema field.
-              const migrated = (scenes as Scene[]).map(migrateScene);
-              useStageStore.setState({
-                scenes: migrated,
-                currentSceneId: migrated[0]?.id ?? null,
-                // Match `loadFromStorage` semantics: mode is transient UI
-                // state, not persisted with the stage. Reset on every
-                // classroom load so SPA navigation doesn't carry Pro
-                // mode across.
-                mode: 'playback',
-              });
-              log.info('Loaded from server-side storage:', classroomId);
-
-              // Hydrate server-generated agents into IndexedDB + registry.
-              // Don't set selectedAgentIds here — the general agent
-              // restoration logic below (Path 2) handles it uniformly.
-              if (stage.generatedAgentConfigs?.length) {
-                const { saveGeneratedAgents } = await import('@/lib/orchestration/registry/store');
-                await saveGeneratedAgents(stage.id, stage.generatedAgentConfigs);
-                log.info('Hydrated server-generated agents for stage:', stage.id);
-              }
-            }
-          }
-        } catch (fetchErr) {
-          log.warn('Server-side storage fetch failed:', fetchErr);
+        const res = await fetch(`/api/classroom?id=${encodeURIComponent(classroomId)}`);
+        const json = await res.json().catch(() => null);
+        if (!res.ok) {
+          throw new Error(json?.error || `Classroom request failed (${res.status})`);
         }
+        if (!json?.success || !json.classroom) {
+          throw new Error('Classroom not found');
+        }
+
+        const { stage, scenes } = json.classroom;
+        useStageStore.getState().setStage(stage);
+        // Normalize legacy slide content (missing schemaVersion) on the
+        // way in, same as the store's setScenes/loadFromStorage paths —
+        // server snapshots predate the schema field.
+        const migrated = (scenes as Scene[]).map(migrateScene);
+        useStageStore.setState({
+          scenes: migrated,
+          currentSceneId: migrated[0]?.id ?? null,
+          // Match `loadFromStorage` semantics: mode is transient UI
+          // state, not persisted with the stage. Reset on every
+          // classroom load so SPA navigation doesn't carry Pro
+          // mode across.
+          mode: 'playback',
+        });
+        log.info('Loaded from server-side storage:', classroomId);
+
+        // Hydrate server-generated agents into IndexedDB + registry.
+        // Don't set selectedAgentIds here — the general agent
+        // restoration logic below (Path 2) handles it uniformly.
+        if (stage.generatedAgentConfigs?.length) {
+          const { saveGeneratedAgents } = await import('@/lib/orchestration/registry/store');
+          await saveGeneratedAgents(stage.id, stage.generatedAgentConfigs);
+          log.info('Hydrated server-generated agents for stage:', stage.id);
+        }
+      }
+
+      if (!useStageStore.getState().stage) {
+        throw new Error('Classroom not found');
       }
 
       // Restore completed media generation tasks from IndexedDB
