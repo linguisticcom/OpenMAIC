@@ -37,7 +37,7 @@ describe('organization settings API', () => {
     mocks.getCurrentPortalSession.mockResolvedValue({
       user: {
         id: 'user-platform-admin',
-        name: 'OpenMAIC Platform Admin',
+        name: 'Linguistic Communication Academy Platform Admin',
         email: 'platform@openmaic.local',
         role: 'platform-admin',
       },
@@ -108,7 +108,7 @@ describe('organization settings API', () => {
     mocks.getCurrentPortalSession.mockResolvedValue({
       user: {
         id: 'user-platform-admin',
-        name: 'OpenMAIC Platform Admin',
+        name: 'Linguistic Communication Academy Platform Admin',
         email: 'platform@openmaic.local',
         role: 'platform-admin',
       },

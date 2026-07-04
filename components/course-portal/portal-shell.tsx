@@ -8,9 +8,13 @@ export function CoursePortalShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-5 px-4 sm:px-6 lg:px-8">
           <Link href="/courses" className="flex items-center gap-3">
-            <img src="/logo-horizontal.png" alt="OpenMAIC" className="h-10 w-auto" />
-            <span className="hidden border-l border-slate-200 pl-3 text-sm font-semibold text-slate-600 sm:inline">
-              Course Portal
+            <img
+              src="/lc-academy-logo.webp"
+              alt="Linguistic Communication Academy"
+              className="h-12 w-auto object-contain"
+            />
+            <span className="hidden border-l border-slate-200 pl-3 text-sm font-semibold leading-tight text-slate-700 sm:inline">
+              Linguistic Communication Academy
             </span>
           </Link>
           <nav className="flex items-center gap-1 text-sm font-medium text-slate-600">
@@ -37,7 +41,7 @@ export function CoursePortalShell({ children }: { children: ReactNode }) {
 export function CoursePortalIntro({
   title,
   description,
-  label = 'OpenMAIC Course Portal',
+  label = 'Linguistic Communication Academy Course Portal',
 }: {
   title: string;
   description: string;

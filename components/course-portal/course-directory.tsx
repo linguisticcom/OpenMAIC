@@ -58,8 +58,8 @@ export function CourseDirectory({ cards, universities, fixedUniversityId }: Cour
             Available courses
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            Search assigned OpenMAIC courses and unlock restricted classrooms with your institution
-            code.
+            Search assigned Linguistic Communication Academy courses and unlock restricted
+            classrooms with your institution code.
           </p>
         </div>
         <div className="text-sm font-medium text-slate-500">

@@ -63,14 +63,21 @@ export function TenantShell({
                 href={admin ? '/admin/organizations' : '/dashboard'}
                 className="flex items-center gap-3"
               >
-                <img src="/logo-horizontal.png" alt="OpenMAIC" className="h-10 w-auto" />
+                <img
+                  src="/lc-academy-logo.webp"
+                  alt="Linguistic Communication Academy"
+                  className="h-14 w-auto object-contain"
+                />
+                <span className="max-w-36 text-sm font-semibold leading-tight text-slate-950">
+                  Linguistic Communication Academy
+                </span>
               </Link>
               <div className="mt-5 rounded-lg bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">
                   {admin ? 'Platform admin' : 'Organization account'}
                 </p>
                 <p className="mt-2 text-sm font-semibold text-slate-950">
-                  {organization?.name || 'OpenMAIC'}
+                  {organization?.name || 'Linguistic Communication Academy'}
                 </p>
                 <p className="mt-1 text-xs leading-5 text-slate-500">{user.name}</p>
               </div>

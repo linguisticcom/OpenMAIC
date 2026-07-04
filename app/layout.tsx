@@ -19,9 +19,9 @@ const inter = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'OpenMAIC',
+  title: 'Linguistic Communication Academy',
   description:
-    'The open-source AI interactive classroom. Upload a PDF to instantly generate an immersive, multi-agent learning experience.',
+    'Linguistic Communication Academy course portal and institutional learning dashboard.',
 };
 
 export default function RootLayout({

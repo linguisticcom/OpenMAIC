@@ -19,7 +19,7 @@ export default async function PublicOrganizationAccessPage({
       <div className="mx-auto grid min-h-screen max-w-5xl items-center gap-8 px-5 py-10 lg:grid-cols-[1fr_420px]">
         <section>
           <img
-            src={organization.logoUrl || '/logo-horizontal.png'}
+            src={organization.logoUrl || '/lc-academy-logo.webp'}
             alt=""
             className="h-12 w-auto"
           />

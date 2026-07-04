@@ -81,7 +81,7 @@ export function OrganizationSettingsForm({ organization }: { organization: Organ
             value={logoUrl}
             onChange={(event) => setLogoUrl(event.target.value)}
             className="h-11 rounded-md border border-slate-200 px-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100"
-            placeholder="/logo-horizontal.png"
+            placeholder="/lc-academy-logo.webp"
           />
         </label>
         <label className="grid gap-2 text-sm font-medium text-slate-700">

@@ -32,8 +32,8 @@ export function PublicAccessForm({
           No courses are available yet
         </h2>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-          Access codes can be used after this organization has at least one assigned OpenMAIC
-          course.
+          Access codes can be used after this organization has at least one assigned Linguistic
+          Communication Academy course.
         </p>
       </section>
     );

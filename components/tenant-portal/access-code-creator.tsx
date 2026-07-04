@@ -53,8 +53,8 @@ export function AccessCodeCreator({
           No assignable courses available
         </h2>
         <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">
-          Access codes can only be generated after a platform admin assigns an OpenMAIC-generated
-          course to this organization or teacher scope.
+          Access codes can only be generated after a platform admin assigns a Linguistic
+          Communication Academy course to this organization or teacher scope.
         </p>
       </section>
     );

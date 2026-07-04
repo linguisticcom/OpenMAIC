@@ -19,11 +19,37 @@ import {
   listVisibleOrganizationCohorts,
   listVisibleOrganizationCourseSummaries,
   listVisibleOrganizationStudentSummaries,
+  normalizeOrganizationBranding,
   trackStudentActivity,
   updateGlobalCourseStatus,
   validateCourseAccessGrant,
 } from '@/lib/server/course-portal-data';
 import type { CoursePortalDataset, PortalUser } from '@/lib/types/course-portal';
+
+describe('course portal dataset branding', () => {
+  it('normalizes legacy OpenMAIC organization branding from persisted catalogs', () => {
+    const now = '2026-07-04T09:00:00.000Z';
+    const normalized = normalizeOrganizationBranding({
+      id: 'org-legacy',
+      name: 'Legacy School',
+      slug: 'legacy-school',
+      logoUrl: '/logo-horizontal.png',
+      description:
+        'Business-focused AI literacy and product strategy courses generated with OpenMAIC.',
+      contactEmail: 'admin@legacy.example',
+      welcomeMessage: 'Access your OpenMAIC classrooms.',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    expect(normalized).toMatchObject({
+      logoUrl: '/lc-academy-logo.webp',
+      description:
+        'Business-focused AI literacy and product strategy courses curated for Linguistic Communication Academy.',
+      welcomeMessage: 'Access your Linguistic Communication Academy classrooms.',
+    });
+  });
+});
 
 describe('validateCourseAccessGrant', () => {
   it('accepts a valid code for the assigned university and cohort', async () => {

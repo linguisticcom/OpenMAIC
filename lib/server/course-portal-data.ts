@@ -56,12 +56,13 @@ const seedOrganizations: Organization[] = [
     id: 'org-esilv',
     name: 'ESILV',
     slug: 'esilv',
-    logoUrl: '/logo-horizontal.png',
+    logoUrl: '/lc-academy-logo.webp',
     description:
       'Engineering and digital innovation courses prepared for cybersecurity, cloud, and AI cohorts.',
     contactEmail: 'learning-admin@esilv.example',
     subscriptionStatus: 'active',
-    welcomeMessage: 'Access your OpenMAIC classrooms for platform, security, and AI engineering.',
+    welcomeMessage:
+      'Access your Linguistic Communication Academy classrooms for platform, security, and AI engineering.',
     createdAt: '2026-06-01T09:00:00.000Z',
     updatedAt: SEED_NOW,
   },
@@ -69,7 +70,7 @@ const seedOrganizations: Organization[] = [
     id: 'org-ingetis',
     name: 'INGETIS',
     slug: 'ingetis',
-    logoUrl: '/logo-horizontal.png',
+    logoUrl: '/lc-academy-logo.webp',
     description:
       'Professional training courses for cloud infrastructure, DevOps delivery, and applied automation.',
     contactEmail: 'training@ingetis.example',
@@ -82,9 +83,9 @@ const seedOrganizations: Organization[] = [
     id: 'org-psb',
     name: 'Paris School of Business',
     slug: 'psb',
-    logoUrl: '/logo-horizontal.png',
+    logoUrl: '/lc-academy-logo.webp',
     description:
-      'Business-focused AI literacy and product strategy courses generated with OpenMAIC.',
+      'Business-focused AI literacy and product strategy courses curated for Linguistic Communication Academy.',
     contactEmail: 'faculty-success@psb.example',
     subscriptionStatus: 'active',
     welcomeMessage: 'Continue your assigned learning path with institution-specific access.',
@@ -96,7 +97,7 @@ const seedOrganizations: Organization[] = [
 const seedUsers: PortalUser[] = [
   {
     id: PLATFORM_ADMIN_ID,
-    name: 'OpenMAIC Platform Admin',
+    name: 'Linguistic Communication Academy Platform Admin',
     email: 'platform@openmaic.local',
     passwordHash: hashPortalPassword('openmaic-demo'),
     role: 'platform-admin',
@@ -699,20 +700,40 @@ function legacyOrganizationId(value: string | undefined): string | undefined {
   return value;
 }
 
+export function normalizeOrganizationBranding(organization: Organization): Organization {
+  return {
+    ...organization,
+    logoUrl:
+      organization.logoUrl === '/logo-horizontal.png'
+        ? '/lc-academy-logo.webp'
+        : organization.logoUrl,
+    description: organization.description.replace(
+      'courses generated with OpenMAIC',
+      'courses curated for Linguistic Communication Academy',
+    ),
+    welcomeMessage: organization.welcomeMessage?.replace(
+      'OpenMAIC classrooms',
+      'Linguistic Communication Academy classrooms',
+    ),
+  };
+}
+
 function normalizeDataset(
   parsed: Partial<CoursePortalDataset> & { universities?: University[] },
 ): CoursePortalDataset {
-  const organizations = Array.isArray(parsed.organizations)
-    ? parsed.organizations
-    : Array.isArray(parsed.universities)
-      ? parsed.universities.map((university) => ({
-          ...university,
-          id: legacyOrganizationId(university.id) || university.id,
-          contactEmail: university.contactEmail || `admin@${university.slug}.example`,
-          createdAt: university.createdAt || SEED_NOW,
-          updatedAt: university.updatedAt || SEED_NOW,
-        }))
-      : [];
+  const organizations = (
+    Array.isArray(parsed.organizations)
+      ? parsed.organizations
+      : Array.isArray(parsed.universities)
+        ? parsed.universities.map((university) => ({
+            ...university,
+            id: legacyOrganizationId(university.id) || university.id,
+            contactEmail: university.contactEmail || `admin@${university.slug}.example`,
+            createdAt: university.createdAt || SEED_NOW,
+            updatedAt: university.updatedAt || SEED_NOW,
+          }))
+        : []
+  ).map(normalizeOrganizationBranding);
 
   return {
     organizations,
@@ -1168,7 +1189,7 @@ function sceneToCourseModule(scene: Scene, index: number): CourseModule {
   return {
     id: `module-${scene.id}`,
     title: trimText(scene.title, 120) || `Scene ${index + 1}`,
-    description: `OpenMAIC-generated ${typeLabel} scene ${index + 1}.`,
+    description: `Linguistic Communication Academy ${typeLabel} scene ${index + 1}.`,
     durationMinutes: 10,
   };
 }
@@ -1183,7 +1204,7 @@ function buildGeneratedCourseModules(scenes: Scene[]): CourseModule[] {
     {
       id: 'module-overview',
       title: 'Classroom overview',
-      description: 'OpenMAIC-generated classroom content.',
+      description: 'Linguistic Communication Academy classroom content.',
       durationMinutes: 10,
     },
   ];
@@ -1204,12 +1225,13 @@ export async function registerGeneratedClassroomCourse(params: {
   const title =
     trimText(params.metadata?.title, 160) ||
     trimText(params.stage.name, 160) ||
-    `OpenMAIC Classroom ${params.classroomId}`;
+    `Linguistic Communication Academy Classroom ${params.classroomId}`;
   const description =
     trimText(params.metadata?.description, 420) ||
     trimText(params.stage.description, 420) ||
-    `OpenMAIC-generated classroom with ${params.scenes.length} scene${params.scenes.length === 1 ? '' : 's'}.`;
-  const category = trimText(params.metadata?.category, 80) || 'OpenMAIC Generated';
+    `Linguistic Communication Academy classroom with ${params.scenes.length} scene${params.scenes.length === 1 ? '' : 's'}.`;
+  const category =
+    trimText(params.metadata?.category, 80) || 'Linguistic Communication Academy Generated';
   const level = trimText(params.metadata?.level, 80);
   const modules = buildGeneratedCourseModules(params.scenes);
   const estimatedDurationMinutes =

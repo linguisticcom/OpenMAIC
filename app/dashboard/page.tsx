@@ -34,7 +34,7 @@ export default async function DashboardPage() {
         description="Tenant-scoped course activity, access-code status, and student progress."
         leading={
           <img
-            src={summary.organization.logoUrl || '/logo-horizontal.png'}
+            src={summary.organization.logoUrl || '/lc-academy-logo.webp'}
             alt={`${summary.organization.name} logo`}
             className="max-h-10 max-w-28 object-contain"
           />

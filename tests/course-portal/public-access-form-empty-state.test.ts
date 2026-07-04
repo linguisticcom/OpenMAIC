@@ -20,7 +20,7 @@ describe('PublicAccessForm empty state', () => {
     );
 
     expect(html).toContain('No courses are available yet');
-    expect(html).toContain('at least one assigned OpenMAIC course');
+    expect(html).toContain('at least one assigned Linguistic Communication Academy course');
     expect(html).not.toContain('<form');
     expect(html).not.toContain('Unlock course</button>');
   });
