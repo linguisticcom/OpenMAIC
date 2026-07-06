@@ -5,7 +5,39 @@ import {
   listOrganizationAdminUsers,
   listOrganizations,
 } from '@/lib/server/course-portal-data';
+import { getAppBaseUrl } from '@/lib/server/auth-tokens';
+import { sendAuthEmail } from '@/lib/server/email';
 import { getCurrentPortalSession, isPlatformAdmin } from '@/lib/server/organization-session';
+
+function buildOrganizationAdminWelcomeEmail(params: {
+  organizationName: string;
+  organizationSlug: string;
+  contactEmail: string;
+  subscriptionStatus?: string;
+  adminName: string;
+  adminEmail: string;
+  adminPassword: string;
+  baseUrl: string;
+}) {
+  const organizationPortalUrl = `${params.baseUrl}/u/${encodeURIComponent(params.organizationSlug)}`;
+  const loginUrl = `${params.baseUrl}/login`;
+
+  return [
+    'Your LC Academy organization admin account is ready.',
+    '',
+    `Organization: ${params.organizationName}`,
+    `Organization portal: ${organizationPortalUrl}`,
+    `Login URL: ${loginUrl}`,
+    `Contact email: ${params.contactEmail}`,
+    `Subscription: ${params.subscriptionStatus || 'trial'}`,
+    '',
+    `Admin name: ${params.adminName}`,
+    `Admin email: ${params.adminEmail}`,
+    `Temporary password: ${params.adminPassword}`,
+    '',
+    'Please sign in and change this temporary password after first login.',
+  ].join('\n');
+}
 
 export async function GET() {
   const session = await getCurrentPortalSession();
@@ -114,5 +146,27 @@ export async function POST(request: Request) {
   });
 
   if ('error' in result) return apiError('INVALID_REQUEST', 400, result.error);
-  return apiSuccess(result, 201);
+
+  let adminWelcomeEmailSent = false;
+  try {
+    const emailResult = await sendAuthEmail({
+      to: result.adminUser.email,
+      subject: `LC Academy admin account for ${result.organization.name}`,
+      text: buildOrganizationAdminWelcomeEmail({
+        organizationName: result.organization.name,
+        organizationSlug: result.organization.slug,
+        contactEmail: result.organization.contactEmail,
+        subscriptionStatus: result.organization.subscriptionStatus,
+        adminName: result.adminUser.name,
+        adminEmail: result.adminUser.email,
+        adminPassword: adminPasswordField.value || '',
+        baseUrl: getAppBaseUrl(request),
+      }),
+    });
+    adminWelcomeEmailSent = emailResult.ok;
+  } catch {
+    console.warn('Organization admin welcome email was not sent.');
+  }
+
+  return apiSuccess({ ...result, adminWelcomeEmailSent }, 201);
 }

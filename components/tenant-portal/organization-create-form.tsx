@@ -60,12 +60,16 @@ export function OrganizationCreateForm() {
         error?: string;
         organization?: { name: string };
         adminUser?: { email: string };
+        adminWelcomeEmailSent?: boolean;
       };
       if (!response.ok || !payload.success) {
         throw new Error(payload.error || 'Unable to create organization.');
       }
+      const createdMessage = `${payload.organization?.name || name} created with admin ${payload.adminUser?.email || adminEmail}.`;
       setMessage(
-        `${payload.organization?.name || name} created with admin ${payload.adminUser?.email || adminEmail}.`,
+        payload.adminWelcomeEmailSent === false
+          ? `${createdMessage} Warning: the admin welcome email was not sent. Check email provider configuration.`
+          : `${createdMessage} Admin welcome email sent.`,
       );
       setName('');
       setSlug('');

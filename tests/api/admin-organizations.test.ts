@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET, POST } from '@/app/api/admin/organizations/route';
 
 const mocks = vi.hoisted(() => ({
@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getOrganizationDashboardSummary: vi.fn(),
   listOrganizationAdminUsers: vi.fn(),
   listOrganizations: vi.fn(),
+  sendAuthEmail: vi.fn(),
 }));
 
 vi.mock('@/lib/server/organization-session', () => ({
@@ -21,6 +22,10 @@ vi.mock('@/lib/server/course-portal-data', () => ({
   listOrganizations: mocks.listOrganizations,
 }));
 
+vi.mock('@/lib/server/email', () => ({
+  sendAuthEmail: mocks.sendAuthEmail,
+}));
+
 function request(body: Record<string, unknown>) {
   return new Request('http://localhost/api/admin/organizations', {
     method: 'POST',
@@ -30,6 +35,10 @@ function request(body: Record<string, unknown>) {
 }
 
 describe('admin organizations API', () => {
+  beforeEach(() => {
+    mocks.sendAuthEmail.mockResolvedValue({ ok: true });
+  });
+
   afterEach(() => {
     vi.clearAllMocks();
   });
@@ -115,7 +124,7 @@ describe('admin organizations API', () => {
     expect(mocks.createOrganizationWithAdmin).not.toHaveBeenCalled();
   });
 
-  it('creates an organization with its first admin user without returning a password hash', async () => {
+  it('creates an organization with its first admin user and emails the login details', async () => {
     mocks.getCurrentPortalSession.mockResolvedValue({
       user: { id: 'user-platform-admin', role: 'platform-admin' },
     });
@@ -124,6 +133,8 @@ describe('admin organizations API', () => {
         id: 'org-new-school',
         name: 'New School',
         slug: 'new-school',
+        contactEmail: 'contact@new-school.example',
+        subscriptionStatus: 'trial',
       },
       adminUser: {
         id: 'user-new-school-admin',
@@ -159,9 +170,21 @@ describe('admin organizations API', () => {
       adminEmail: 'admin@new-school.example',
       adminPassword: 'temporary-demo-password',
     });
+    expect(mocks.sendAuthEmail).toHaveBeenCalledWith({
+      to: 'admin@new-school.example',
+      subject: 'LC Academy admin account for New School',
+      text: expect.stringContaining('Temporary password: temporary-demo-password'),
+    });
+    expect(mocks.sendAuthEmail.mock.calls[0][0].text).toContain(
+      'Login URL: http://localhost/login',
+    );
+    expect(mocks.sendAuthEmail.mock.calls[0][0].text).toContain(
+      'Organization portal: http://localhost/u/new-school',
+    );
     const payload = await response.json();
     expect(payload).toMatchObject({
       success: true,
+      adminWelcomeEmailSent: true,
       organization: { id: 'org-new-school' },
       adminUser: { id: 'user-new-school-admin', role: 'organization-admin' },
     });
