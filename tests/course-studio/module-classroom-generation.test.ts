@@ -121,4 +121,35 @@ describe('Course Studio module classroom generation helpers', () => {
       publishStatus: 'active',
     });
   });
+
+  it('can fall back to a separate generated course when an attach target is incompatible', () => {
+    const courseModule = modulePlan({
+      id: 'generated-module-3',
+      order: 3,
+      title: 'Enterprise AI Adoption Patterns in 2026',
+      classroomPrompt: 'Teach practical enterprise AI adoption patterns.',
+    });
+
+    const request = buildModuleClassroomGenerationRequest({
+      coursePlan: plan(courseModule),
+      courseModule,
+      audience: 'professional learners',
+      courseResourceIds: [],
+      attachCourse: course({ title: 'AI Foundations for Higher Education' }),
+      publishToDashboard: true,
+      publishOrganizationId: 'org-esilv',
+      enableImageGeneration: false,
+      enableVideoGeneration: false,
+      enableTTS: false,
+      allowSeparateGeneratedCourseOnAttachMismatch: true,
+    });
+
+    expect(request.attachWarning).toMatch(/Could not safely attach module/);
+    expect(request.portalCourse.attachToCourseId).toBeUndefined();
+    expect(request.portalCourse.attachToModuleId).toBeUndefined();
+    expect(request.portalCourse).toMatchObject({
+      publishToOrganizationId: 'org-esilv',
+      publishStatus: 'active',
+    });
+  });
 });

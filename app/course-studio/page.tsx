@@ -321,6 +321,7 @@ export default function CourseStudioPage() {
         enableVideoGeneration: enableClassroomVideo,
         enableImageGeneration: enableClassroomImages,
         enableTTS: enableClassroomTts && !enableLocalComputerVoice,
+        allowSeparateGeneratedCourseOnAttachMismatch: true,
       });
 
       const response = await fetch('/api/generate-classroom', {
@@ -339,7 +340,9 @@ export default function CourseStudioPage() {
           jobId: json.jobId,
           status: json.status,
           progress: 0,
-          message: json.message || 'Classroom generation queued',
+          message: requestBody.attachWarning
+            ? `${json.message || 'Classroom generation queued'}; selected course did not match this module, so a separate generated course will be created.`
+            : json.message || 'Classroom generation queued',
         },
       }));
 

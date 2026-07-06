@@ -17,6 +17,7 @@ export interface BuildModuleClassroomGenerationRequestParams {
   enableImageGeneration: boolean;
   enableVideoGeneration: boolean;
   enableTTS: boolean;
+  allowSeparateGeneratedCourseOnAttachMismatch?: boolean;
 }
 
 export interface ModuleClassroomGenerationRequest {
@@ -27,6 +28,7 @@ export interface ModuleClassroomGenerationRequest {
   enableImageGeneration: boolean;
   enableTTS: boolean;
   portalCourse: GeneratedPortalCourseMetadata;
+  attachWarning?: string;
 }
 
 const TITLE_STOP_WORDS = new Set([
@@ -160,7 +162,16 @@ export function buildModuleClassroomGenerationRequest(
   params: BuildModuleClassroomGenerationRequestParams,
 ): ModuleClassroomGenerationRequest {
   const courseResourceIds = normalizeResourceIds(params.courseResourceIds);
-  const attachModule = resolveAttachModuleForCourseStudio(params.courseModule, params.attachCourse);
+  let attachModule: CourseModule | undefined;
+  let attachWarning: string | undefined;
+
+  try {
+    attachModule = resolveAttachModuleForCourseStudio(params.courseModule, params.attachCourse);
+  } catch (error) {
+    if (!params.allowSeparateGeneratedCourseOnAttachMismatch) throw error;
+    attachWarning =
+      error instanceof Error ? error.message : 'Could not match attach target safely.';
+  }
   const portalCourse: GeneratedPortalCourseMetadata = {
     title: `${params.coursePlan.title}: Module ${params.courseModule.order} - ${params.courseModule.title}`,
     description:
@@ -197,5 +208,6 @@ export function buildModuleClassroomGenerationRequest(
     enableImageGeneration: params.enableImageGeneration,
     enableTTS: params.enableTTS,
     portalCourse,
+    ...(attachWarning ? { attachWarning } : {}),
   };
 }
