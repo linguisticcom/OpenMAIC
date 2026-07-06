@@ -1,16 +1,66 @@
 import { after, type NextRequest } from 'next/server';
 import { nanoid } from 'nanoid';
+import { MAX_PDF_CONTENT_CHARS } from '@/lib/constants/generation';
 import { apiError, apiSuccess } from '@/lib/server/api-response';
 import { type GenerateClassroomInput } from '@/lib/server/classroom-generation';
 import { runClassroomGenerationJob } from '@/lib/server/classroom-job-runner';
 import { createClassroomGenerationJob } from '@/lib/server/classroom-job-store';
 import { buildRequestOrigin } from '@/lib/server/classroom-storage';
+import {
+  buildClassroomResourceContextBlock,
+  CourseResourceContextError,
+} from '@/lib/server/course-resources';
 import { requirePlatformApiSession } from '@/lib/server/tenant-api-auth';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('GenerateClassroom API');
 
 export const maxDuration = 30;
+
+function sanitizeCourseResourceIds(value: unknown): string[] | undefined {
+  if (value == null) return undefined;
+  if (!Array.isArray(value)) {
+    throw new CourseResourceContextError('courseResourceIds must be an array of resource ids.');
+  }
+
+  const ids = value.map((item) => {
+    if (typeof item !== 'string') {
+      throw new CourseResourceContextError('courseResourceIds must contain only strings.');
+    }
+    return item.trim();
+  });
+  const deduped = Array.from(new Set(ids.filter(Boolean)));
+  return deduped.length > 0 ? deduped : undefined;
+}
+
+function sanitizePdfContent(value: unknown): GenerateClassroomInput['pdfContent'] | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const candidate = value as { text?: unknown; images?: unknown };
+  const text = typeof candidate.text === 'string' ? candidate.text : '';
+  const images = Array.isArray(candidate.images)
+    ? candidate.images.filter((image): image is string => typeof image === 'string')
+    : [];
+  return text || images.length > 0 ? { text, images } : undefined;
+}
+
+function mergePdfContent(
+  pdfContent: GenerateClassroomInput['pdfContent'] | undefined,
+  resourceContext: string,
+): GenerateClassroomInput['pdfContent'] | undefined {
+  const mergedText = [pdfContent?.text, resourceContext]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .join('\n\n');
+  const images = pdfContent?.images || [];
+
+  if (!mergedText && images.length === 0) return undefined;
+  return {
+    text:
+      mergedText.length > MAX_PDF_CONTENT_CHARS
+        ? mergedText.slice(0, MAX_PDF_CONTENT_CHARS)
+        : mergedText,
+    images,
+  };
+}
 
 export async function POST(req: NextRequest) {
   let requirementSnippet: string | undefined;
@@ -20,9 +70,15 @@ export async function POST(req: NextRequest) {
 
     const rawBody = (await req.json()) as Partial<GenerateClassroomInput>;
     requirementSnippet = rawBody.requirement?.substring(0, 60);
+    const courseResourceIds = sanitizeCourseResourceIds(rawBody.courseResourceIds);
+    const resourceContext = courseResourceIds
+      ? await buildClassroomResourceContextBlock(courseResourceIds)
+      : '';
+    const pdfContent = mergePdfContent(sanitizePdfContent(rawBody.pdfContent), resourceContext);
     const body: GenerateClassroomInput = {
       requirement: rawBody.requirement || '',
-      ...(rawBody.pdfContent ? { pdfContent: rawBody.pdfContent } : {}),
+      ...(pdfContent ? { pdfContent } : {}),
+      ...(courseResourceIds ? { courseResourceIds } : {}),
 
       ...(rawBody.enableWebSearch != null ? { enableWebSearch: rawBody.enableWebSearch } : {}),
       ...(rawBody.webSearchProviderId ? { webSearchProviderId: rawBody.webSearchProviderId } : {}),
@@ -102,6 +158,10 @@ export async function POST(req: NextRequest) {
       202,
     );
   } catch (error) {
+    if (error instanceof CourseResourceContextError) {
+      return apiError('INVALID_REQUEST', 400, error.message);
+    }
+
     log.error(
       `Classroom generation job creation failed [requirement="${requirementSnippet ?? 'unknown'}..."]:`,
       error,

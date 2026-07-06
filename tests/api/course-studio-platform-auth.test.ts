@@ -13,16 +13,22 @@ import { GET as getClassroomGenerationJob } from '@/app/api/generate-classroom/[
 import { POST as createClassroomGenerationJob } from '@/app/api/generate-classroom/route';
 import type { NextRequest } from 'next/server';
 
-const mocks = vi.hoisted(() => ({
-  getCurrentPortalSession: vi.fn(),
-  buildResourceSummaryBlock: vi.fn(),
-  listCourseResources: vi.fn(),
-  readCourseResource: vi.fn(),
-  deleteCourseResource: vi.fn(),
-  createClassroomGenerationJob: vi.fn(),
-  readClassroomGenerationJob: vi.fn(),
-  runClassroomGenerationJob: vi.fn(),
-}));
+const mocks = vi.hoisted(() => {
+  class CourseResourceContextError extends Error {}
+
+  return {
+    getCurrentPortalSession: vi.fn(),
+    buildResourceSummaryBlock: vi.fn(),
+    buildClassroomResourceContextBlock: vi.fn(),
+    CourseResourceContextError,
+    listCourseResources: vi.fn(),
+    readCourseResource: vi.fn(),
+    deleteCourseResource: vi.fn(),
+    createClassroomGenerationJob: vi.fn(),
+    readClassroomGenerationJob: vi.fn(),
+    runClassroomGenerationJob: vi.fn(),
+  };
+});
 
 vi.mock('@/lib/server/organization-session', () => ({
   getCurrentPortalSession: mocks.getCurrentPortalSession,
@@ -30,7 +36,9 @@ vi.mock('@/lib/server/organization-session', () => ({
 }));
 
 vi.mock('@/lib/server/course-resources', () => ({
+  buildClassroomResourceContextBlock: mocks.buildClassroomResourceContextBlock,
   buildResourceSummaryBlock: mocks.buildResourceSummaryBlock,
+  CourseResourceContextError: mocks.CourseResourceContextError,
   createCourseResource: vi.fn(),
   deleteCourseResource: mocks.deleteCourseResource,
   listCourseResources: mocks.listCourseResources,
@@ -117,6 +125,7 @@ describe('Course Studio API platform authorization', () => {
     );
 
     expect(mocks.buildResourceSummaryBlock).not.toHaveBeenCalled();
+    expect(mocks.buildClassroomResourceContextBlock).not.toHaveBeenCalled();
     expect(mocks.listCourseResources).not.toHaveBeenCalled();
     expect(mocks.readCourseResource).not.toHaveBeenCalled();
     expect(mocks.deleteCourseResource).not.toHaveBeenCalled();
@@ -186,5 +195,80 @@ describe('Course Studio API platform authorization', () => {
         }),
       }),
     );
+  });
+
+  it('resolves selected resource context before creating classroom jobs', async () => {
+    mocks.getCurrentPortalSession.mockResolvedValue({
+      user: { id: 'user-platform-admin', role: 'platform-admin' },
+    });
+    mocks.buildClassroomResourceContextBlock.mockResolvedValue(
+      'Resource: LAN110 corporate finance.pdf\nSummary: Defines subsidiaries, creditors, shares, and liability.\nExtracted source text:\nA limited company can raise capital by issuing shares.',
+    );
+    mocks.createClassroomGenerationJob.mockResolvedValue({
+      id: 'job-grounded',
+      status: 'queued',
+      step: 'queued',
+      message: 'queued',
+    });
+
+    const response = await createClassroomGenerationJob(
+      new Request('http://localhost/api/generate-classroom', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-forwarded-host': 'localhost',
+          'x-forwarded-proto': 'http',
+        },
+        body: JSON.stringify({
+          requirement: 'Create LAN110 module 2 about company law.',
+          courseResourceIds: ['res-lan110'],
+          pdfContent: {
+            text: 'Existing module context that should be preserved.',
+            images: [],
+          },
+        }),
+      }) as NextRequest,
+    );
+
+    expect(response.status).toBe(202);
+    expect(mocks.buildClassroomResourceContextBlock).toHaveBeenCalledWith(['res-lan110']);
+    expect(mocks.createClassroomGenerationJob).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        courseResourceIds: ['res-lan110'],
+        pdfContent: expect.objectContaining({
+          text: expect.stringContaining('Existing module context that should be preserved.'),
+        }),
+      }),
+    );
+    const input = mocks.createClassroomGenerationJob.mock.calls.at(-1)?.[1] as {
+      pdfContent: { text: string };
+    };
+    expect(input.pdfContent.text).toContain('Resource: LAN110 corporate finance.pdf');
+    expect(input.pdfContent.text).toContain('issuing shares');
+  });
+
+  it('rejects invalid selected resources before creating classroom jobs', async () => {
+    mocks.getCurrentPortalSession.mockResolvedValue({
+      user: { id: 'user-platform-admin', role: 'platform-admin' },
+    });
+    mocks.buildClassroomResourceContextBlock.mockRejectedValue(
+      new mocks.CourseResourceContextError('Selected course resource not found: missing-resource'),
+    );
+
+    const response = await createClassroomGenerationJob(
+      jsonRequest('/api/generate-classroom', {
+        requirement: 'Create a grounded classroom.',
+        courseResourceIds: ['missing-resource'],
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: 'Selected course resource not found: missing-resource',
+    });
+    expect(mocks.createClassroomGenerationJob).not.toHaveBeenCalled();
+    expect(mocks.runClassroomGenerationJob).not.toHaveBeenCalled();
   });
 });

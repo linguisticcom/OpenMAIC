@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { nanoid } from 'nanoid';
+import { MAX_PDF_CONTENT_CHARS } from '@/lib/constants/generation';
 import { parsePDF } from '@/lib/pdf/pdf-providers';
 import type { CourseResource, PersistedCourseResource } from '@/lib/types/course-studio';
 
@@ -14,6 +15,13 @@ const TEXT_MIME_TYPES = new Set([
   'text/x-markdown',
   'application/markdown',
 ]);
+
+export class CourseResourceContextError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CourseResourceContextError';
+  }
+}
 
 async function ensureResourceDirs() {
   await fs.mkdir(COURSE_RESOURCE_FILES_DIR, { recursive: true });
@@ -40,6 +48,20 @@ function summarizeExtractively(text: string, name: string): string {
 function excerptText(text: string): string {
   const normalized = text.replace(/\s+/g, ' ').trim();
   return normalized.length <= 420 ? normalized : `${normalized.slice(0, 420).trim()}...`;
+}
+
+function normalizeResourceText(text: string): string {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+function appendWithinLimit(parts: string[], nextPart: string, maxChars: number): boolean {
+  const currentLength = parts.join('\n\n').length;
+  const separatorLength = parts.length > 0 ? 2 : 0;
+  const remaining = maxChars - currentLength - separatorLength;
+  if (remaining <= 0) return false;
+
+  parts.push(nextPart.length <= remaining ? nextPart : nextPart.slice(0, remaining));
+  return nextPart.length <= remaining;
 }
 
 async function extractResourceText(file: File, buffer: Buffer) {
@@ -152,9 +174,9 @@ export async function updateCourseResourceSummary(
 }
 
 export async function buildResourceSummaryBlock(resourceIds: string[]): Promise<string> {
-  const resources = (
-    await Promise.all(resourceIds.map((id) => readCourseResource(id)))
-  ).filter((resource): resource is PersistedCourseResource => Boolean(resource));
+  const resources = (await Promise.all(resourceIds.map((id) => readCourseResource(id)))).filter(
+    (resource): resource is PersistedCourseResource => Boolean(resource),
+  );
 
   return resources
     .map(
@@ -162,4 +184,42 @@ export async function buildResourceSummaryBlock(resourceIds: string[]): Promise<
         `Resource: ${resource.name}\nSummary: ${resource.summary}\nExcerpt: ${resource.excerpt}`,
     )
     .join('\n\n');
+}
+
+export async function buildClassroomResourceContextBlock(
+  resourceIds: string[],
+  maxChars = MAX_PDF_CONTENT_CHARS,
+): Promise<string> {
+  const ids = Array.from(new Set(resourceIds.map((id) => id.trim()).filter(Boolean)));
+  const invalidId = ids.find((id) => !isValidCourseResourceId(id));
+  if (invalidId) {
+    throw new CourseResourceContextError(`Invalid course resource id: ${invalidId}`);
+  }
+
+  const resolvedResources = await Promise.all(ids.map((id) => readCourseResource(id)));
+  const missingIds = ids.filter((_, index) => !resolvedResources[index]);
+  if (missingIds.length > 0) {
+    throw new CourseResourceContextError(
+      `Selected course resource not found: ${missingIds.join(', ')}`,
+    );
+  }
+
+  const resources = resolvedResources.filter((resource): resource is PersistedCourseResource =>
+    Boolean(resource),
+  );
+  const parts: string[] = [];
+
+  for (const resource of resources) {
+    const text = normalizeResourceText(resource.text);
+    const block = [
+      `Resource: ${resource.name}`,
+      `Summary: ${resource.summary}`,
+      `Excerpt: ${resource.excerpt}`,
+      `Extracted source text:\n${text || 'No readable text was extracted from this resource.'}`,
+    ].join('\n');
+
+    if (!appendWithinLimit(parts, block, maxChars)) break;
+  }
+
+  return parts.join('\n\n');
 }

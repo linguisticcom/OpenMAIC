@@ -40,6 +40,7 @@ const log = createLogger('Classroom');
 export interface GenerateClassroomInput {
   requirement: string;
   pdfContent?: { text: string; images: string[] };
+  courseResourceIds?: string[];
   enableWebSearch?: boolean;
   webSearchProviderId?: WebSearchProviderId;
   webSearchApiKey?: string;

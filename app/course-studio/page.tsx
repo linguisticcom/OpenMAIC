@@ -19,6 +19,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { buildModuleClassroomGenerationRequest } from '@/lib/course-studio/module-classroom-generation';
 import type { Cohort, Course, Organization } from '@/lib/types/course-portal';
 import type { ClassroomEditPlan, CoursePlan, CourseResource } from '@/lib/types/course-studio';
 
@@ -307,62 +308,25 @@ export default function CourseStudioPage() {
       },
     }));
 
-    const requirement = [
-      `Create an LC Academy classroom for module ${courseModule.order} of "${coursePlan.title}".`,
-      `Module title: ${courseModule.title}.`,
-      `Duration: ${courseModule.durationMinutes} minutes.`,
-      `Audience: ${coursePlan.audience || audience || 'beginners'}.`,
-      `Learning objectives: ${courseModule.learningObjectives.join('; ') || 'teach the module clearly'}.`,
-      `Module plan: ${courseModule.classroomPrompt}`,
-      'Generate a concise classroom with 4 to 6 scenes maximum: welcome, core explanation, guided example or short discussion, quiz/checkpoint, and recap/completion.',
-      'Keep each scene focused and brief so the classroom can be generated quickly and played in a few minutes.',
-      'The classroom must include an AI teacher, multiple AI students, one guided discussion, one learner question moment, and a quiz/checkpoint near the end.',
-      'Do not add generated video media unless Video media is explicitly enabled; prefer normal slide scenes and dialogue.',
-      'End with a recap that prepares learners for the next course module. The classroom completion screen acts as the certificate/completion moment.',
-      courseModule.prerequisiteSummary
-        ? `Prior learning to reference: ${courseModule.prerequisiteSummary}`
-        : '',
-      courseModule.resourceFocus?.length
-        ? `Resource focus: ${courseModule.resourceFocus.join(', ')}`
-        : '',
-    ]
-      .filter(Boolean)
-      .join('\n\n');
-    const attachModule = attachCourse?.modules[courseModule.order - 1];
-
     try {
+      const requestBody = buildModuleClassroomGenerationRequest({
+        coursePlan,
+        courseModule,
+        audience,
+        courseResourceIds: selectedResourceIds,
+        attachCourse,
+        publishToDashboard,
+        publishOrganizationId,
+        publishCohortId,
+        enableVideoGeneration: enableClassroomVideo,
+        enableImageGeneration: enableClassroomImages,
+        enableTTS: enableClassroomTts && !enableLocalComputerVoice,
+      });
+
       const response = await fetch('/api/generate-classroom', {
         method: 'POST',
         headers: buildHeaders(),
-        body: JSON.stringify({
-          requirement,
-          agentMode: 'generate',
-          enableVideoGeneration: enableClassroomVideo,
-          enableImageGeneration: enableClassroomImages,
-          enableTTS: enableClassroomTts && !enableLocalComputerVoice,
-          portalCourse: {
-            title: `${coursePlan.title}: Module ${courseModule.order} - ${courseModule.title}`,
-            description:
-              courseModule.learningObjectives.length > 0
-                ? courseModule.learningObjectives.join(' ')
-                : courseModule.classroomPrompt,
-            category: coursePlan.title,
-            estimatedDurationMinutes: courseModule.durationMinutes,
-            ...(attachCourse && attachModule
-              ? {
-                  attachToCourseId: attachCourse.id,
-                  attachToModuleId: attachModule.id,
-                }
-              : {}),
-            ...(publishToDashboard && publishOrganizationId
-              ? {
-                  publishToOrganizationId: publishOrganizationId,
-                  ...(publishCohortId ? { publishToCohortId: publishCohortId } : {}),
-                  publishStatus: 'active' as const,
-                }
-              : {}),
-          },
-        }),
+        body: JSON.stringify(requestBody),
       });
       const json = await response.json();
       if (!response.ok || !json.success) {
@@ -731,9 +695,9 @@ export default function CourseStudioPage() {
                   </label>
                   {attachCourse && (
                     <p className="text-xs leading-5 text-muted-foreground">
-                      Module classrooms will be attached by order to {attachCourse.title}; module 1
-                      updates {attachCourse.modules[0]?.title || 'the first module'}, module 2 the
-                      next module, and so on.
+                      Module classrooms will be matched to {attachCourse.title} by module id or
+                      title, with a checked order fallback. If a module cannot be matched safely,
+                      generation stops before attaching it.
                     </p>
                   )}
                   <div className="grid gap-3 sm:grid-cols-2">
