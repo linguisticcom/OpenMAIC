@@ -178,7 +178,13 @@ async function insertRows(
   rows: Record<string, unknown>[],
 ): Promise<void> {
   if (rows.length === 0) return;
-  await sql`insert into ${sql.unsafe(table)} ${sql(rows)}`;
+  await sql`insert into ${sql.unsafe(table)} ${sql(rows.map(nullifyUndefinedValues))}`;
+}
+
+function nullifyUndefinedValues(row: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(row).map(([key, value]) => [key, value === undefined ? null : value]),
+  );
 }
 
 function toIso(value: unknown): string {
