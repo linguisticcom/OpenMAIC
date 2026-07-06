@@ -4,8 +4,10 @@ import {
   getOrganizationById,
   getPortalUserByEmail,
   getPortalUserById,
-  hashPortalPassword,
+  markPortalUserLoggedIn,
+  updatePortalUserPasswordHash,
 } from '@/lib/server/course-portal-data';
+import { hashPortalPasswordScrypt, verifyPortalPassword } from '@/lib/server/password-hashing';
 import type { Organization, PortalUser } from '@/lib/types/course-portal';
 
 const ORG_SESSION_COOKIE = 'openmaic_org_session';
@@ -15,6 +17,7 @@ interface OrganizationSessionPayload {
   userId: string;
   organizationId?: string;
   role: PortalUser['role'];
+  sessionVersion: number;
   issuedAt: number;
   expiresAt: number;
 }
@@ -52,22 +55,8 @@ function safeEqual(a: string, b: string): boolean {
   }
 }
 
-function safeHexHashEqual(a: string, b: string): boolean {
-  if (!/^[a-f0-9]{64}$/i.test(a) || !/^[a-f0-9]{64}$/i.test(b)) {
-    return false;
-  }
-
-  try {
-    const left = Buffer.from(a, 'hex');
-    const right = Buffer.from(b, 'hex');
-    return left.length === right.length && timingSafeEqual(left, right);
-  } catch {
-    return false;
-  }
-}
-
 export function verifyPortalPasswordHash(passwordHash: string, password: string): boolean {
-  return safeHexHashEqual(passwordHash, hashPortalPassword(password));
+  return verifyPortalPassword(passwordHash, password).valid;
 }
 
 function createSessionToken(user: PortalUser): string {
@@ -76,6 +65,7 @@ function createSessionToken(user: PortalUser): string {
     userId: user.id,
     organizationId: user.organizationId,
     role: user.role,
+    sessionVersion: user.sessionVersion || 1,
     issuedAt: now,
     expiresAt: now + SESSION_TTL_SECONDS,
   };
@@ -99,6 +89,14 @@ async function verifySessionToken(token: string | undefined): Promise<PortalSess
     if (!user || user.role !== payload.role || user.organizationId !== payload.organizationId) {
       return null;
     }
+    if (user.status === 'disabled') return null;
+    if ((user.sessionVersion || 1) !== (payload.sessionVersion || 1)) return null;
+    if (
+      user.passwordChangedAt &&
+      Math.floor(new Date(user.passwordChangedAt).getTime() / 1000) > payload.issuedAt
+    ) {
+      return null;
+    }
 
     const organization = user.organizationId
       ? await getOrganizationById(user.organizationId)
@@ -109,18 +107,7 @@ async function verifySessionToken(token: string | undefined): Promise<PortalSess
   }
 }
 
-export async function loginPortalUser(params: {
-  email: string;
-  password: string;
-}): Promise<{ ok: true; session: PortalSession } | { ok: false; error: string }> {
-  const user = await getPortalUserByEmail(params.email);
-  if (!user || !verifyPortalPasswordHash(user.passwordHash, params.password)) {
-    return { ok: false, error: 'Invalid email or password.' };
-  }
-
-  const organization = user.organizationId
-    ? await getOrganizationById(user.organizationId)
-    : undefined;
+export async function setPortalSessionCookie(user: PortalUser): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(ORG_SESSION_COOKIE, createSessionToken(user), {
     httpOnly: true,
@@ -129,8 +116,37 @@ export async function loginPortalUser(params: {
     path: '/',
     maxAge: SESSION_TTL_SECONDS,
   });
+}
 
-  return { ok: true, session: { user, organization } };
+export async function loginPortalUser(params: {
+  email: string;
+  password: string;
+}): Promise<{ ok: true; session: PortalSession } | { ok: false; error: string }> {
+  const user = await getPortalUserByEmail(params.email);
+  const verification = user
+    ? verifyPortalPassword(user.passwordHash, params.password)
+    : { valid: false, needsUpgrade: false };
+  if (!user || !verification.valid || user.status === 'disabled') {
+    return { ok: false, error: 'Invalid email or password.' };
+  }
+
+  let sessionUser = user;
+  if (verification.needsUpgrade) {
+    const upgradedUser = await updatePortalUserPasswordHash({
+      userId: user.id,
+      passwordHash: hashPortalPasswordScrypt(params.password),
+      bumpSessionVersion: false,
+    });
+    if (upgradedUser) sessionUser = upgradedUser;
+  }
+  sessionUser = (await markPortalUserLoggedIn(sessionUser.id)) || sessionUser;
+
+  const organization = user.organizationId
+    ? await getOrganizationById(user.organizationId)
+    : undefined;
+  await setPortalSessionCookie(sessionUser);
+
+  return { ok: true, session: { user: sessionUser, organization } };
 }
 
 export async function logoutPortalUser(): Promise<void> {
@@ -198,6 +214,7 @@ export function serializeSession(session: PortalSession) {
       email: session.user.email,
       role: session.user.role,
       canGenerateAccessCodes: session.user.canGenerateAccessCodes,
+      status: session.user.status || 'active',
     },
     organization: session.organization,
   };

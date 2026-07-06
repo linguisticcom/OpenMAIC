@@ -1,10 +1,16 @@
-import { promises as fs } from 'fs';
 import path from 'path';
 import { createHash, randomBytes } from 'crypto';
+import {
+  getCoursePortalStore,
+  resetCoursePortalStoreCacheForTests as resetStoreCacheForTests,
+} from '@/lib/server/course-portal-store';
+import { hashLegacyPortalPassword, hashPortalPasswordScrypt } from '@/lib/server/password-hashing';
 import type {
   AccessCode,
+  AccountInvitation,
   AccessCodeView,
   ActivityLog,
+  AuthAuditEvent,
   Cohort,
   Course,
   CourseAccessGrant,
@@ -16,6 +22,7 @@ import type {
   CoursePortalDataset,
   CourseStatus,
   Enrollment,
+  PasswordResetToken,
   Organization,
   OrganizationCourseSummary,
   OrganizationDashboardSummary,
@@ -24,6 +31,7 @@ import type {
   StudentManagementSummary,
   StudentCourseProgress,
   University,
+  PortalUserRole,
 } from '@/lib/types/course-portal';
 import type { GeneratedPortalCourseMetadata } from '@/lib/types/course-studio';
 import type { Scene, Stage } from '@/lib/types/stage';
@@ -37,11 +45,7 @@ export function hashAccessCode(code: string): string {
 }
 
 export function hashPortalPassword(password: string): string {
-  return createHash('sha256').update(password).digest('hex');
-}
-
-function cloneDataset(dataset: CoursePortalDataset): CoursePortalDataset {
-  return JSON.parse(JSON.stringify(dataset)) as CoursePortalDataset;
+  return hashLegacyPortalPassword(password);
 }
 
 type PortalUserView = Omit<PortalUser, 'passwordHash'>;
@@ -692,6 +696,10 @@ const seedDataset: CoursePortalDataset = {
   accessCodes: seedAccessCodes,
   cohorts: seedCohorts,
   activityLogs: seedActivityLogs,
+  passwordResetTokens: [],
+  accountInvitations: [],
+  emailVerificationTokens: [],
+  authAuditEvents: [],
 };
 
 function legacyOrganizationId(value: string | undefined): string | undefined {
@@ -737,7 +745,16 @@ function normalizeDataset(
 
   return {
     organizations,
-    users: Array.isArray(parsed.users) ? parsed.users : [],
+    users: Array.isArray(parsed.users)
+      ? parsed.users.map((user) => ({
+          ...user,
+          status: user.status || 'active',
+          sessionVersion:
+            typeof user.sessionVersion === 'number' && user.sessionVersion > 0
+              ? user.sessionVersion
+              : 1,
+        }))
+      : [],
     courses: Array.isArray(parsed.courses) ? parsed.courses : [],
     assignments: Array.isArray(parsed.assignments)
       ? parsed.assignments.map((assignment) => ({
@@ -769,24 +786,31 @@ function normalizeDataset(
       : [],
     cohorts: Array.isArray(parsed.cohorts) ? parsed.cohorts : [],
     activityLogs: Array.isArray(parsed.activityLogs) ? parsed.activityLogs : [],
+    passwordResetTokens: Array.isArray(parsed.passwordResetTokens)
+      ? parsed.passwordResetTokens
+      : [],
+    accountInvitations: Array.isArray(parsed.accountInvitations) ? parsed.accountInvitations : [],
+    emailVerificationTokens: Array.isArray(parsed.emailVerificationTokens)
+      ? parsed.emailVerificationTokens
+      : [],
+    authAuditEvents: Array.isArray(parsed.authAuditEvents) ? parsed.authAuditEvents : [],
   };
 }
 
 async function readDataset(): Promise<CoursePortalDataset> {
-  try {
-    const raw = await fs.readFile(COURSE_PORTAL_DATA_FILE, 'utf-8');
-    return normalizeDataset(JSON.parse(raw) as Partial<CoursePortalDataset>);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return cloneDataset(seedDataset);
-    }
-    throw error;
-  }
+  return getCoursePortalStore({
+    jsonFilePath: COURSE_PORTAL_DATA_FILE,
+    fallbackDataset: seedDataset,
+    normalizeDataset,
+  }).readDataset();
 }
 
 async function writeDataset(dataset: CoursePortalDataset): Promise<void> {
-  await fs.mkdir(path.dirname(COURSE_PORTAL_DATA_FILE), { recursive: true });
-  await fs.writeFile(COURSE_PORTAL_DATA_FILE, `${JSON.stringify(dataset, null, 2)}\n`, 'utf-8');
+  await getCoursePortalStore({
+    jsonFilePath: COURSE_PORTAL_DATA_FILE,
+    fallbackDataset: seedDataset,
+    normalizeDataset,
+  }).writeDataset(normalizeDataset(dataset));
 }
 
 function findOrganization(
@@ -1433,6 +1457,292 @@ export async function listPortalUsers(): Promise<PortalUser[]> {
   return dataset.users;
 }
 
+export async function updatePortalUserPasswordHash(params: {
+  userId: string;
+  passwordHash: string;
+  markEmailVerified?: boolean;
+  activate?: boolean;
+  bumpSessionVersion?: boolean;
+}): Promise<PortalUser | undefined> {
+  const dataset = await readDataset();
+  const user = dataset.users.find((item) => item.id === params.userId);
+  if (!user) return undefined;
+
+  const now = new Date().toISOString();
+  user.passwordHash = params.passwordHash;
+  user.passwordChangedAt = now;
+  user.updatedAt = now;
+  if (params.markEmailVerified) user.emailVerifiedAt = user.emailVerifiedAt || now;
+  if (params.activate) user.status = 'active';
+  if (params.bumpSessionVersion !== false) {
+    user.sessionVersion = (user.sessionVersion || 1) + 1;
+  }
+
+  await writeDataset(dataset);
+  return user;
+}
+
+export async function markPortalUserLoggedIn(userId: string): Promise<PortalUser | undefined> {
+  const dataset = await readDataset();
+  const user = dataset.users.find((item) => item.id === userId);
+  if (!user) return undefined;
+
+  const now = new Date().toISOString();
+  user.lastLoginAt = now;
+  user.updatedAt = now;
+  await writeDataset(dataset);
+  return user;
+}
+
+export async function recordAuthAuditEvent(params: {
+  userId?: string;
+  organizationId?: string;
+  email?: string;
+  action: string;
+  ip?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<AuthAuditEvent> {
+  const dataset = await readDataset();
+  const event: AuthAuditEvent = {
+    id: `auth-audit-${Date.now()}-${randomBytes(3).toString('hex')}`,
+    userId: params.userId,
+    organizationId: params.organizationId,
+    email: params.email?.trim().toLowerCase(),
+    action: params.action,
+    ip: params.ip,
+    metadata: params.metadata || {},
+    createdAt: new Date().toISOString(),
+  };
+  (dataset.authAuditEvents ||= []).push(event);
+  await writeDataset(dataset);
+  return event;
+}
+
+export async function createPasswordResetToken(params: {
+  userId: string;
+  tokenHash: string;
+  expiresAt: string;
+  requestedIp?: string;
+}): Promise<PasswordResetToken | { error: string }> {
+  const dataset = await readDataset();
+  const user = dataset.users.find((item) => item.id === params.userId);
+  if (!user) return { error: 'User not found.' };
+
+  const now = new Date().toISOString();
+  const token: PasswordResetToken = {
+    id: `reset-${Date.now()}-${randomBytes(3).toString('hex')}`,
+    userId: user.id,
+    tokenHash: params.tokenHash,
+    createdAt: now,
+    expiresAt: params.expiresAt,
+    requestedIp: params.requestedIp,
+  };
+  (dataset.passwordResetTokens ||= []).push(token);
+  await writeDataset(dataset);
+  return token;
+}
+
+export async function consumePasswordResetToken(params: {
+  tokenHash: string;
+  passwordHash: string;
+}): Promise<{ user: PortalUser } | { error: string }> {
+  const dataset = await readDataset();
+  const token = (dataset.passwordResetTokens || []).find(
+    (item) => item.tokenHash === params.tokenHash,
+  );
+  if (!token || token.usedAt) return { error: 'Reset link is invalid or has already been used.' };
+  if (new Date(token.expiresAt).getTime() < Date.now()) {
+    return { error: 'Reset link has expired.' };
+  }
+
+  const user = dataset.users.find((item) => item.id === token.userId);
+  if (!user) return { error: 'Reset link is invalid or has already been used.' };
+  if (user.status === 'disabled') return { error: 'This account is disabled.' };
+
+  const now = new Date().toISOString();
+  token.usedAt = now;
+  user.passwordHash = params.passwordHash;
+  user.passwordChangedAt = now;
+  user.emailVerifiedAt = user.emailVerifiedAt || now;
+  user.status = 'active';
+  user.sessionVersion = (user.sessionVersion || 1) + 1;
+  user.updatedAt = now;
+  await writeDataset(dataset);
+  return { user };
+}
+
+export async function createAccountInvitation(params: {
+  email: string;
+  role: PortalUserRole;
+  invitedByUserId: string;
+  tokenHash: string;
+  expiresAt: string;
+  organizationId?: string;
+  name?: string;
+}): Promise<AccountInvitation | { error: string }> {
+  const email = params.email.trim().toLowerCase();
+  if (!isValidEmail(email)) return { error: 'Invitation email must be valid.' };
+
+  const dataset = await readDataset();
+  const inviter = dataset.users.find((item) => item.id === params.invitedByUserId);
+  if (!inviter) return { error: 'Inviting user not found.' };
+
+  if (params.role === 'platform-admin')
+    return { error: 'Platform-admin invitations are disabled.' };
+  if (params.role === 'organization-admin') {
+    if (inviter.role !== 'platform-admin') {
+      return { error: 'Only platform admins can invite organization admins.' };
+    }
+    if (!params.organizationId) return { error: 'Organization is required.' };
+  } else {
+    if (!params.organizationId) return { error: 'Organization is required.' };
+    if (inviter.role !== 'platform-admin' && inviter.organizationId !== params.organizationId) {
+      return { error: 'Cannot invite users outside your organization.' };
+    }
+    if (inviter.role !== 'organization-admin' && inviter.role !== 'platform-admin') {
+      return { error: 'Only organization admins can invite tenant users.' };
+    }
+  }
+
+  const organization = params.organizationId
+    ? dataset.organizations.find((item) => item.id === params.organizationId)
+    : undefined;
+  if (params.organizationId && !organization) return { error: 'Organization not found.' };
+  if (dataset.users.some((user) => user.email.toLowerCase() === email)) {
+    return { error: 'An account already exists for this email.' };
+  }
+
+  const now = new Date().toISOString();
+  const invitation: AccountInvitation = {
+    id: `invite-${Date.now()}-${randomBytes(3).toString('hex')}`,
+    organizationId: params.organizationId,
+    email,
+    name: params.name?.trim() || undefined,
+    role: params.role,
+    invitedByUserId: inviter.id,
+    tokenHash: params.tokenHash,
+    status: 'pending',
+    createdAt: now,
+    expiresAt: params.expiresAt,
+  };
+  (dataset.accountInvitations ||= []).push(invitation);
+  await writeDataset(dataset);
+  return invitation;
+}
+
+export async function getAccountInvitationByTokenHash(
+  tokenHash: string,
+): Promise<AccountInvitation | undefined> {
+  const dataset = await readDataset();
+  return (dataset.accountInvitations || []).find(
+    (invitation) => invitation.tokenHash === tokenHash,
+  );
+}
+
+export async function getUsableAccountInvitationByTokenHash(
+  tokenHash: string,
+): Promise<AccountInvitation | undefined> {
+  const invitation = await getAccountInvitationByTokenHash(tokenHash);
+  if (
+    !invitation ||
+    invitation.status !== 'pending' ||
+    invitation.acceptedAt ||
+    new Date(invitation.expiresAt).getTime() < Date.now()
+  ) {
+    return undefined;
+  }
+  return invitation;
+}
+
+export async function listVisibleAccountInvitations(
+  user: PortalUser,
+): Promise<AccountInvitation[]> {
+  const dataset = await readDataset();
+  return (dataset.accountInvitations || [])
+    .filter((invitation) => {
+      if (user.role === 'platform-admin') return true;
+      return (
+        user.role === 'organization-admin' && invitation.organizationId === user.organizationId
+      );
+    })
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function acceptAccountInvitation(params: {
+  tokenHash: string;
+  name: string;
+  password: string;
+}): Promise<{ user: PortalUser } | { error: string }> {
+  const dataset = await readDataset();
+  const invitation = (dataset.accountInvitations || []).find(
+    (item) => item.tokenHash === params.tokenHash,
+  );
+  if (!invitation || invitation.status !== 'pending' || invitation.acceptedAt) {
+    return { error: 'Invitation link is invalid or has already been used.' };
+  }
+  if (new Date(invitation.expiresAt).getTime() < Date.now()) {
+    invitation.status = 'expired';
+    await writeDataset(dataset);
+    return { error: 'Invitation link has expired.' };
+  }
+
+  const name = params.name.trim() || invitation.name?.trim();
+  if (!name) return { error: 'Name is required.' };
+  if (params.password.length < 8) return { error: 'Password must be at least 8 characters.' };
+  if (dataset.users.some((user) => user.email.toLowerCase() === invitation.email.toLowerCase())) {
+    return { error: 'An account already exists for this email.' };
+  }
+
+  let studentId: string | undefined;
+  const now = new Date().toISOString();
+  if (invitation.role === 'student') {
+    const existingStudent = dataset.students.find(
+      (student) =>
+        student.organizationId === invitation.organizationId &&
+        student.email?.toLowerCase() === invitation.email.toLowerCase(),
+    );
+    if (existingStudent) {
+      studentId = existingStudent.id;
+      existingStudent.name = name;
+      existingStudent.updatedAt = now;
+    } else if (invitation.organizationId) {
+      const student: Student = {
+        id: `student-invite-${Date.now()}-${randomBytes(3).toString('hex')}`,
+        organizationId: invitation.organizationId,
+        name,
+        email: invitation.email,
+        createdAt: now,
+        updatedAt: now,
+      };
+      dataset.students.push(student);
+      studentId = student.id;
+    }
+  }
+
+  const user: PortalUser = {
+    id: `user-invite-${Date.now()}-${randomBytes(3).toString('hex')}`,
+    organizationId: invitation.organizationId,
+    studentId,
+    name,
+    email: invitation.email,
+    passwordHash: hashPortalPasswordScrypt(params.password),
+    role: invitation.role,
+    canGenerateAccessCodes: invitation.role === 'teacher-manager',
+    status: 'active',
+    emailVerifiedAt: now,
+    passwordChangedAt: now,
+    sessionVersion: 1,
+    createdAt: now,
+    updatedAt: now,
+  };
+  dataset.users.push(user);
+  invitation.status = 'accepted';
+  invitation.acceptedAt = now;
+  invitation.acceptedUserId = user.id;
+  await writeDataset(dataset);
+  return { user };
+}
+
 export async function listOrganizationAdminUsers(
   organizationId: string,
 ): Promise<PortalUserView[]> {
@@ -1520,8 +1830,12 @@ export async function createOrganizationWithAdmin(params: {
     organizationId,
     name: adminName,
     email: adminEmail,
-    passwordHash: hashPortalPassword(adminPassword),
+    passwordHash: hashPortalPasswordScrypt(adminPassword),
     role: 'organization-admin',
+    status: 'active',
+    emailVerifiedAt: now,
+    passwordChangedAt: now,
+    sessionVersion: 1,
     createdAt: now,
     updatedAt: now,
   };
@@ -2744,6 +3058,164 @@ export async function consumeCourseAccessGrant(
     accessSession: `access-${result.grant.organization.id}-${result.grant.course.id}-${Date.now()}`,
     enrollmentId: enrollment?.id,
   };
+}
+
+export async function createLearnerAccountWithAccessCode(params: {
+  name: string;
+  email: string;
+  password: string;
+  accessCode: string;
+  organizationId?: string;
+  organizationSlug?: string;
+  courseId?: string;
+  courseSlug?: string;
+  cohortId?: string;
+}): Promise<
+  | {
+      user: PortalUser;
+      student: Student;
+      enrollment: Enrollment;
+      course: Course;
+      organization: Organization;
+    }
+  | { error: string; reason?: CourseAccessInvalidReason }
+> {
+  const name = params.name.trim();
+  const email = params.email.trim().toLowerCase();
+  if (!name) return { error: 'Name is required.' };
+  if (!isValidEmail(email)) return { error: 'Email must be valid.' };
+  if (params.password.length < 8) return { error: 'Password must be at least 8 characters.' };
+
+  const validation = await validateCourseAccessGrant({
+    organizationId: params.organizationId,
+    organizationSlug: params.organizationSlug,
+    courseId: params.courseId,
+    courseSlug: params.courseSlug,
+    accessCode: params.accessCode,
+    cohortId: params.cohortId,
+  });
+  if (!validation.valid) {
+    return { error: validation.message, reason: validation.reason };
+  }
+
+  const dataset = await readDataset();
+  if (dataset.users.some((user) => user.email.toLowerCase() === email)) {
+    return { error: 'An account with this email already exists.' };
+  }
+
+  const organization = dataset.organizations.find(
+    (item) => item.id === validation.grant.organization.id,
+  );
+  const course = dataset.courses.find((item) => item.id === validation.grant.course.id);
+  const accessCode = dataset.accessCodes.find(
+    (item) =>
+      item.id === validation.grant.accessCode.id &&
+      accessCodeMatchesAssignment(item, validation.grant.assignment),
+  );
+  if (!organization || !course || !accessCode) {
+    return { error: 'The access code is not valid for this course.' };
+  }
+  if (!isActiveAccessCode(accessCode)) return { error: 'This access code is no longer active.' };
+
+  let student = dataset.students.find(
+    (item) => item.organizationId === organization.id && item.email?.toLowerCase() === email,
+  );
+  if (student && !studentMatchesAssignment(student, validation.grant.assignment)) {
+    return { error: 'This access code is not linked to the selected student.' };
+  }
+
+  const existingStudent = student;
+  let enrollment = existingStudent
+    ? dataset.enrollments.find(
+        (item) =>
+          item.organizationId === organization.id &&
+          item.courseId === course.id &&
+          item.studentId === existingStudent.id,
+      )
+    : undefined;
+
+  if (
+    accessCode.maxUses !== undefined &&
+    accessCode.currentUses >= accessCode.maxUses &&
+    enrollment?.accessCodeId !== accessCode.id
+  ) {
+    return {
+      error: 'This access code has reached its usage limit.',
+      reason: 'usage-limit-reached',
+    };
+  }
+
+  const now = new Date().toISOString();
+  if (!student) {
+    student = {
+      id: `student-signup-${Date.now()}-${randomBytes(3).toString('hex')}`,
+      organizationId: organization.id,
+      cohortId: validation.grant.assignment.cohortId,
+      name,
+      email,
+      externalStudentId: `signup-${accessCode.id}-${Date.now()}`,
+      createdAt: now,
+      updatedAt: now,
+    };
+    dataset.students.push(student);
+  } else {
+    student.name = name;
+    student.email = email;
+    student.updatedAt = now;
+  }
+
+  let createdEnrollment = false;
+  if (!enrollment) {
+    enrollment = {
+      id: `enroll-signup-${Date.now()}-${randomBytes(3).toString('hex')}`,
+      studentId: student.id,
+      organizationId: organization.id,
+      courseId: course.id,
+      accessCodeId: accessCode.id,
+      status: 'not_started',
+      progressPercentage: 0,
+      startedAt: now,
+    };
+    dataset.enrollments.push(enrollment);
+    createdEnrollment = true;
+  } else if (!enrollment.accessCodeId) {
+    enrollment.accessCodeId = accessCode.id;
+  }
+  if (createdEnrollment) accessCode.currentUses += 1;
+
+  const user: PortalUser = {
+    id: `user-signup-${Date.now()}-${randomBytes(3).toString('hex')}`,
+    organizationId: organization.id,
+    studentId: student.id,
+    name,
+    email,
+    passwordHash: hashPortalPasswordScrypt(params.password),
+    role: 'student',
+    canGenerateAccessCodes: false,
+    status: 'active',
+    emailVerifiedAt: now,
+    passwordChangedAt: now,
+    sessionVersion: 1,
+    createdAt: now,
+    updatedAt: now,
+  };
+  dataset.users.push(user);
+  dataset.activityLogs.push({
+    id: `activity-signup-${Date.now()}-${randomBytes(3).toString('hex')}`,
+    organizationId: organization.id,
+    studentId: student.id,
+    courseId: course.id,
+    action: 'account.signup_access_code',
+    metadata: { accessCodeId: accessCode.id },
+    createdAt: now,
+  });
+
+  await writeDataset(dataset);
+  return { user, student, enrollment, course, organization };
+}
+
+export function resetCoursePortalDataStoreForTests(): void {
+  resetStoreCacheForTests();
 }
 
 export async function trackStudentActivity(params: {

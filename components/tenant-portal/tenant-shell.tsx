@@ -6,6 +6,7 @@ import {
   KeyRound,
   LayoutDashboard,
   Settings,
+  UserPlus,
   Users,
 } from 'lucide-react';
 import { LogoutButton } from '@/components/tenant-portal/logout-button';
@@ -18,11 +19,13 @@ const dashboardLinks = [
   { href: '/dashboard/courses', label: 'Courses', icon: GraduationCap },
   { href: '/dashboard/students', label: 'Students', icon: Users },
   { href: '/dashboard/access-codes', label: 'Access codes', icon: KeyRound },
+  { href: '/dashboard/invitations', label: 'Invitations', icon: UserPlus },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
 const adminLinks = [
   { href: '/admin/organizations', label: 'Organizations', icon: Building2 },
+  { href: '/admin/invitations', label: 'Invitations', icon: UserPlus },
   { href: '/admin/courses', label: 'Global courses', icon: GraduationCap },
   { href: '/admin/course-assignments', label: 'Assignments', icon: BarChart3 },
 ];
@@ -48,6 +51,9 @@ export function TenantShell({
           return organization ? canManageAccessCodes(user, organization.id) : false;
         }
         if (link.href === '/dashboard/settings') {
+          return user.role === 'organization-admin';
+        }
+        if (link.href === '/dashboard/invitations') {
           return user.role === 'organization-admin';
         }
         return true;

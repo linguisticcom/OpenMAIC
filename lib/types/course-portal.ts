@@ -8,6 +8,8 @@ export type PortalUserRole =
   | 'teacher-manager'
   | 'student';
 
+export type PortalUserStatus = 'active' | 'invited' | 'disabled';
+
 export type EnrollmentStatus = 'not_started' | 'in_progress' | 'completed';
 
 export interface Organization {
@@ -34,6 +36,11 @@ export interface PortalUser {
   passwordHash: string;
   role: PortalUserRole;
   canGenerateAccessCodes?: boolean;
+  status?: PortalUserStatus;
+  emailVerifiedAt?: string;
+  lastLoginAt?: string;
+  passwordChangedAt?: string;
+  sessionVersion?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -157,6 +164,51 @@ export interface ActivityLog {
   createdAt: string;
 }
 
+export interface PasswordResetToken {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  createdAt: string;
+  expiresAt: string;
+  usedAt?: string;
+  requestedIp?: string;
+}
+
+export interface AccountInvitation {
+  id: string;
+  organizationId?: string;
+  email: string;
+  name?: string;
+  role: PortalUserRole;
+  invitedByUserId: string;
+  tokenHash: string;
+  status: 'pending' | 'accepted' | 'expired' | 'revoked';
+  createdAt: string;
+  expiresAt: string;
+  acceptedAt?: string;
+  acceptedUserId?: string;
+}
+
+export interface EmailVerificationToken {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  createdAt: string;
+  expiresAt: string;
+  usedAt?: string;
+}
+
+export interface AuthAuditEvent {
+  id: string;
+  userId?: string;
+  organizationId?: string;
+  email?: string;
+  action: string;
+  ip?: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
 export interface CoursePortalDataset {
   organizations: Organization[];
   users: PortalUser[];
@@ -167,6 +219,10 @@ export interface CoursePortalDataset {
   accessCodes: AccessCode[];
   cohorts: Cohort[];
   activityLogs: ActivityLog[];
+  passwordResetTokens?: PasswordResetToken[];
+  accountInvitations?: AccountInvitation[];
+  emailVerificationTokens?: EmailVerificationToken[];
+  authAuditEvents?: AuthAuditEvent[];
 }
 
 export interface CoursePortalCardData {

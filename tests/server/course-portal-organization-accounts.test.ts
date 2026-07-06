@@ -30,6 +30,7 @@ describe('organization account provisioning', () => {
       process.chdir(tempRoot);
       vi.resetModules();
       const scopedData = await import('@/lib/server/course-portal-data');
+      const passwordHashing = await import('@/lib/server/password-hashing');
 
       const created = await scopedData.createOrganizationWithAdmin({
         name: 'New School',
@@ -60,8 +61,13 @@ describe('organization account provisioning', () => {
       expect(admin).toMatchObject({
         organizationId: 'org-new-school',
         role: 'organization-admin',
-        passwordHash: scopedData.hashPortalPassword('temporary-demo-password'),
       });
+      expect(admin?.passwordHash.startsWith('scrypt$')).toBe(true);
+      expect(
+        admin
+          ? passwordHashing.verifyPortalPassword(admin.passwordHash, 'temporary-demo-password')
+          : undefined,
+      ).toMatchObject({ valid: true, needsUpgrade: false });
 
       await expect(
         scopedData.createOrganizationWithAdmin({

@@ -1,14 +1,19 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Loader2, LogIn } from 'lucide-react';
+import { Loader2, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export function LoginForm() {
+export function InviteAcceptForm({
+  token,
+  defaultName = '',
+}: {
+  token: string;
+  defaultName?: string;
+}) {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [name, setName] = useState(defaultName);
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -20,10 +25,10 @@ export function LoginForm() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/organization-auth/login', {
+      const response = await fetch('/api/organization/invitations/accept', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ token, name, password }),
       });
       const payload = (await response.json()) as {
         success: boolean;
@@ -31,12 +36,12 @@ export function LoginForm() {
         dashboardUrl?: string;
       };
       if (!response.ok || !payload.success) {
-        throw new Error(payload.error || 'Unable to sign in.');
+        throw new Error(payload.error || 'Unable to accept invitation.');
       }
       router.push(payload.dashboardUrl || '/dashboard');
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to sign in.');
+      setError(err instanceof Error ? err.message : 'Unable to accept invitation.');
     } finally {
       setIsSubmitting(false);
     }
@@ -49,13 +54,12 @@ export function LoginForm() {
     >
       <div className="grid gap-4">
         <label className="grid gap-2 text-sm font-medium text-slate-700">
-          Email
+          Name
           <input
-            value={email}
-            type="email"
-            autoComplete="email"
+            value={name}
             required
-            onChange={(event) => setEmail(event.target.value)}
+            autoComplete="name"
+            onChange={(event) => setName(event.target.value)}
             className="h-11 rounded-md border border-slate-200 px-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100"
           />
         </label>
@@ -64,8 +68,9 @@ export function LoginForm() {
           <input
             value={password}
             type="password"
-            autoComplete="current-password"
+            minLength={8}
             required
+            autoComplete="new-password"
             onChange={(event) => setPassword(event.target.value)}
             className="h-11 rounded-md border border-slate-200 px-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100"
           />
@@ -74,16 +79,16 @@ export function LoginForm() {
       {error && <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
       <Button
         type="submit"
-        disabled={isSubmitting || !email.trim() || !password}
+        disabled={isSubmitting || !name.trim() || password.length < 8}
         className="mt-5 min-h-10 w-full bg-violet-700 text-white hover:bg-violet-800"
       >
-        {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />}
-        Sign in
+        {isSubmitting ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <UserCheck className="size-4" />
+        )}
+        Accept invitation
       </Button>
-      <div className="mt-4 flex flex-col gap-2 text-center text-sm font-medium text-violet-700 sm:flex-row sm:justify-between">
-        <Link href="/forgot-password">Forgot password?</Link>
-        <Link href="/signup">Create learner account</Link>
-      </div>
     </form>
   );
 }

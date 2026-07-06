@@ -711,6 +711,32 @@ If you find OpenMAIC useful in your research, please consider citing:
 
 ---
 
+## LC Academy LMS Account Storage
+
+The LC Academy organization LMS uses JSON catalog storage for local development when
+`DATABASE_URL` is not set. Production account lifecycle writes should use Postgres by setting
+`DATABASE_URL` and running:
+
+```bash
+pnpm migrate:course-portal
+```
+
+Required production variables:
+
+- `DATABASE_URL`
+- `ORGANIZATION_SESSION_SECRET`
+- `COURSE_ACCESS_SECRET`
+- `APP_BASE_URL`
+- `RESEND_API_KEY`
+- `AUTH_EMAIL_FROM`
+- `AUTH_DEV_EXPOSE_TOKENS=false`
+
+The migration creates the LMS tables and imports `data/course-portal/catalog.json` only when the
+Postgres organizations table is empty, preserving production-created users and invitations on later
+deploys.
+
+---
+
 ## 📄 License
 
 This project is licensed under the [GNU Affero General Public License v3.0](LICENSE).

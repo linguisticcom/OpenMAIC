@@ -98,8 +98,18 @@ jobs:
           corepack prepare pnpm@10.28.0 --activate
           pnpm install --frozen-lockfile
 
+          if [ -f .env.local ]; then
+            set -a
+            # shellcheck disable=SC1091
+            . ./.env.local
+            set +a
+          fi
+
           rm -rf .next
           pnpm build
+          if [ -n "${DATABASE_URL:-}" ]; then
+            pnpm migrate:course-portal
+          fi
 
           mkdir -p .next/standalone/.next
           rm -rf .next/standalone/.next/static .next/standalone/public
@@ -107,7 +117,11 @@ jobs:
           cp -R public .next/standalone/public
           if [ -d data ]; then
             rm -rf .next/standalone/data
-            cp -R data .next/standalone/data
+            mkdir -p .next/standalone/data
+            find data -mindepth 1 -maxdepth 1 ! -name course-portal -exec cp -R {} .next/standalone/data/ \;
+            if [ -z "${DATABASE_URL:-}" ] && [ -d data/course-portal ]; then
+              cp -R data/course-portal .next/standalone/data/course-portal
+            fi
           fi
           if [ -f .env.local ]; then
             cp .env.local .next/standalone/.env.local
