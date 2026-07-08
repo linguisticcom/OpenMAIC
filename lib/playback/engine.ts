@@ -59,13 +59,9 @@ function pickNaturalBrowserVoice(
   text: string,
 ): SpeechSynthesisVoice | undefined {
   const cjkRatio =
-    text.length > 0
-      ? (text.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length / text.length
-      : 0;
+    text.length > 0 ? (text.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length / text.length : 0;
   const targetLang = cjkRatio > CJK_LANG_THRESHOLD ? 'zh' : 'en';
-  const languageVoices = voices.filter((voice) =>
-    voice.lang.toLowerCase().startsWith(targetLang),
-  );
+  const languageVoices = voices.filter((voice) => voice.lang.toLowerCase().startsWith(targetLang));
   const candidates = languageVoices.length > 0 ? languageVoices : voices;
   const naturalNameHints =
     /natural|neural|online|premium|aria|jenny|guy|brian|emma|ava|andrew|samantha|google|microsoft/i;
@@ -568,35 +564,37 @@ export class PlaybackEngine {
           }, readingMs);
         };
 
+        const tryBrowserTTSOrScheduleReadingTimer = () => {
+          // No playable pre-generated audio — try browser-native TTS only when it is
+          // explicitly forced by URL or selected/enabled in settings.
+          const settings = useSettingsStore.getState();
+          const forceBrowserTTS = isBrowserTTSUrlOverride();
+          const canUseConfiguredBrowserTTS =
+            settings.ttsEnabled &&
+            settings.ttsProviderId === 'browser-native-tts' &&
+            isTTSProviderEnabled(
+              'browser-native-tts',
+              settings.ttsProvidersConfig?.['browser-native-tts'],
+            );
+          if (
+            (forceBrowserTTS || canUseConfiguredBrowserTTS) &&
+            typeof window !== 'undefined' &&
+            window.speechSynthesis
+          ) {
+            this.playBrowserTTS(speechAction);
+          } else {
+            scheduleReadingTimer();
+          }
+        };
+
         this.audioPlayer
           .play(speechAction.audioId || '', speechAction.audioUrl)
           .then((audioStarted) => {
-            if (!audioStarted) {
-              // No pre-generated audio — try browser-native TTS only when it is
-              // the selected provider AND actually enabled (opt-in, #665).
-              const settings = useSettingsStore.getState();
-              const forceBrowserTTS = isBrowserTTSUrlOverride();
-              const canUseConfiguredBrowserTTS =
-                settings.ttsEnabled &&
-                settings.ttsProviderId === 'browser-native-tts' &&
-                isTTSProviderEnabled(
-                  'browser-native-tts',
-                  settings.ttsProvidersConfig?.['browser-native-tts'],
-                );
-              if (
-                (forceBrowserTTS || canUseConfiguredBrowserTTS) &&
-                typeof window !== 'undefined' &&
-                window.speechSynthesis
-              ) {
-                this.playBrowserTTS(speechAction);
-              } else {
-                scheduleReadingTimer();
-              }
-            }
+            if (!audioStarted) tryBrowserTTSOrScheduleReadingTimer();
           })
           .catch((err) => {
             log.error('TTS error:', err);
-            scheduleReadingTimer();
+            tryBrowserTTSOrScheduleReadingTimer();
           });
         break;
       }

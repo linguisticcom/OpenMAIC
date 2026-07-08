@@ -10,8 +10,8 @@ vi.mock('@/lib/server/classroom-access', () => ({
   canReadClassroom: mocks.canReadClassroom,
 }));
 
-function request(pathname: string) {
-  return new NextRequest(`http://localhost${pathname}`);
+function request(pathname: string, headers?: Record<string, string>) {
+  return new NextRequest(`http://localhost${pathname}`, headers ? { headers } : undefined);
 }
 
 function params(classroomId: string, path: string[]) {
@@ -45,5 +45,39 @@ describe('classroom media LMS access', () => {
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toEqual({ error: 'Invalid path' });
     expect(mocks.canReadClassroom).not.toHaveBeenCalled();
+  });
+
+  it('serves classroom audio byte ranges for browser media playback', async () => {
+    mocks.canReadClassroom.mockResolvedValue(true);
+
+    const response = await GET(
+      request(
+        '/api/classroom-media/a1wNxs34ed/audio/tts_s1_action_scene_a1wNxs34ed_1_orientation_speech_0.mp3',
+        { Range: 'bytes=0-9' },
+      ),
+      params('a1wNxs34ed', ['audio', 'tts_s1_action_scene_a1wNxs34ed_1_orientation_speech_0.mp3']),
+    );
+
+    expect(response.status).toBe(206);
+    expect(response.headers.get('content-type')).toBe('audio/mpeg');
+    expect(response.headers.get('accept-ranges')).toBe('bytes');
+    expect(response.headers.get('content-length')).toBe('10');
+    expect(response.headers.get('content-range')).toMatch(/^bytes 0-9\/\d+$/);
+    await expect(response.arrayBuffer()).resolves.toHaveProperty('byteLength', 10);
+  });
+
+  it('rejects invalid classroom media byte ranges', async () => {
+    mocks.canReadClassroom.mockResolvedValue(true);
+
+    const response = await GET(
+      request(
+        '/api/classroom-media/a1wNxs34ed/audio/tts_s1_action_scene_a1wNxs34ed_1_orientation_speech_0.mp3',
+        { Range: 'bytes=999999999-' },
+      ),
+      params('a1wNxs34ed', ['audio', 'tts_s1_action_scene_a1wNxs34ed_1_orientation_speech_0.mp3']),
+    );
+
+    expect(response.status).toBe(416);
+    expect(response.headers.get('content-range')).toMatch(/^bytes \*\/\d+$/);
   });
 });

@@ -22,7 +22,7 @@ const MIME_TYPES: Record<string, string> = {
 };
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ classroomId: string; path: string[] }> },
 ) {
   const { classroomId, path: pathSegments } = await params;
@@ -65,9 +65,56 @@ export async function GET(
 
     const ext = path.extname(realPath).toLowerCase();
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+    const rangeHeader = req.headers.get('range');
+    let status = 200;
+    let start = 0;
+    let end = stat.size - 1;
+
+    if (rangeHeader) {
+      const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim());
+      if (!match) {
+        return new NextResponse(null, {
+          status: 416,
+          headers: { 'Content-Range': `bytes */${stat.size}` },
+        });
+      }
+
+      const [, rawStart, rawEnd] = match;
+      if (!rawStart && !rawEnd) {
+        return new NextResponse(null, {
+          status: 416,
+          headers: { 'Content-Range': `bytes */${stat.size}` },
+        });
+      }
+
+      if (rawStart) {
+        start = Number(rawStart);
+        end = rawEnd ? Number(rawEnd) : stat.size - 1;
+      } else {
+        const suffixLength = Number(rawEnd);
+        start = Math.max(stat.size - suffixLength, 0);
+        end = stat.size - 1;
+      }
+
+      if (
+        !Number.isSafeInteger(start) ||
+        !Number.isSafeInteger(end) ||
+        start < 0 ||
+        end < start ||
+        start >= stat.size
+      ) {
+        return new NextResponse(null, {
+          status: 416,
+          headers: { 'Content-Range': `bytes */${stat.size}` },
+        });
+      }
+
+      end = Math.min(end, stat.size - 1);
+      status = 206;
+    }
 
     // Stream the file to avoid loading large videos into memory
-    const stream = createReadStream(realPath);
+    const stream = createReadStream(realPath, { start, end });
     const webStream = new ReadableStream({
       start(controller) {
         stream.on('data', (chunk: Buffer | string) => controller.enqueue(chunk));
@@ -80,10 +127,12 @@ export async function GET(
     });
 
     return new NextResponse(webStream, {
-      status: 200,
+      status,
       headers: {
         'Content-Type': contentType,
-        'Content-Length': String(stat.size),
+        'Content-Length': String(end - start + 1),
+        'Accept-Ranges': 'bytes',
+        ...(status === 206 ? { 'Content-Range': `bytes ${start}-${end}/${stat.size}` } : {}),
         'Cache-Control': 'public, max-age=86400, immutable',
       },
     });
