@@ -1,5 +1,5 @@
 import { apiError, apiSuccess } from '@/lib/server/api-response';
-import { updateGlobalCourseStatus } from '@/lib/server/course-portal-data';
+import { deleteGlobalCourse, updateGlobalCourseStatus } from '@/lib/server/course-portal-data';
 import { getCurrentPortalSession, isPlatformAdmin } from '@/lib/server/organization-session';
 
 export async function PATCH(request: Request, context: { params: Promise<{ courseId: string }> }) {
@@ -25,4 +25,20 @@ export async function PATCH(request: Request, context: { params: Promise<{ cours
   if ('error' in result) return apiError('INVALID_REQUEST', 400, result.error);
 
   return apiSuccess({ course: result });
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ courseId: string }> },
+) {
+  const session = await getCurrentPortalSession();
+  if (!session) return apiError('INVALID_REQUEST', 401, 'Authentication required.');
+  if (!isPlatformAdmin(session.user))
+    return apiError('INVALID_REQUEST', 403, 'Platform admin required.');
+
+  const { courseId } = await context.params;
+  const result = await deleteGlobalCourse({ courseId });
+  if ('error' in result) return apiError('INVALID_REQUEST', 400, result.error);
+
+  return apiSuccess(result);
 }

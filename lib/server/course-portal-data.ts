@@ -1442,6 +1442,47 @@ export async function updateGlobalCourseStatus(params: {
   return course;
 }
 
+export async function deleteGlobalCourse(params: { courseId: string }): Promise<
+  | {
+      deleted: true;
+      course: Course;
+      removed: {
+        assignments: number;
+        accessCodes: number;
+        enrollments: number;
+        activityLogs: number;
+      };
+    }
+  | { error: string }
+> {
+  const dataset = await readDataset();
+  const course = dataset.courses.find((item) => item.id === params.courseId);
+  if (!course) return { error: 'Course not found.' };
+
+  const assignmentsBefore = dataset.assignments.length;
+  const accessCodesBefore = dataset.accessCodes.length;
+  const enrollmentsBefore = dataset.enrollments.length;
+  const activityLogsBefore = dataset.activityLogs.length;
+
+  dataset.courses = dataset.courses.filter((item) => item.id !== params.courseId);
+  dataset.assignments = dataset.assignments.filter((item) => item.courseId !== params.courseId);
+  dataset.accessCodes = dataset.accessCodes.filter((item) => item.courseId !== params.courseId);
+  dataset.enrollments = dataset.enrollments.filter((item) => item.courseId !== params.courseId);
+  dataset.activityLogs = dataset.activityLogs.filter((item) => item.courseId !== params.courseId);
+
+  await writeDataset(dataset);
+  return {
+    deleted: true,
+    course,
+    removed: {
+      assignments: assignmentsBefore - dataset.assignments.length,
+      accessCodes: accessCodesBefore - dataset.accessCodes.length,
+      enrollments: enrollmentsBefore - dataset.enrollments.length,
+      activityLogs: activityLogsBefore - dataset.activityLogs.length,
+    },
+  };
+}
+
 export async function getPortalUserByEmail(email: string): Promise<PortalUser | undefined> {
   const dataset = await readDataset();
   return dataset.users.find((user) => user.email.toLowerCase() === email.trim().toLowerCase());

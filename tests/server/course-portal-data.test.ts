@@ -1944,6 +1944,135 @@ describe('global course management', () => {
     ).resolves.toEqual({ error: 'Invalid course status.' });
   });
 
+  it('deletes a global course and its dependent portal records', async () => {
+    const originalCwd = process.cwd();
+    const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'openmaic-delete-course-'));
+    const now = '2026-07-08T10:00:00.000Z';
+    const dataset: CoursePortalDataset = {
+      organizations: [
+        {
+          id: 'org-school',
+          name: 'School',
+          slug: 'school',
+          description: 'School tenant',
+          contactEmail: 'admin@school.example',
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+      users: [],
+      students: [
+        {
+          id: 'student-1',
+          organizationId: 'org-school',
+          name: 'Learner One',
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+      cohorts: [],
+      courses: [
+        {
+          id: 'course-dummy',
+          title: 'Dummy Course',
+          slug: 'dummy-course',
+          description: 'Temporary demo course.',
+          category: 'Demo',
+          status: 'draft',
+          generatedBy: 'OpenMAIC',
+          createdAt: now,
+          updatedAt: now,
+          modules: [],
+        },
+        {
+          id: 'course-real',
+          title: 'Real Course',
+          slug: 'real-course',
+          description: 'A course to keep.',
+          category: 'Real',
+          status: 'active',
+          generatedBy: 'OpenMAIC',
+          createdAt: now,
+          updatedAt: now,
+          modules: [],
+        },
+      ],
+      assignments: [
+        {
+          id: 'assign-dummy',
+          courseId: 'course-dummy',
+          organizationId: 'org-school',
+          assignedAt: now,
+          assignedByUserId: 'platform-admin',
+        },
+      ],
+      accessCodes: [
+        {
+          id: 'code-dummy',
+          codeHash: 'hash',
+          organizationId: 'org-school',
+          courseId: 'course-dummy',
+          createdByUserId: 'platform-admin',
+          currentUses: 0,
+          isActive: true,
+          createdAt: now,
+        },
+      ],
+      enrollments: [
+        {
+          id: 'enroll-dummy',
+          studentId: 'student-1',
+          courseId: 'course-dummy',
+          organizationId: 'org-school',
+          status: 'in_progress',
+          progressPercentage: 30,
+          startedAt: now,
+        },
+      ],
+      activityLogs: [
+        {
+          id: 'activity-dummy',
+          organizationId: 'org-school',
+          studentId: 'student-1',
+          courseId: 'course-dummy',
+          action: 'course.started',
+          metadata: {},
+          createdAt: now,
+        },
+      ],
+    };
+
+    try {
+      await mkdir(path.join(tempRoot, 'data', 'course-portal'), { recursive: true });
+      await writeFile(
+        path.join(tempRoot, 'data', 'course-portal', 'catalog.json'),
+        JSON.stringify(dataset, null, 2),
+        'utf-8',
+      );
+      process.chdir(tempRoot);
+      vi.resetModules();
+      const scopedData = await import('@/lib/server/course-portal-data');
+
+      const result = await scopedData.deleteGlobalCourse({ courseId: 'course-dummy' });
+      expect(result).toMatchObject({
+        deleted: true,
+        course: { id: 'course-dummy' },
+        removed: { assignments: 1, accessCodes: 1, enrollments: 1, activityLogs: 1 },
+      });
+
+      const persisted = await scopedData.getCoursePortalDataset();
+      expect(persisted.courses.map((course) => course.id)).toEqual(['course-real']);
+      expect(persisted.assignments).toEqual([]);
+      expect(persisted.accessCodes).toEqual([]);
+      expect(persisted.enrollments).toEqual([]);
+      expect(persisted.activityLogs).toEqual([]);
+    } finally {
+      process.chdir(originalCwd);
+      vi.resetModules();
+      await rm(tempRoot, { recursive: true, force: true });
+    }
+  });
+
   it('validates teacher manager assignment ownership', async () => {
     const existing = await assignCourseToOrganization({
       organizationId: 'org-esilv',
