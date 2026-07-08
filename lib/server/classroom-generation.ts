@@ -23,7 +23,10 @@ import { buildSearchQuery } from '@/lib/server/search-query-builder';
 import { formatSearchResultsAsContext, searchWeb } from '@/lib/web-search';
 import type { BaiduSubSources, WebSearchProviderId } from '@/lib/web-search/types';
 import { persistClassroom } from '@/lib/server/classroom-storage';
-import { registerGeneratedClassroomCourse } from '@/lib/server/course-portal-data';
+import {
+  getOrganizationById,
+  registerGeneratedClassroomCourse,
+} from '@/lib/server/course-portal-data';
 import {
   generateMediaForClassroom,
   replaceMediaPlaceholders,
@@ -77,6 +80,15 @@ export interface GenerateClassroomResult {
   scenes: Scene[];
   scenesCount: number;
   createdAt: string;
+  portalCourse?: {
+    id: string;
+    title: string;
+    slug: string;
+    status: string;
+    classroomId?: string;
+    url?: string;
+    organizationUrl?: string;
+  };
 }
 
 function createInMemoryStore(stage: Stage): StageStore {
@@ -472,12 +484,16 @@ export async function generateClassroom(
     },
     options.baseUrl,
   );
-  await registerGeneratedClassroomCourse({
+  const registeredCourse = await registerGeneratedClassroomCourse({
     classroomId: persisted.id,
     stage,
     scenes,
     metadata: input.portalCourse,
   });
+  const publishOrganizationId = input.portalCourse?.publishToOrganizationId?.trim();
+  const publishOrganization = publishOrganizationId
+    ? await getOrganizationById(publishOrganizationId)
+    : undefined;
 
   log.info(`Classroom persisted: ${persisted.id}, URL: ${persisted.url}`);
 
@@ -496,5 +512,18 @@ export async function generateClassroom(
     scenes,
     scenesCount: scenes.length,
     createdAt: persisted.createdAt,
+    portalCourse: {
+      id: registeredCourse.id,
+      title: registeredCourse.title,
+      slug: registeredCourse.slug,
+      status: registeredCourse.status,
+      ...(registeredCourse.classroomId ? { classroomId: registeredCourse.classroomId } : {}),
+      ...(publishOrganization
+        ? {
+            url: `${options.baseUrl}/courses/${registeredCourse.slug}?university=${publishOrganization.slug}`,
+            organizationUrl: `${options.baseUrl}/u/${publishOrganization.slug}/courses/${registeredCourse.slug}`,
+          }
+        : {}),
+    },
   };
 }

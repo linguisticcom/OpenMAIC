@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BookOpen,
   CheckCircle2,
@@ -39,6 +39,8 @@ interface ModuleGenerationJob {
   progress: number;
   message: string;
   url?: string;
+  courseUrl?: string;
+  globalCoursesUrl?: string;
   error?: string;
 }
 
@@ -137,32 +139,32 @@ export default function CourseStudioPage() {
     void loadResources();
   }, []);
 
-  useEffect(() => {
-    const loadDashboardCatalog = async () => {
-      setDashboardCatalogError(null);
+  const loadDashboardCatalog = useCallback(async () => {
+    setDashboardCatalogError(null);
 
-      try {
-        const response = await fetch('/api/admin/course-assignments');
-        const json = (await response.json()) as DashboardCatalogResponse;
-        if (!response.ok || !json.success) {
-          throw new Error(getApiErrorMessage(json, 'Failed to load dashboard publish targets'));
-        }
-        const organizations = json.organizations || [];
-        const courses = json.courses || [];
-        setDashboardOrganizations(organizations);
-        setDashboardCohorts(json.cohorts || []);
-        setDashboardCourses(courses);
-        setPublishOrganizationId((current) => current || organizations[0]?.id || '');
-        setAttachToCourseId((current) =>
-          current && courses.some((course) => course.id === current) ? current : '',
-        );
-      } catch (error) {
-        setDashboardCatalogError(error instanceof Error ? error.message : String(error));
+    try {
+      const response = await fetch('/api/admin/course-assignments');
+      const json = (await response.json()) as DashboardCatalogResponse;
+      if (!response.ok || !json.success) {
+        throw new Error(getApiErrorMessage(json, 'Failed to load dashboard publish targets'));
       }
-    };
-
-    void loadDashboardCatalog();
+      const organizations = json.organizations || [];
+      const courses = json.courses || [];
+      setDashboardOrganizations(organizations);
+      setDashboardCohorts(json.cohorts || []);
+      setDashboardCourses(courses);
+      setPublishOrganizationId((current) => current || organizations[0]?.id || '');
+      setAttachToCourseId((current) =>
+        current && courses.some((course) => course.id === current) ? current : '',
+      );
+    } catch (error) {
+      setDashboardCatalogError(error instanceof Error ? error.message : String(error));
+    }
   }, []);
+
+  useEffect(() => {
+    void loadDashboardCatalog();
+  }, [loadDashboardCatalog]);
 
   useEffect(() => {
     const loadProviderCapabilities = async () => {
@@ -270,12 +272,21 @@ export default function CourseStudioPage() {
             json.result?.url && enableLocalComputerVoice
               ? `${json.result.url}?tts=browser`
               : json.result?.url || current[moduleId]?.url,
+          courseUrl:
+            json.result?.portalCourse?.url ||
+            json.result?.portalCourse?.organizationUrl ||
+            current[moduleId]?.courseUrl,
+          globalCoursesUrl: json.result?.portalCourse
+            ? '/admin/courses'
+            : current[moduleId]?.globalCoursesUrl,
           error: json.error,
         },
       }));
 
       if (!json.done) {
         window.setTimeout(() => void pollModuleJob(moduleId, pollUrl), json.pollIntervalMs || 5000);
+      } else if (json.status === 'succeeded') {
+        void loadDashboardCatalog();
       }
     } catch (error) {
       setModuleJobs((current) => ({
@@ -814,16 +825,50 @@ export default function CourseStudioPage() {
                             </a>
                           </Button>
                         )}
+                        {moduleJobs[module.id]?.courseUrl && (
+                          <Button type="button" size="sm" variant="outline" asChild>
+                            <a
+                              href={moduleJobs[module.id].courseUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="gap-2"
+                            >
+                              <ExternalLink className="size-4" />
+                              Open course page
+                            </a>
+                          </Button>
+                        )}
+                        {moduleJobs[module.id]?.globalCoursesUrl && (
+                          <Button type="button" size="sm" variant="outline" asChild>
+                            <a href={moduleJobs[module.id].globalCoursesUrl} className="gap-2">
+                              <ExternalLink className="size-4" />
+                              Global courses
+                            </a>
+                          </Button>
+                        )}
                         {moduleJobs[module.id] && (
-                          <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-                            {moduleJobs[module.id].status === 'succeeded' ? (
-                              <CheckCircle2 className="size-4 shrink-0 text-green-600" />
+                          <div className="min-w-0 text-xs text-muted-foreground">
+                            <div className="flex min-w-0 items-center gap-2">
+                              {moduleJobs[module.id].status === 'succeeded' ? (
+                                <CheckCircle2 className="size-4 shrink-0 text-green-600" />
+                              ) : null}
+                              <span className="truncate">
+                                {moduleJobs[module.id].status === 'running'
+                                  ? `${moduleJobs[module.id].progress}% - ${moduleJobs[module.id].message}`
+                                  : moduleJobs[module.id].message}
+                              </span>
+                            </div>
+                            {moduleJobs[module.id].status === 'succeeded' &&
+                            moduleJobs[module.id].url ? (
+                              <a
+                                href={moduleJobs[module.id].url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-1 block max-w-full truncate font-medium text-violet-700 underline-offset-2 hover:underline"
+                              >
+                                Share classroom link: {moduleJobs[module.id].url}
+                              </a>
                             ) : null}
-                            <span className="truncate">
-                              {moduleJobs[module.id].status === 'running'
-                                ? `${moduleJobs[module.id].progress}% - ${moduleJobs[module.id].message}`
-                                : moduleJobs[module.id].message}
-                            </span>
                           </div>
                         )}
                       </div>
