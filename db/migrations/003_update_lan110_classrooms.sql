@@ -4,48 +4,48 @@
 
 UPDATE course_modules
 SET classroom_id = 'IROe4q9yqd'
-WHERE course_id = 'course-lan110-corporate-finance' AND module_order = 1;
+WHERE course_id = 'course-lan110-corporate-finance' AND order_index = 1;
 
 UPDATE course_modules
 SET classroom_id = 'JNRj_yDl86'
-WHERE course_id = 'course-lan110-corporate-finance' AND module_order = 2;
+WHERE course_id = 'course-lan110-corporate-finance' AND order_index = 2;
 
 UPDATE course_modules
 SET classroom_id = 'yOnxQO4p__'
-WHERE course_id = 'course-lan110-corporate-finance' AND module_order = 3;
+WHERE course_id = 'course-lan110-corporate-finance' AND order_index = 3;
 
 UPDATE course_modules
 SET classroom_id = 'doZX1GthIK'
-WHERE course_id = 'course-lan110-corporate-finance' AND module_order = 4;
+WHERE course_id = 'course-lan110-corporate-finance' AND order_index = 4;
 
 UPDATE course_modules
 SET classroom_id = '_wYiTIUyh6'
-WHERE course_id = 'course-lan110-corporate-finance' AND module_order = 5;
+WHERE course_id = 'course-lan110-corporate-finance' AND order_index = 5;
 
 UPDATE course_modules
 SET classroom_id = 'NlXmtM2VO1'
-WHERE course_id = 'course-lan110-corporate-finance' AND module_order = 6;
+WHERE course_id = 'course-lan110-corporate-finance' AND order_index = 6;
 
 UPDATE course_modules
 SET classroom_id = 'USF5EE8WoR'
-WHERE course_id = 'course-lan110-corporate-finance' AND module_order = 7;
+WHERE course_id = 'course-lan110-corporate-finance' AND order_index = 7;
 
 UPDATE course_modules
 SET classroom_id = 'OP270goDXu'
-WHERE course_id = 'course-lan110-corporate-finance' AND module_order = 8;
+WHERE course_id = 'course-lan110-corporate-finance' AND order_index = 8;
 
 UPDATE course_modules
 SET classroom_id = 'LMNUAHGqNi'
-WHERE course_id = 'course-lan110-corporate-finance' AND module_order = 9;
+WHERE course_id = 'course-lan110-corporate-finance' AND order_index = 9;
 
 UPDATE course_modules
 SET classroom_id = 'GinmvgUNOh'
-WHERE course_id = 'course-lan110-corporate-finance' AND module_order = 10;
+WHERE course_id = 'course-lan110-corporate-finance' AND order_index = 10;
 
 UPDATE course_modules
 SET classroom_id = 'vesaKsR1lt'
-WHERE course_id = 'course-lan110-corporate-finance' AND module_order = 11;
+WHERE course_id = 'course-lan110-corporate-finance' AND order_index = 11;
 
 UPDATE course_modules
 SET classroom_id = 'hMlkGBYADy'
-WHERE course_id = 'course-lan110-corporate-finance' AND module_order = 12;
+WHERE course_id = 'course-lan110-corporate-finance' AND order_index = 12;
