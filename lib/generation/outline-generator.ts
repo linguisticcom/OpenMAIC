@@ -26,7 +26,7 @@ const log = createLogger('Generation');
  * language rather than defaulting to the training-distribution prior.
  */
 export const DEFAULT_LANGUAGE_DIRECTIVE =
-  'Teach in the language that matches the user requirement.';
+  'Always teach in English. All course content, slide titles, slide text, descriptions, key points, quiz questions, and narration must be in English regardless of the input language. Use simple, clear English appropriate for the target audience.';
 
 /**
  * Generate scene outlines from user requirements
