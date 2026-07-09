@@ -130,7 +130,7 @@ export function buildModuleClassroomRequirement(params: {
   const hasResources = params.courseResourceIds.length > 0;
 
   return [
-    `Create an LC Academy classroom for module ${courseModule.order} of "${coursePlan.title}".`,
+    `Create an LC Academy classroom in English for module ${courseModule.order} of "${coursePlan.title}". All content, slide text, titles, and narration must be in English.`,
     `Module title: ${courseModule.title}.`,
     `Duration: ${courseModule.durationMinutes} minutes.`,
     `Audience: ${coursePlan.audience || params.audience || 'beginners'}.`,

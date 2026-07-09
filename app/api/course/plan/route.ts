@@ -217,6 +217,8 @@ export async function POST(req: NextRequest) {
 Design long courses as linked LC Academy classroom modules.
 Return ONLY valid JSON. Do not use markdown.
 
+CRITICAL: All content MUST be in English — module titles, learning objectives, and classroom prompts must all be in English regardless of the topic language or resource language.
+
 Planning rules:
 - Each module should become one classroom generation prompt.
 - Modules must be incremental and reference prior learning.
@@ -232,7 +234,7 @@ Module duration: ${moduleDurationMinutes} minutes
 Expected module count: ${expectedModuleCount}
 Required module orders: 1 through ${expectedModuleCount}
 Audience: ${body.audience || 'not specified'}
-Language: ${body.language || 'infer from topic and resources'}
+Language: English (all course content, module titles, learning objectives, and classroom prompts must be in English)
 Resources summary:
 ${resourcesSummary || 'No resource summary provided yet.'}
 
