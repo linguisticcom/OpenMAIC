@@ -14,18 +14,18 @@ const catalog = JSON.parse(
 
 // Classroom IDs generated on the VPS (not committed as local JSON files).
 const DYNAMIC_CLASSROOM_IDS = new Set([
-  'LgNPVUcmqi',
-  'CBjPlnsPts',
-  'Q5FPPPDAaC',
-  'RvTYLyO23n',
-  'HGCWVXxcg4',
-  'Kp-JtAdlWU',
-  'R_52fMvYk9',
-  'rxJ5sVQ9mZ',
-  'SmZBVqfSN2',
-  'GzYn9cmfov',
-  'kl1ILmHAIe',
-  'x1YlFiZS72',
+  "Ng9BIJZaxQ",
+  "xfE0e6mtN0",
+  "UWmfrJwF4E",
+  "Td6m4NO2l8",
+  "xkt9R1dzUn",
+  "xfkoQ6nVxJ",
+  "J4gMt4yxEf",
+  "qV00OIB5El",
+  "UbiXCl8npA",
+  "pKy4zCOzp5",
+  "eFitNF0ZoT",
+  "qtCy8539bm",
 ]);
 
 function collectSpeechActions(value: unknown): Array<Record<string, unknown>> {
