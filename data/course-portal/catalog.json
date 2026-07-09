@@ -57,11 +57,11 @@
       "passwordHash": "scrypt$16384$8$1$IbF_aRA909-Ol3ObHfxtkg$yqgEixhcVB-zC4vLbyUXQ1cQxbTcpiwldsvqwcXlh5q3Wo6OMQfNYG6U1AZHeDChKE9kRt6iItXYoLHYW1aDRg",
       "role": "organization-admin",
       "createdAt": "2026-06-01T09:15:00.000Z",
-      "updatedAt": "2026-07-09T18:24:23.279Z",
+      "updatedAt": "2026-07-09T19:56:49.463Z",
       "status": "active",
       "sessionVersion": 1,
       "passwordChangedAt": "2026-07-09T18:23:34.237Z",
-      "lastLoginAt": "2026-07-09T18:24:23.279Z"
+      "lastLoginAt": "2026-07-09T19:56:49.463Z"
     },
     {
       "id": "user-ingetis-admin",
@@ -323,84 +323,84 @@
           "title": "Course orientation: finance language and reporting goals",
           "description": "Set the LAN110 context, define the expected business-English outcomes, and connect corporate finance vocabulary to financial reporting tasks.",
           "durationMinutes": 45,
-          "classroomId": "IROe4q9yqd"
+          "classroomId": "LgNPVUcmqi"
         },
         {
           "id": "module-lan110-2",
           "title": "Company law and forms of business",
           "description": "Compare sole traders, partnerships, limited companies, corporations, subsidiaries, shareholders, creditors, liability, and bankruptcy risk.",
           "durationMinutes": 45,
-          "classroomId": "JNRj_yDl86"
+          "classroomId": "CBjPlnsPts"
         },
         {
           "id": "module-lan110-3",
           "title": "Capital, shares, creditors, and venture finance",
           "description": "Explain how companies raise capital through shares, prospectuses, banks, venture capital, and other financing sources while managing creditor claims.",
           "durationMinutes": 45,
-          "classroomId": "yOnxQO4p__"
+          "classroomId": "Q5FPPPDAaC"
         },
         {
           "id": "module-lan110-4",
           "title": "Bookkeeping fundamentals",
           "description": "Introduce bookkeeping records, transactions, accounts, accuracy, and the role of financial premises in reliable reporting.",
           "durationMinutes": 45,
-          "classroomId": "doZX1GthIK"
+          "classroomId": "RvTYLyO23n"
         },
         {
           "id": "module-lan110-5",
           "title": "Auditing and reporting reliability",
           "description": "Clarify what auditing checks, why accuracy matters, and how stakeholders use audited information to trust financial statements.",
           "durationMinutes": 45,
-          "classroomId": "_wYiTIUyh6"
+          "classroomId": "HGCWVXxcg4"
         },
         {
           "id": "module-lan110-6",
           "title": "Accounting principles for financial reports",
           "description": "Practice the continuity principle and core reporting assumptions that guide how income, expenses, assets, and liabilities are recognized.",
           "durationMinutes": 45,
-          "classroomId": "NlXmtM2VO1"
+          "classroomId": "Kp-JtAdlWU"
         },
         {
           "id": "module-lan110-7",
           "title": "Types of assets: tangible, intangible, current, and wasting assets",
           "description": "Classify assets and explain how different asset types affect valuation, reporting, operations, and business interpretation.",
           "durationMinutes": 45,
-          "classroomId": "USF5EE8WoR"
+          "classroomId": "R_52fMvYk9"
         },
         {
           "id": "module-lan110-8",
           "title": "Depreciation, wear, write-offs, and asset value",
           "description": "Compare straight-line and declining depreciation, explain wear and tear, and practice language for writing off assets.",
           "durationMinutes": 45,
-          "classroomId": "OP270goDXu"
+          "classroomId": "rxJ5sVQ9mZ"
         },
         {
           "id": "module-lan110-9",
           "title": "Cash flow and funds-flow statements",
           "description": "Read cash-flow and funds-flow information, distinguish cash from profit, and discuss liquidity using finance vocabulary.",
           "durationMinutes": 45,
-          "classroomId": "LMNUAHGqNi"
+          "classroomId": "SmZBVqfSN2"
         },
         {
           "id": "module-lan110-10",
           "title": "Financial statements: structure and interpretation",
           "description": "Bring together company law, accounting records, assets, liabilities, cash flow, and reporting principles to interpret complete statements.",
           "durationMinutes": 45,
-          "classroomId": "GinmvgUNOh"
+          "classroomId": "GzYn9cmfov"
         },
         {
           "id": "module-lan110-11",
           "title": "Agile finance, budgeting limits, and throughput accounting",
           "description": "Use the Finance Agile references to discuss why traditional budgeting can constrain innovation and how throughput accounting reframes performance.",
           "durationMinutes": 45,
-          "classroomId": "vesaKsR1lt"
+          "classroomId": "kl1ILmHAIe"
         },
         {
           "id": "module-lan110-12",
           "title": "Assessment workshop: definitions and reporting assignment",
           "description": "Prepare for the LAN110 evaluation by explaining key terms in English and drafting a 300-word report on a financial reporting assignment.",
           "durationMinutes": 45,
-          "classroomId": "hMlkGBYADy"
+          "classroomId": "x1YlFiZS72"
         }
       ]
     }
@@ -792,6 +792,33 @@
         "source": "course-detail"
       },
       "createdAt": "2026-07-09T18:24:23.919Z"
+    },
+    {
+      "id": "activity-1783626955578-5147d6",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-09T19:55:55.578Z"
+    },
+    {
+      "id": "activity-1783626970799-c331ab",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-09T19:56:10.799Z"
+    },
+    {
+      "id": "activity-1783627008516-decbf3",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-09T19:56:48.516Z"
     }
   ],
   "passwordResetTokens": [],

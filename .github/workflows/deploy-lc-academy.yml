@@ -105,6 +105,12 @@ jobs:
             set +a
           fi
 
+          # Preserve generated classroom data that isn't in the git repo
+          CLASSROOMS_BACKUP=$(mktemp -d)
+          if [ -d data/classrooms ]; then
+            cp -R data/classrooms "$CLASSROOMS_BACKUP/classrooms"
+          fi
+
           rm -rf .next
           pnpm build
           if [ -n "${DATABASE_URL:-}" ]; then
@@ -123,6 +129,12 @@ jobs:
               cp -R data/course-portal .next/standalone/data/course-portal
             fi
           fi
+          # Restore generated classrooms
+          if [ -d "$CLASSROOMS_BACKUP/classrooms" ]; then
+            mkdir -p .next/standalone/data/classrooms
+            cp -R "$CLASSROOMS_BACKUP/classrooms"/* .next/standalone/data/classrooms/ 2>/dev/null || true
+          fi
+          rm -rf "$CLASSROOMS_BACKUP"
           if [ -f .env.local ]; then
             cp .env.local .next/standalone/.env.local
           fi
