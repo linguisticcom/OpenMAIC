@@ -105,10 +105,10 @@ jobs:
             set +a
           fi
 
-          # Preserve generated classroom data that isn't in the git repo
+          # Preserve generated classroom data from the running app's data directory
           CLASSROOMS_BACKUP=$(mktemp -d)
-          if [ -d data/classrooms ]; then
-            cp -R data/classrooms "$CLASSROOMS_BACKUP/classrooms"
+          if [ -d .next/standalone/data/classrooms ]; then
+            cp -R .next/standalone/data/classrooms "$CLASSROOMS_BACKUP/classrooms"
           fi
 
           rm -rf .next
