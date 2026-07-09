@@ -1,7 +1,9 @@
-import { type NextRequest } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { apiSuccess, apiError, API_ERROR_CODES } from '@/lib/server/api-response';
 import { canReadClassroom } from '@/lib/server/classroom-access';
+import { getClassroomCourseAccessContext } from '@/lib/server/course-portal-data';
+import { getOrganizationById } from '@/lib/server/course-portal-data';
 import {
   buildRequestOrigin,
   isValidClassroomId,
@@ -66,6 +68,27 @@ export async function GET(request: NextRequest) {
     }
 
     if (!(await canReadClassroom(id))) {
+      // Gather course access context so the client can show an access-code prompt
+      const accessContext = await getClassroomCourseAccessContext(id);
+      if (accessContext && accessContext.assignments.length > 0) {
+        const firstAssignment = accessContext.assignments[0]!;
+        const organization = await getOrganizationById(firstAssignment.organizationId);
+        return NextResponse.json(
+          {
+            success: false,
+            errorCode: API_ERROR_CODES.INVALID_REQUEST,
+            error: 'Course access required.',
+            courseAccess: {
+              courseId: accessContext.course.id,
+              courseTitle: accessContext.course.title,
+              universityId: firstAssignment.organizationId,
+              cohortId: firstAssignment.cohortId,
+              universityName: organization?.name ?? 'your institution',
+            },
+          },
+          { status: 403 },
+        );
+      }
       return apiError(API_ERROR_CODES.INVALID_REQUEST, 403, 'Course access required.');
     }
 

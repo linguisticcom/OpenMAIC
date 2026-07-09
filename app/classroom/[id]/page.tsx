@@ -13,9 +13,18 @@ import { createLogger } from '@/lib/logger';
 import { MediaStageProvider } from '@/lib/contexts/media-stage-context';
 import { generateMediaForOutlines } from '@/lib/media/media-orchestrator';
 import { migrateScene } from '@/lib/edit/slide-schema';
+import { CourseAccessGate } from '@/components/course-portal/course-access-gate';
 import type { Scene } from '@/lib/types/stage';
 
 const log = createLogger('Classroom');
+
+interface CourseAccessContext {
+  courseId: string;
+  courseTitle: string;
+  universityId: string;
+  cohortId?: string;
+  universityName: string;
+}
 
 export default function ClassroomDetailPage() {
   const params = useParams();
@@ -26,6 +35,7 @@ export default function ClassroomDetailPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [courseAccess, setCourseAccess] = useState<CourseAccessContext | null>(null);
 
   const generationStartedRef = useRef(false);
 
@@ -45,6 +55,11 @@ export default function ClassroomDetailPage() {
         const res = await fetch(`/api/classroom?id=${encodeURIComponent(classroomId)}`);
         const json = await res.json().catch(() => null);
         if (!res.ok) {
+          // If the API returned course access context, surface the gate instead of a raw error
+          if (res.status === 403 && json?.courseAccess) {
+            setCourseAccess(json.courseAccess as CourseAccessContext);
+            return;
+          }
           throw new Error(json?.error || `Classroom request failed (${res.status})`);
         }
         if (!json?.success || !json.classroom) {
@@ -148,6 +163,7 @@ export default function ClassroomDetailPage() {
     // preventing stale data from syncing back to the new course
     setLoading(true);
     setError(null);
+    setCourseAccess(null);
     generationStartedRef.current = false;
 
     // Clear previous classroom's media tasks to prevent cross-classroom contamination.
@@ -219,33 +235,52 @@ export default function ClassroomDetailPage() {
   return (
     <ThemeProvider>
       <MediaStageProvider value={classroomId}>
-        <div className="h-screen flex flex-col overflow-hidden">
-          {loading ? (
-            <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-              <div className="text-center text-muted-foreground">
-                <p>Loading classroom...</p>
+        {courseAccess ? (
+          <CourseAccessGate
+            accessGranted={false}
+            courseId={courseAccess.courseId}
+            universityId={courseAccess.universityId}
+            cohortId={courseAccess.cohortId}
+            courseTitle={courseAccess.courseTitle}
+            universityName={courseAccess.universityName}
+          >
+            <div className="h-screen flex flex-col overflow-hidden">
+              <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+                <div className="text-center text-muted-foreground">
+                  <p>Loading classroom...</p>
+                </div>
               </div>
             </div>
-          ) : error ? (
-            <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-              <div className="text-center">
-                <p className="text-destructive mb-4">Error: {error}</p>
-                <button
-                  onClick={() => {
-                    setError(null);
-                    setLoading(true);
-                    loadClassroom();
-                  }}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-                >
-                  Retry
-                </button>
+          </CourseAccessGate>
+        ) : (
+          <div className="h-screen flex flex-col overflow-hidden">
+            {loading ? (
+              <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+                <div className="text-center text-muted-foreground">
+                  <p>Loading classroom...</p>
+                </div>
               </div>
-            </div>
-          ) : (
-            <Stage onRetryOutline={retrySingleOutline} />
-          )}
-        </div>
+            ) : error ? (
+              <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+                <div className="text-center">
+                  <p className="text-destructive mb-4">Error: {error}</p>
+                  <button
+                    onClick={() => {
+                      setError(null);
+                      setLoading(true);
+                      loadClassroom();
+                    }}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <Stage onRetryOutline={retrySingleOutline} />
+            )}
+          </div>
+        )}
       </MediaStageProvider>
     </ThemeProvider>
   );

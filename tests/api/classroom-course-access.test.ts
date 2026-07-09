@@ -5,6 +5,7 @@ import { GET } from '@/app/api/classroom/route';
 const mocks = vi.hoisted(() => ({
   getClassroomCourseAccessContext: vi.fn(),
   getCurrentPortalSession: vi.fn(),
+  getOrganizationById: vi.fn(),
   getVisibleOrganizationCourseDetail: vi.fn(),
   hasCourseAccess: vi.fn(),
   readClassroom: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock('@/lib/server/course-access', () => ({
 
 vi.mock('@/lib/server/course-portal-data', () => ({
   getClassroomCourseAccessContext: mocks.getClassroomCourseAccessContext,
+  getOrganizationById: mocks.getOrganizationById,
   getVisibleOrganizationCourseDetail: mocks.getVisibleOrganizationCourseDetail,
 }));
 
@@ -75,6 +77,7 @@ describe('classroom API course access', () => {
         },
       ],
     });
+    mocks.getOrganizationById.mockResolvedValue({ id: 'org-school', name: 'Test School', slug: 'test-school' } as any);
     mocks.getCurrentPortalSession.mockResolvedValue(null);
     mocks.hasCourseAccess.mockResolvedValue(false);
 
