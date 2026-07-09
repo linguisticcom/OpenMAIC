@@ -77,7 +77,7 @@ describe('classroom API course access', () => {
         },
       ],
     });
-    mocks.getOrganizationById.mockResolvedValue({ id: 'org-school', name: 'Test School', slug: 'test-school' } as any);
+    mocks.getOrganizationById.mockResolvedValue({ id: 'org-school', name: 'Test School', slug: 'test-school' } as unknown as import('@/lib/types/course-portal').Organization);
     mocks.getCurrentPortalSession.mockResolvedValue(null);
     mocks.hasCourseAccess.mockResolvedValue(false);
 
