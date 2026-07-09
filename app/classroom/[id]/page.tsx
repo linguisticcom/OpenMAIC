@@ -243,6 +243,11 @@ export default function ClassroomDetailPage() {
             cohortId={courseAccess.cohortId}
             courseTitle={courseAccess.courseTitle}
             universityName={courseAccess.universityName}
+            onSuccess={() => {
+              setCourseAccess(null);
+              setLoading(true);
+              loadClassroom();
+            }}
           >
             <div className="h-screen flex flex-col overflow-hidden">
               <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">

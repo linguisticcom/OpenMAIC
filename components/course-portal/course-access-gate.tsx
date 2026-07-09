@@ -14,6 +14,7 @@ interface CourseAccessGateProps {
   courseTitle: string;
   universityName: string;
   children: React.ReactNode;
+  onSuccess?: () => void;
 }
 
 export function CourseAccessGate({
@@ -24,6 +25,7 @@ export function CourseAccessGate({
   courseTitle,
   universityName,
   children,
+  onSuccess,
 }: CourseAccessGateProps) {
   const router = useRouter();
   const [showGate, setShowGate] = useState(!accessGranted);
@@ -76,9 +78,16 @@ export function CourseAccessGate({
         setCode('');
 
         // Refresh the page so the server re-checks access with the new cookie
-        // and renders with accessGranted=true
+        // and renders with accessGranted=true.
+        // If the caller provides onSuccess (e.g. client-only pages that need to
+        // re-run their own data fetch), use it; otherwise fall back to router.refresh()
+        // which works for server-rendered pages.
         setTimeout(() => {
-          router.refresh();
+          if (onSuccess) {
+            onSuccess();
+          } else {
+            router.refresh();
+          }
         }, 600);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unable to validate this access code.');
