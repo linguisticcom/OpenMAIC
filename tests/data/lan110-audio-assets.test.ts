@@ -12,9 +12,6 @@ const catalog = JSON.parse(
   }>;
 };
 
-// Classroom IDs generated on the VPS (not committed as local JSON files).
-const DYNAMIC_CLASSROOM_IDS = new Set([]);
-
 function collectSpeechActions(value: unknown): Array<Record<string, unknown>> {
   if (Array.isArray(value)) return value.flatMap(collectSpeechActions);
   if (!value || typeof value !== 'object') return [];
@@ -33,7 +30,6 @@ describe('LAN110 narration assets', () => {
 
     for (const courseModule of course!.modules) {
       expect(courseModule.classroomId, `${courseModule.id} classroomId`).toBeTruthy();
-
 
       const classroomPath = path.join(
         repoRoot,

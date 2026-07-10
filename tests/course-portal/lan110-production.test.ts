@@ -33,10 +33,6 @@ function readJson<T>(relativePath: string): T {
   return JSON.parse(readFileSync(path.join(root, relativePath), 'utf8')) as T;
 }
 
-// Classroom IDs generated on the VPS (not committed as local JSON files).
-// These use browser TTS instead of pre-generated MP3 audio.
-const DYNAMIC_CLASSROOM_IDS = new Set([]);
-
 describe('LAN110 produced course artifacts', () => {
   it('attaches a non-smoke generated classroom artifact to every LAN110 module', () => {
     const catalog = readJson<CatalogDataset>('data/course-portal/catalog.json');
@@ -47,10 +43,6 @@ describe('LAN110 produced course artifacts', () => {
 
     for (const courseModule of course?.modules ?? []) {
       expect(courseModule.classroomId, `${courseModule.id} is missing classroomId`).toBeTruthy();
-
-      // Dynamically generated classrooms live on the VPS only — they don't have
-      // local JSON artifacts or pre-generated MP3 audio. Skip file-level checks.
-      if (DYNAMIC_CLASSROOM_IDS.has(courseModule.classroomId!)) continue;
 
       const classroomPath = `data/classrooms/${courseModule.classroomId}.json`;
       expect(existsSync(path.join(root, classroomPath)), `${classroomPath} does not exist`).toBe(
