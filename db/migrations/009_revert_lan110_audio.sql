@@ -1,0 +1,12 @@
+UPDATE course_modules SET classroom_id = 'a1wNxs34ed' WHERE course_id = 'course-lan110-corporate-finance' AND id = 'module-lan110-1';
+UPDATE course_modules SET classroom_id = 'lan110_module_02' WHERE course_id = 'course-lan110-corporate-finance' AND id = 'module-lan110-2';
+UPDATE course_modules SET classroom_id = 'lan110_module_03' WHERE course_id = 'course-lan110-corporate-finance' AND id = 'module-lan110-3';
+UPDATE course_modules SET classroom_id = 'lan110_module_04' WHERE course_id = 'course-lan110-corporate-finance' AND id = 'module-lan110-4';
+UPDATE course_modules SET classroom_id = 'lan110_module_05' WHERE course_id = 'course-lan110-corporate-finance' AND id = 'module-lan110-5';
+UPDATE course_modules SET classroom_id = 'lan110_module_06' WHERE course_id = 'course-lan110-corporate-finance' AND id = 'module-lan110-6';
+UPDATE course_modules SET classroom_id = 'lan110_module_07' WHERE course_id = 'course-lan110-corporate-finance' AND id = 'module-lan110-7';
+UPDATE course_modules SET classroom_id = 'lan110_module_08' WHERE course_id = 'course-lan110-corporate-finance' AND id = 'module-lan110-8';
+UPDATE course_modules SET classroom_id = 'lan110_module_09' WHERE course_id = 'course-lan110-corporate-finance' AND id = 'module-lan110-9';
+UPDATE course_modules SET classroom_id = 'lan110_module_10' WHERE course_id = 'course-lan110-corporate-finance' AND id = 'module-lan110-10';
+UPDATE course_modules SET classroom_id = 'lan110_module_11' WHERE course_id = 'course-lan110-corporate-finance' AND id = 'module-lan110-11';
+UPDATE course_modules SET classroom_id = 'lan110_module_12' WHERE course_id = 'course-lan110-corporate-finance' AND id = 'module-lan110-12';
