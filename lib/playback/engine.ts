@@ -581,8 +581,10 @@ export class PlaybackEngine {
             typeof window !== 'undefined' &&
             window.speechSynthesis
           ) {
+            log.info('[BrowserTTS] Using browser TTS, force:', forceBrowserTTS, 'voices:', window.speechSynthesis.getVoices().length);
             this.playBrowserTTS(speechAction);
           } else {
+            log.info('[BrowserTTS] Scheduling reading timer instead (force:', forceBrowserTTS, 'has speechSynthesis:', typeof window !== 'undefined' && !!window.speechSynthesis, ')');
             scheduleReadingTimer();
           }
         };
@@ -705,6 +707,7 @@ export class PlaybackEngine {
    * Uses cancel+re-speak for pause/resume (Firefox compatibility).
    */
   private playBrowserTTS(speechAction: SpeechAction): void {
+    log.info('[BrowserTTS] playBrowserTTS called, text length:', speechAction.text.length);
     this.browserTTSChunks = this.splitIntoChunks(speechAction.text);
     this.browserTTSChunkIndex = 0;
     this.browserTTSPausedChunks = [];
@@ -788,6 +791,7 @@ export class PlaybackEngine {
 
     // Chrome bug workaround: cancel() before speak() to clear stale synthesis
     // state that can produce garbled/broken audio output.
+    log.info('[BrowserTTS] Speaking chunk', this.browserTTSChunkIndex + 1, '/', this.browserTTSChunks.length, 'lang:', utterance.lang, 'voice:', utterance.voice?.name || 'default', 'volume:', utterance.volume, 'rate:', utterance.rate);
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
   }
