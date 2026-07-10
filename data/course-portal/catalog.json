@@ -57,11 +57,11 @@
       "passwordHash": "scrypt$16384$8$1$IbF_aRA909-Ol3ObHfxtkg$yqgEixhcVB-zC4vLbyUXQ1cQxbTcpiwldsvqwcXlh5q3Wo6OMQfNYG6U1AZHeDChKE9kRt6iItXYoLHYW1aDRg",
       "role": "organization-admin",
       "createdAt": "2026-06-01T09:15:00.000Z",
-      "updatedAt": "2026-07-09T19:56:49.463Z",
+      "updatedAt": "2026-07-10T12:31:45.942Z",
       "status": "active",
       "sessionVersion": 1,
       "passwordChangedAt": "2026-07-09T18:23:34.237Z",
-      "lastLoginAt": "2026-07-09T19:56:49.463Z"
+      "lastLoginAt": "2026-07-10T12:31:45.942Z"
     },
     {
       "id": "user-ingetis-admin",
@@ -819,6 +819,69 @@
         "source": "course-detail"
       },
       "createdAt": "2026-07-09T19:56:48.516Z"
+    },
+    {
+      "id": "activity-1783669744604-a57e2d",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-10T07:49:04.604Z"
+    },
+    {
+      "id": "activity-1783670125785-8b5608",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-10T07:55:25.785Z"
+    },
+    {
+      "id": "activity-1783670245365-d66dc5",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-10T07:57:25.365Z"
+    },
+    {
+      "id": "activity-1783673603310-13f7ca",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-10T08:53:23.313Z"
+    },
+    {
+      "id": "activity-1783686256104-971ecf",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-10T12:24:16.104Z"
+    },
+    {
+      "id": "activity-1783686706310-569c72",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-10T12:31:46.310Z"
+    },
+    {
+      "id": "activity-1783704698479-a7de27",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-10T17:31:38.479Z"
     }
   ],
   "passwordResetTokens": [],

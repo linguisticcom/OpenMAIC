@@ -19,7 +19,7 @@ import { Header } from '@/components/header';
 import { CanvasArea } from '@/components/canvas/canvas-area';
 import { Roundtable } from '@/components/roundtable';
 import { PlaybackEngine, computePlaybackView } from '@/lib/playback';
-import type { EngineMode, TriggerEvent, Effect } from '@/lib/playback';
+import type { AudioPlaybackIssue, EngineMode, TriggerEvent, Effect } from '@/lib/playback';
 import { ActionEngine } from '@/lib/action/engine';
 import { createAudioPlayer } from '@/lib/utils/audio-player';
 import { useDiscussionTTS } from '@/lib/hooks/use-discussion-tts';
@@ -27,6 +27,7 @@ import { useWidgetIframeStore } from '@/lib/store/widget-iframe';
 import type { AudioIndicatorState } from '@/components/roundtable/audio-indicator';
 import type { Action, DiscussionAction, SpeechAction } from '@/lib/types/action';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 // Playback state persistence removed — refresh always starts from the beginning
 import { ChatArea, type ChatAreaRef } from '@/components/chat/chat-area';
 import { agentsToParticipants, useAgentRegistry } from '@/lib/orchestration/registry/store';
@@ -41,6 +42,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { AlertTriangle } from 'lucide-react';
 import { VisuallyHidden } from 'radix-ui';
+import { toast } from 'sonner';
 
 /**
  * Imperative handle exposed via `ref` so the parent (`Stage`) can tear
@@ -102,6 +104,7 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
     const [liveSpeech, setLiveSpeech] = useState<string | null>(null); // From buffer (discussion/QA)
     const [speechProgress, setSpeechProgress] = useState<number | null>(null); // StreamBuffer reveal progress (0–1)
     const [discussionTrigger, setDiscussionTrigger] = useState<TriggerEvent | null>(null);
+    const [audioPlaybackIssue, setAudioPlaybackIssue] = useState<AudioPlaybackIssue | null>(null);
 
     // Speaking agent tracking (Issue 2)
     const [speakingAgentId, setSpeakingAgentId] = useState<string | null>(null);
@@ -243,6 +246,7 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
     const resetSceneState = useCallback(() => {
       resetLiveState();
       setPlaybackCompleted(false);
+      setAudioPlaybackIssue(null);
       setLectureSpeech(null);
       setSpeechProgress(null);
       setShowEndFlash(false);
@@ -460,6 +464,7 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
       const engine = new PlaybackEngine([currentScene], actionEngine, audioPlayerRef.current, {
         onModeChange: (mode) => {
           setEngineMode(mode);
+          if (mode === 'playing') setAudioPlaybackIssue(null);
         },
         onSceneChange: (_sceneId) => {
           // Scene change handled by engine
@@ -486,6 +491,15 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
           // onSpeechStart replaces it or the scene transitions.
           // Clearing here causes fallback to idleText (first sentence).
           setActiveBubbleId(null);
+        },
+        onAudioPlaybackIssue: (issue) => {
+          setAudioPlaybackIssue(issue);
+          toast.warning(
+            issue === 'permission-denied'
+              ? 'Your browser blocked course audio. Press Play again to retry this sentence.'
+              : 'Browser narration stopped. Press Play to retry this sentence, or change the voice in audio settings.',
+            { id: 'course-audio-recovery', duration: 8000 },
+          );
         },
         onEffectFire: (effect: Effect) => {
           // Add to lecture session with incrementing index
@@ -1052,6 +1066,31 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
               canEdit={!!canEnterProMode}
               onToggleEditMode={onEnterProMode}
             />
+          )}
+
+          {audioPlaybackIssue && (
+            <div
+              role="alert"
+              className="flex flex-col gap-3 border-b border-amber-200 bg-amber-50 px-4 py-3 text-amber-950 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-700" />
+                <p className="text-sm leading-5">
+                  <span className="font-semibold">Course audio paused.</span>{' '}
+                  {audioPlaybackIssue === 'permission-denied'
+                    ? 'Your browser needs another click before it can play this sentence.'
+                    : 'Browser narration stopped before this sentence could play.'}
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void handlePlayPause()}
+                className="shrink-0 bg-amber-700 text-white hover:bg-amber-800"
+              >
+                Retry audio
+              </Button>
+            </div>
           )}
 
           {/* Canvas Area — playback-only renderer. The parent Stage swaps

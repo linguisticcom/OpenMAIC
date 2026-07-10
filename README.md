@@ -735,6 +735,19 @@ The migration creates the LMS tables and imports `data/course-portal/catalog.jso
 Postgres organizations table is empty, preserving production-created users and invitations on later
 deploys.
 
+### Course Studio resource storage
+
+Course Studio uploaded resources use the same storage mode decision:
+
+- When `DATABASE_URL` is set, resource metadata is stored in the Postgres `course_resources` table.
+- When `DATABASE_URL` is not set, local/dev metadata remains JSON-backed under `data/resources`.
+- Uploaded file bytes stay on disk; they are not stored in Postgres.
+- Set `COURSE_RESOURCE_STORAGE_DIR` to keep uploaded files outside the git-cleaned app checkout in production.
+- If `COURSE_RESOURCE_STORAGE_DIR` is not set, local/dev uploads continue to use `data/resources/files`.
+
+The deploy workflow runs `pnpm migrate:course-portal` when `DATABASE_URL` is present, so additive
+Course Studio resource migrations are applied with the LMS migrations.
+
 ---
 
 ## 📄 License

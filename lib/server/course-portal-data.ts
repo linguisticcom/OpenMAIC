@@ -36,7 +36,9 @@ import type {
 import type { GeneratedPortalCourseMetadata } from '@/lib/types/course-studio';
 import type { Scene, Stage } from '@/lib/types/stage';
 
-const COURSE_PORTAL_DATA_FILE = path.join(process.cwd(), 'data', 'course-portal', 'catalog.json');
+const COURSE_PORTAL_DATA_FILE = process.env.COURSE_PORTAL_DATA_FILE
+  ? path.resolve(process.env.COURSE_PORTAL_DATA_FILE)
+  : path.join(process.cwd(), 'data', 'course-portal', 'catalog.json');
 const SEED_NOW = '2026-07-02T09:00:00.000Z';
 const PLATFORM_ADMIN_ID = 'user-platform-admin';
 

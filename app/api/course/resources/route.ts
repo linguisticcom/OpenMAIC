@@ -5,6 +5,7 @@ import {
   createCourseResource,
   listCourseResources,
   toPublicCourseResource,
+  UnsupportedCourseResourceError,
   updateCourseResourceSummary,
 } from '@/lib/server/course-resources';
 import { apiError, apiSuccess } from '@/lib/server/api-response';
@@ -88,6 +89,9 @@ export async function POST(req: NextRequest) {
 
     return apiSuccess({ resource: toPublicCourseResource(saved) }, 201);
   } catch (error) {
+    if (error instanceof UnsupportedCourseResourceError) {
+      return apiError('INVALID_REQUEST', 400, error.message);
+    }
     log.error(`Failed to upload course resource [file="${fileName ?? 'unknown'}"]:`, error);
     return apiError(
       'INTERNAL_ERROR',

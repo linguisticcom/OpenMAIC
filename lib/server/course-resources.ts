@@ -1,8 +1,13 @@
+import { createHash } from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { nanoid } from 'nanoid';
 import { MAX_PDF_CONTENT_CHARS } from '@/lib/constants/generation';
 import { parsePDF } from '@/lib/pdf/pdf-providers';
+import {
+  getCourseResourceStore,
+  resetCourseResourceStoreCacheForTests,
+} from '@/lib/server/course-resource-store';
 import type { CourseResource, PersistedCourseResource } from '@/lib/types/course-studio';
 
 export const COURSE_RESOURCES_DIR = path.join(process.cwd(), 'data', 'resources');
@@ -23,12 +28,26 @@ export class CourseResourceContextError extends Error {
   }
 }
 
-async function ensureResourceDirs() {
-  await fs.mkdir(COURSE_RESOURCE_FILES_DIR, { recursive: true });
+export class UnsupportedCourseResourceError extends Error {
+  constructor(message = 'Supported resource files are PDF, text, and Markdown.') {
+    super(message);
+    this.name = 'UnsupportedCourseResourceError';
+  }
 }
 
-function metadataPath(id: string) {
-  return path.join(COURSE_RESOURCES_DIR, `${id}.json`);
+function getResourceStore() {
+  return getCourseResourceStore({ metadataDir: COURSE_RESOURCES_DIR });
+}
+
+export function getCourseResourceStorageDir(): string {
+  return process.env.COURSE_RESOURCE_STORAGE_DIR?.trim() || COURSE_RESOURCE_FILES_DIR;
+}
+
+async function ensureResourceDirs() {
+  if (!process.env.DATABASE_URL?.trim()) {
+    await fs.mkdir(COURSE_RESOURCES_DIR, { recursive: true });
+  }
+  await fs.mkdir(getCourseResourceStorageDir(), { recursive: true });
 }
 
 function sanitizeFileName(fileName: string) {
@@ -83,78 +102,88 @@ async function extractResourceText(file: File, buffer: Buffer) {
     };
   }
 
-  throw new Error('Supported resource files are PDF, text, and Markdown.');
+  throw new UnsupportedCourseResourceError();
+}
+
+function filePathForStorageKey(storageKey: string): string {
+  return path.join(getCourseResourceStorageDir(), storageKey);
 }
 
 export async function createCourseResource(params: {
   file: File;
   summary?: string;
+  organizationId?: string;
+  uploadedByUserId?: string;
 }): Promise<PersistedCourseResource> {
   await ensureResourceDirs();
 
   const buffer = Buffer.from(await params.file.arrayBuffer());
   const id = nanoid(10);
-  const storedFileName = `${id}-${sanitizeFileName(params.file.name)}`;
-  const storedPath = path.join(COURSE_RESOURCE_FILES_DIR, storedFileName);
+  const storageKey = `${id}-${sanitizeFileName(params.file.name)}`;
+  const storedPath = filePathForStorageKey(storageKey);
   const { text, pageCount } = await extractResourceText(params.file, buffer);
   const summary = params.summary?.trim() || summarizeExtractively(text, params.file.name);
+  const now = new Date().toISOString();
   const resource: PersistedCourseResource = {
     id,
     name: params.file.name,
     mimeType: params.file.type || 'application/octet-stream',
     size: params.file.size,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
+    updatedAt: now,
     summary,
     excerpt: excerptText(text),
     textLength: text.length,
     ...(pageCount ? { pageCount } : {}),
-    storedFileName,
+    ...(params.organizationId ? { organizationId: params.organizationId } : {}),
+    ...(params.uploadedByUserId ? { uploadedByUserId: params.uploadedByUserId } : {}),
+    storageProvider: 'local',
+    storageKey,
+    originalFileName: params.file.name,
+    checksumSha256: createHash('sha256').update(buffer).digest('hex'),
     text,
   };
 
   await fs.writeFile(storedPath, buffer);
-  await fs.writeFile(metadataPath(id), JSON.stringify(resource, null, 2), 'utf-8');
+  await getResourceStore().saveResource(resource);
   return resource;
 }
 
 export function toPublicCourseResource(resource: PersistedCourseResource): CourseResource {
-  const { storedFileName: _storedFileName, text: _text, ...publicResource } = resource;
+  const {
+    text: _text,
+    storageProvider: _storageProvider,
+    storageKey: _storageKey,
+    storedFileName: _storedFileName,
+    originalFileName: _originalFileName,
+    checksumSha256: _checksumSha256,
+    updatedAt: _updatedAt,
+    organizationId: _organizationId,
+    uploadedByUserId: _uploadedByUserId,
+    ...publicResource
+  } = resource;
   return publicResource;
 }
 
 export async function listCourseResources(): Promise<CourseResource[]> {
   await ensureResourceDirs();
-  const entries = await fs.readdir(COURSE_RESOURCES_DIR, { withFileTypes: true });
-  const resources = await Promise.all(
-    entries
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
-      .map(async (entry) => {
-        const content = await fs.readFile(path.join(COURSE_RESOURCES_DIR, entry.name), 'utf-8');
-        return toPublicCourseResource(JSON.parse(content) as PersistedCourseResource);
-      }),
-  );
-
-  return resources.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const resources = await getResourceStore().listResources();
+  return resources.map(toPublicCourseResource);
 }
 
 export async function readCourseResource(id: string): Promise<PersistedCourseResource | null> {
   if (!isValidCourseResourceId(id)) return null;
-
-  try {
-    const content = await fs.readFile(metadataPath(id), 'utf-8');
-    return JSON.parse(content) as PersistedCourseResource;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
-    throw error;
-  }
+  return getResourceStore().readResource(id);
 }
 
 export async function deleteCourseResource(id: string): Promise<boolean> {
-  const resource = await readCourseResource(id);
+  if (!isValidCourseResourceId(id)) return false;
+  const resource = await getResourceStore().deleteResource(id);
   if (!resource) return false;
 
-  await fs.rm(metadataPath(id), { force: true });
-  await fs.rm(path.join(COURSE_RESOURCE_FILES_DIR, resource.storedFileName), { force: true });
+  if (resource.storageKey) {
+    await fs.rm(filePathForStorageKey(resource.storageKey), { force: true });
+  }
   return true;
 }
 
@@ -168,9 +197,9 @@ export async function updateCourseResourceSummary(
   const updated = {
     ...resource,
     summary,
+    updatedAt: new Date().toISOString(),
   };
-  await fs.writeFile(metadataPath(id), JSON.stringify(updated, null, 2), 'utf-8');
-  return updated;
+  return getResourceStore().saveResource(updated);
 }
 
 export async function buildResourceSummaryBlock(resourceIds: string[]): Promise<string> {
@@ -222,4 +251,8 @@ export async function buildClassroomResourceContextBlock(
   }
 
   return parts.join('\n\n');
+}
+
+export function resetCourseResourcesForTests(): void {
+  resetCourseResourceStoreCacheForTests();
 }

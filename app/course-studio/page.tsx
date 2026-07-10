@@ -80,6 +80,8 @@ export default function CourseStudioPage() {
   const [publishOrganizationId, setPublishOrganizationId] = useState('');
   const [publishCohortId, setPublishCohortId] = useState('');
   const [attachToCourseId, setAttachToCourseId] = useState('');
+  const [attachCourseQuery, setAttachCourseQuery] = useState('');
+  const [showDraftCourseTargets, setShowDraftCourseTargets] = useState(false);
   const [dashboardCatalogError, setDashboardCatalogError] = useState<string | null>(null);
 
   const [editInstruction, setEditInstruction] = useState(
@@ -111,6 +113,19 @@ export default function CourseStudioPage() {
     () => dashboardCourses.find((course) => course.id === attachToCourseId),
     [attachToCourseId, dashboardCourses],
   );
+
+  const attachCourseOptions = useMemo(() => {
+    const query = attachCourseQuery.trim().toLowerCase();
+    return dashboardCourses
+      .filter(
+        (course) =>
+          showDraftCourseTargets || course.status !== 'draft' || course.id === attachToCourseId,
+      )
+      .filter((course) =>
+        [course.title, course.category, course.id].join(' ').toLowerCase().includes(query),
+      )
+      .sort((a, b) => a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
+  }, [attachCourseQuery, attachToCourseId, dashboardCourses, showDraftCourseTargets]);
 
   const loadResources = async () => {
     setResourceError(null);
@@ -443,7 +458,7 @@ export default function CourseStudioPage() {
         <header className="flex flex-col gap-3 border-b border-border pb-5 md:flex-row md:items-end md:justify-between">
           <div className="flex items-center gap-4">
             <img
-              src="https://linguistic-communication.com/_next/image?url=%2Fimages%2Fwp%2F2018%2F03%2FLC-1.jpg&w=640&q=75"
+              src="/lc-academy-logo.webp"
               alt="LC Academy"
               className="h-16 w-40 rounded-md border border-border bg-white p-2 object-contain shadow-sm sm:w-52"
             />
@@ -460,12 +475,40 @@ export default function CourseStudioPage() {
           </div>
         </header>
 
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.85fr)]">
-          <Card className="rounded-lg border-border p-4 shadow-none">
+        <section className="grid gap-5">
+          <Card className="rounded-lg border-border p-5 shadow-none">
             <div className="mb-4 flex items-center gap-2">
               <WandSparkles className="size-4 text-primary" />
-              <h2 className="text-base font-semibold">Long Course Planner</h2>
+              <div>
+                <h2 className="text-base font-semibold">Generated Course Pipeline</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Plan modules, generate playable classrooms, and publish them to the learner
+                  dashboard.
+                </p>
+              </div>
             </div>
+
+            <div className="mb-5 flex flex-col gap-3 rounded-lg border border-violet-200 bg-violet-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-violet-950">Ready to draft the course</p>
+                <p className="mt-1 text-xs leading-5 text-violet-800">
+                  {moduleCount || 0} expected modules · generation settings remain editable below
+                </p>
+              </div>
+              <Button
+                onClick={planCourse}
+                disabled={isPlanning || !topic.trim()}
+                className="gap-2 bg-violet-700 text-white hover:bg-violet-800"
+              >
+                {isPlanning ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <WandSparkles className="size-4" />
+                )}
+                Generate course plan
+              </Button>
+            </div>
+            {courseError && <p className="mb-4 text-sm text-destructive">{courseError}</p>}
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
@@ -501,115 +544,127 @@ export default function CourseStudioPage() {
                   placeholder="Beginners, business learners, university students"
                 />
               </div>
-              <div className="md:col-span-2">
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <Label htmlFor="resourceUpload">Resource library</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={loadResources}
-                    disabled={isLoadingResources}
-                    aria-label="Refresh resources"
-                  >
-                    {isLoadingResources ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="size-4" />
-                    )}
-                  </Button>
-                </div>
-                <div className="flex flex-col gap-3 rounded-md border border-border p-3">
-                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground transition-colors hover:bg-muted/50">
-                    {isUploadingResource ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Upload className="size-4" />
-                    )}
-                    <span>
-                      {isUploadingResource
-                        ? 'Uploading and summarizing'
-                        : 'Upload PDF, text, or Markdown'}
-                    </span>
-                    <Input
-                      id="resourceUpload"
-                      type="file"
-                      accept=".pdf,.txt,.md,.markdown,application/pdf,text/plain,text/markdown"
-                      className="hidden"
-                      disabled={isUploadingResource}
-                      onChange={(event) => {
-                        const file = event.target.files?.[0] || null;
-                        void uploadResource(file);
-                        event.currentTarget.value = '';
-                      }}
-                    />
-                  </label>
+              <details className="md:col-span-2 overflow-hidden rounded-lg border border-border bg-muted/20">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-900">
+                  <span>Optional reference materials</span>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {selectedResourceIds.length} selected · {resources.length} saved
+                  </span>
+                </summary>
+                <div className="grid gap-4 border-t border-border p-4">
+                  <div>
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <Label htmlFor="resourceUpload">Resource library</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={loadResources}
+                        disabled={isLoadingResources}
+                        aria-label="Refresh resources"
+                      >
+                        {isLoadingResources ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="size-4" />
+                        )}
+                      </Button>
+                    </div>
+                    <div className="flex flex-col gap-3 rounded-md border border-border p-3">
+                      <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground transition-colors hover:bg-muted/50">
+                        {isUploadingResource ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Upload className="size-4" />
+                        )}
+                        <span>
+                          {isUploadingResource
+                            ? 'Uploading and summarizing'
+                            : 'Upload PDF, text, or Markdown'}
+                        </span>
+                        <Input
+                          id="resourceUpload"
+                          type="file"
+                          accept=".pdf,.txt,.md,.markdown,application/pdf,text/plain,text/markdown"
+                          className="hidden"
+                          disabled={isUploadingResource}
+                          onChange={(event) => {
+                            const file = event.target.files?.[0] || null;
+                            void uploadResource(file);
+                            event.currentTarget.value = '';
+                          }}
+                        />
+                      </label>
 
-                  {resourceError && <p className="text-sm text-destructive">{resourceError}</p>}
+                      {resourceError && <p className="text-sm text-destructive">{resourceError}</p>}
 
-                  <div className="max-h-72 divide-y divide-border overflow-auto rounded-md border border-border">
-                    {resources.length === 0 ? (
-                      <div className="px-3 py-4 text-sm text-muted-foreground">
-                        No resources saved yet.
+                      <div className="max-h-72 divide-y divide-border overflow-auto rounded-md border border-border">
+                        {resources.length === 0 ? (
+                          <div className="px-3 py-4 text-sm text-muted-foreground">
+                            No resources saved yet.
+                          </div>
+                        ) : (
+                          resources.map((resource) => {
+                            const selected = selectedResourceIds.includes(resource.id);
+                            return (
+                              <article key={resource.id} className="flex gap-3 p-3">
+                                <input
+                                  type="checkbox"
+                                  checked={selected}
+                                  onChange={() => toggleResource(resource.id)}
+                                  className="mt-1 size-4 accent-primary"
+                                  aria-label={`Use ${resource.name}`}
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="size-4 shrink-0 text-muted-foreground" />
+                                    <h3 className="truncate text-sm font-medium">
+                                      {resource.name}
+                                    </h3>
+                                  </div>
+                                  <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-muted-foreground">
+                                    {resource.summary}
+                                  </p>
+                                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                    <span>{Math.max(1, Math.round(resource.size / 1024))} KB</span>
+                                    {resource.pageCount ? (
+                                      <span>{resource.pageCount} pages</span>
+                                    ) : null}
+                                    <span>{resource.textLength.toLocaleString()} chars</span>
+                                  </div>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => void deleteResource(resource.id)}
+                                  aria-label={`Delete ${resource.name}`}
+                                >
+                                  <Trash2 className="size-4" />
+                                </Button>
+                              </article>
+                            );
+                          })
+                        )}
                       </div>
-                    ) : (
-                      resources.map((resource) => {
-                        const selected = selectedResourceIds.includes(resource.id);
-                        return (
-                          <article key={resource.id} className="flex gap-3 p-3">
-                            <input
-                              type="checkbox"
-                              checked={selected}
-                              onChange={() => toggleResource(resource.id)}
-                              className="mt-1 size-4 accent-primary"
-                              aria-label={`Use ${resource.name}`}
-                            />
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <FileText className="size-4 shrink-0 text-muted-foreground" />
-                                <h3 className="truncate text-sm font-medium">{resource.name}</h3>
-                              </div>
-                              <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-muted-foreground">
-                                {resource.summary}
-                              </p>
-                              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                <span>{Math.max(1, Math.round(resource.size / 1024))} KB</span>
-                                {resource.pageCount ? (
-                                  <span>{resource.pageCount} pages</span>
-                                ) : null}
-                                <span>{resource.textLength.toLocaleString()} chars</span>
-                              </div>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => void deleteResource(resource.id)}
-                              aria-label={`Delete ${resource.name}`}
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </article>
-                        );
-                      })
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="resources">Resources summary</Label>
+                    <Textarea
+                      id="resources"
+                      value={resourcesSummary}
+                      onChange={(event) => setResourcesSummary(event.target.value)}
+                      className="min-h-28 resize-y"
+                    />
+                    {selectedResources.length > 0 && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {selectedResources.length} stored resources will be included in the plan.
+                      </p>
                     )}
                   </div>
                 </div>
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="resources">Resources summary</Label>
-                <Textarea
-                  id="resources"
-                  value={resourcesSummary}
-                  onChange={(event) => setResourcesSummary(event.target.value)}
-                  className="min-h-28 resize-y"
-                />
-                {selectedResources.length > 0 && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {selectedResources.length} stored resources will be included in the plan.
-                  </p>
-                )}
-              </div>
+              </details>
               <div className="md:col-span-2">
                 <Label>Classroom outputs</Label>
                 <div className="mt-2 grid gap-2 rounded-md border border-border p-3 text-sm text-muted-foreground sm:grid-cols-3">
@@ -693,19 +748,35 @@ export default function CourseStudioPage() {
                   </label>
                   <label className="grid gap-2 text-xs font-medium text-muted-foreground">
                     Attach generated module classrooms to existing course
+                    <Input
+                      value={attachCourseQuery}
+                      onChange={(event) => setAttachCourseQuery(event.target.value)}
+                      placeholder="Filter by title, category, or course ID"
+                      aria-label="Filter course attachment targets"
+                      className="h-10 bg-white text-sm text-slate-950"
+                    />
                     <select
                       value={attachToCourseId}
                       onChange={(event) => setAttachToCourseId(event.target.value)}
-                      disabled={dashboardCourses.length === 0}
+                      disabled={attachCourseOptions.length === 0}
                       className="h-10 rounded-md border border-border bg-white px-3 text-sm text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100 disabled:opacity-60"
                     >
                       <option value="">Create separate generated courses</option>
-                      {dashboardCourses.map((course) => (
+                      {attachCourseOptions.map((course) => (
                         <option key={course.id} value={course.id}>
-                          {course.title}
+                          {course.title} — {course.category} ({course.id})
                         </option>
                       ))}
                     </select>
+                  </label>
+                  <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={showDraftCourseTargets}
+                      onChange={(event) => setShowDraftCourseTargets(event.target.checked)}
+                      className="size-4 accent-primary"
+                    />
+                    Show draft attachment targets ({dashboardCourses.length} total courses)
                   </label>
                   {attachCourse && (
                     <p className="text-xs leading-5 text-muted-foreground">
@@ -760,18 +831,6 @@ export default function CourseStudioPage() {
                   )}
                 </div>
               </div>
-            </div>
-
-            <div className="mt-4 flex items-center gap-3">
-              <Button onClick={planCourse} disabled={isPlanning || !topic.trim()} className="gap-2">
-                {isPlanning ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <WandSparkles className="size-4" />
-                )}
-                Generate plan
-              </Button>
-              {courseError && <p className="text-sm text-destructive">{courseError}</p>}
             </div>
 
             {coursePlan && (
@@ -879,70 +938,77 @@ export default function CourseStudioPage() {
             )}
           </Card>
 
-          <Card className="rounded-lg border-border p-4 shadow-none">
-            <div className="mb-4 flex items-center gap-2">
+          <details className="overflow-hidden rounded-lg border border-border bg-white shadow-none">
+            <summary className="flex cursor-pointer list-none items-center gap-3 p-5">
               <PenLine className="size-4 text-primary" />
-              <h2 className="text-base font-semibold">Classroom Edit Planner</h2>
-            </div>
-
-            <div className="grid gap-4">
               <div>
-                <Label htmlFor="editInstruction">Instruction</Label>
-                <Textarea
-                  id="editInstruction"
-                  value={editInstruction}
-                  onChange={(event) => setEditInstruction(event.target.value)}
-                  className="min-h-24 resize-y"
-                />
+                <h2 className="text-base font-semibold">Advanced classroom editing</h2>
+                <p className="mt-1 text-sm font-normal text-muted-foreground">
+                  Draft JSON patches for an existing classroom after generation.
+                </p>
               </div>
-              <div>
-                <Label htmlFor="classroomJson">Classroom JSON</Label>
-                <Textarea
-                  id="classroomJson"
-                  value={classroomJson}
-                  onChange={(event) => setClassroomJson(event.target.value)}
-                  className="min-h-52 resize-y font-mono text-xs"
-                />
-              </div>
-            </div>
+            </summary>
 
-            <div className="mt-4 flex items-center gap-3">
-              <Button
-                onClick={createEditPlan}
-                disabled={isEditing || !editInstruction.trim() || !classroomJson.trim()}
-                className="gap-2"
-              >
-                {isEditing ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <PenLine className="size-4" />
-                )}
-                Draft patches
-              </Button>
-              {editError && <p className="text-sm text-destructive">{editError}</p>}
-            </div>
-
-            {editPlan && (
-              <div className="mt-5 rounded-md border border-border">
-                <div className="border-b border-border bg-muted/40 px-3 py-2 text-sm font-medium">
-                  {editPlan.summary}
+            <div className="border-t border-border p-5">
+              <div className="grid gap-4">
+                <div>
+                  <Label htmlFor="editInstruction">Instruction</Label>
+                  <Textarea
+                    id="editInstruction"
+                    value={editInstruction}
+                    onChange={(event) => setEditInstruction(event.target.value)}
+                    className="min-h-24 resize-y"
+                  />
                 </div>
-                <div className="divide-y divide-border">
-                  {editPlan.patches.map((patch) => (
-                    <article key={patch.id} className="p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <h3 className="text-sm font-semibold">{patch.title}</h3>
-                        <span className="shrink-0 rounded bg-muted px-2 py-1 text-xs">
-                          {patch.operation}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm text-muted-foreground">{patch.rationale}</p>
-                    </article>
-                  ))}
+                <div>
+                  <Label htmlFor="classroomJson">Classroom JSON</Label>
+                  <Textarea
+                    id="classroomJson"
+                    value={classroomJson}
+                    onChange={(event) => setClassroomJson(event.target.value)}
+                    className="min-h-52 resize-y font-mono text-xs"
+                  />
                 </div>
               </div>
-            )}
-          </Card>
+
+              <div className="mt-4 flex items-center gap-3">
+                <Button
+                  onClick={createEditPlan}
+                  disabled={isEditing || !editInstruction.trim() || !classroomJson.trim()}
+                  className="gap-2"
+                >
+                  {isEditing ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <PenLine className="size-4" />
+                  )}
+                  Draft patches
+                </Button>
+                {editError && <p className="text-sm text-destructive">{editError}</p>}
+              </div>
+
+              {editPlan && (
+                <div className="mt-5 rounded-md border border-border">
+                  <div className="border-b border-border bg-muted/40 px-3 py-2 text-sm font-medium">
+                    {editPlan.summary}
+                  </div>
+                  <div className="divide-y divide-border">
+                    {editPlan.patches.map((patch) => (
+                      <article key={patch.id} className="p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <h3 className="text-sm font-semibold">{patch.title}</h3>
+                          <span className="shrink-0 rounded bg-muted px-2 py-1 text-xs">
+                            {patch.operation}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-sm text-muted-foreground">{patch.rationale}</p>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </details>
         </section>
       </div>
     </main>

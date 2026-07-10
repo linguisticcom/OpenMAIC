@@ -368,9 +368,9 @@
     "renamePlaceholder": "輸入課堂名稱",
     "renameFailed": "重新命名失敗",
     "clearSearch": "清除",
-    "searchAriaLabel": "搜尋課程",
-    "searchEmpty": "沒有符合的課程",
-    "searchPlaceholder": "搜尋課程..."
+    "searchAriaLabel": "搜尋最近的教室",
+    "searchEmpty": "沒有符合的最近教室",
+    "searchPlaceholder": "搜尋最近的教室..."
   },
   "upload": {
     "pdfSizeLimit": "支援最大50MB的PDF檔案",

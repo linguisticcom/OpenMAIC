@@ -211,8 +211,10 @@ export function CanvasArea({
                 transition={{ duration: 0.3 }}
                 className="absolute inset-0 z-[102] flex items-center justify-center pointer-events-none"
               >
-                <motion.div
-                  className="opacity-50 group-hover/canvas:opacity-100 transition-opacity duration-300 pointer-events-auto cursor-pointer"
+                <motion.button
+                  type="button"
+                  aria-label="Play course narration"
+                  className="pointer-events-auto cursor-pointer border-0 bg-transparent p-0 opacity-50 transition-opacity duration-300 group-hover/canvas:opacity-100 focus-visible:rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-4"
                   exit={{ pointerEvents: 'none' }}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -237,7 +239,7 @@ export function CanvasArea({
                   >
                     <Play className="w-7 h-7 text-purple-600 dark:text-purple-400 fill-purple-600/90 dark:fill-purple-400/90 ml-0.5" />
                   </motion.div>
-                </motion.div>
+                </motion.button>
               </motion.div>
             )}
           </AnimatePresence>

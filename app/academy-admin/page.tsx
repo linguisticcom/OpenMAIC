@@ -12,11 +12,7 @@ import {
   Search,
   Users,
 } from 'lucide-react';
-import type {
-  AdminMetrics,
-  AdminSchoolOverview,
-  AdminStudent,
-} from '@/lib/types/admin-dashboard';
+import type { AdminMetrics, AdminSchoolOverview, AdminStudent } from '@/lib/types/admin-dashboard';
 
 function latestActivity(student: AdminStudent): string {
   return (
@@ -46,7 +42,8 @@ function studentStatus(student: AdminStudent): 'completed' | 'in_progress' | 'no
 function computeMetrics(overview: AdminSchoolOverview): AdminMetrics {
   const totalPossibleModules = overview.students.length * overview.course.moduleCount;
   const totalCompletedModules = overview.students.reduce(
-    (sum, student) => sum + student.moduleProgress.filter((item) => item.status === 'completed').length,
+    (sum, student) =>
+      sum + student.moduleProgress.filter((item) => item.status === 'completed').length,
     0,
   );
   const progressValues = overview.students.map(studentProgress);
@@ -61,9 +58,12 @@ function computeMetrics(overview: AdminSchoolOverview): AdminMetrics {
 
   return {
     totalStudents: overview.students.length,
-    activeAccounts: overview.students.filter((student) => student.accountStatus === 'active').length,
-    invitedAccounts: overview.students.filter((student) => student.accountStatus === 'invited').length,
-    inactiveAccounts: overview.students.filter((student) => student.accountStatus === 'inactive').length,
+    activeAccounts: overview.students.filter((student) => student.accountStatus === 'active')
+      .length,
+    invitedAccounts: overview.students.filter((student) => student.accountStatus === 'invited')
+      .length,
+    inactiveAccounts: overview.students.filter((student) => student.accountStatus === 'inactive')
+      .length,
     completedStudents: statuses.filter((status) => status === 'completed').length,
     inProgressStudents: statuses.filter((status) => status === 'in_progress').length,
     notStartedStudents: statuses.filter((status) => status === 'not_started').length,
@@ -72,11 +72,15 @@ function computeMetrics(overview: AdminSchoolOverview): AdminMetrics {
         ? Math.round(progressValues.reduce((sum, value) => sum + value, 0) / progressValues.length)
         : 0,
     averageScorePercent:
-      scores.length > 0 ? Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length) : 0,
+      scores.length > 0
+        ? Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length)
+        : 0,
     totalCompletedModules,
     totalPossibleModules,
     moduleCompletionRate:
-      totalPossibleModules > 0 ? Math.round((totalCompletedModules / totalPossibleModules) * 100) : 0,
+      totalPossibleModules > 0
+        ? Math.round((totalCompletedModules / totalPossibleModules) * 100)
+        : 0,
     certificatesReady: statuses.filter((status) => status === 'completed').length,
     atRiskStudents: overview.students.filter((student) => {
       if (studentStatus(student) === 'completed') return false;
@@ -142,7 +146,10 @@ export default function AcademyAdminPage() {
 
   const metrics = useMemo(() => (overview ? computeMetrics(overview) : null), [overview]);
   const groups = useMemo(
-    () => ['All groups', ...Array.from(new Set(overview?.students.map((student) => student.group) || []))],
+    () => [
+      'All groups',
+      ...Array.from(new Set(overview?.students.map((student) => student.group) || [])),
+    ],
     [overview],
   );
   const filteredStudents = useMemo(() => {
@@ -190,7 +197,9 @@ export default function AcademyAdminPage() {
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Linguistic Communication
               </p>
-              <h1 className="mt-1 text-3xl font-semibold tracking-normal text-slate-950">LC Academy</h1>
+              <h1 className="mt-1 text-3xl font-semibold tracking-normal text-slate-950">
+                LC Academy
+              </h1>
               <p className="mt-2 text-sm text-slate-600">
                 {overview.course.title} · {overview.school.plan}
               </p>
@@ -233,7 +242,9 @@ export default function AcademyAdminPage() {
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-semibold">Module Completion</h2>
-                <p className="text-sm text-slate-500">Completion by module across all student accounts.</p>
+                <p className="text-sm text-slate-500">
+                  Completion by module across all student accounts.
+                </p>
               </div>
               <BarChart3 className="size-5 text-slate-900" />
             </div>
@@ -254,7 +265,10 @@ export default function AcademyAdminPage() {
                       <span className="text-slate-500">{percent}%</span>
                     </div>
                     <div className="h-2 rounded-full bg-slate-100">
-                      <div className="h-2 rounded-full bg-slate-950" style={{ width: `${percent}%` }} />
+                      <div
+                        className="h-2 rounded-full bg-slate-950"
+                        style={{ width: `${percent}%` }}
+                      />
                     </div>
                   </div>
                 );
@@ -266,7 +280,9 @@ export default function AcademyAdminPage() {
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-semibold">Attention Needed</h2>
-                <p className="text-sm text-slate-500">Students who may need follow-up from the school admin.</p>
+                <p className="text-sm text-slate-500">
+                  Students who may need follow-up from the school admin.
+                </p>
               </div>
               <AlertTriangle className="size-5 text-amber-600" />
             </div>
@@ -276,7 +292,10 @@ export default function AcademyAdminPage() {
                 .sort((a, b) => studentProgress(a) - studentProgress(b))
                 .slice(0, 4)
                 .map((student) => (
-                  <div key={student.id} className="flex items-center justify-between rounded-lg bg-slate-50 p-3">
+                  <div
+                    key={student.id}
+                    className="flex items-center justify-between rounded-lg bg-slate-50 p-3"
+                  >
                     <div>
                       <p className="font-medium text-slate-900">{student.name}</p>
                       <p className="text-xs text-slate-500">
@@ -297,7 +316,9 @@ export default function AcademyAdminPage() {
           <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-base font-semibold">Student Details</h2>
-              <p className="text-sm text-slate-500">Account status, completion state, scores, and recent activity.</p>
+              <p className="text-sm text-slate-500">
+                Account status, completion state, scores, and recent activity.
+              </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <label className="relative">
@@ -335,7 +356,9 @@ export default function AcademyAdminPage() {
               </thead>
               <tbody>
                 {filteredStudents.map((student) => {
-                  const completed = student.moduleProgress.filter((item) => item.status === 'completed').length;
+                  const completed = student.moduleProgress.filter(
+                    (item) => item.status === 'completed',
+                  ).length;
                   const scores = student.moduleProgress
                     .map((item) => item.scorePercent)
                     .filter((value): value is number => typeof value === 'number');
@@ -358,7 +381,10 @@ export default function AcademyAdminPage() {
                       <td className="py-3 pr-4">
                         <div className="flex items-center gap-2">
                           <div className="h-2 w-24 rounded-full bg-slate-100">
-                            <div className="h-2 rounded-full bg-slate-950" style={{ width: `${progress}%` }} />
+                            <div
+                              className="h-2 rounded-full bg-slate-950"
+                              style={{ width: `${progress}%` }}
+                            />
                           </div>
                           <span className="tabular-nums">{progress}%</span>
                         </div>

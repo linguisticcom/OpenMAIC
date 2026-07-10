@@ -382,10 +382,10 @@
     "rename": "名前を変更",
     "renamePlaceholder": "教室名を入力",
     "renameFailed": "教室名の変更に失敗しました",
-    "searchPlaceholder": "コースを検索...",
-    "searchAriaLabel": "コースを検索",
+    "searchPlaceholder": "最近の教室を検索...",
+    "searchAriaLabel": "最近の教室を検索",
     "clearSearch": "クリア",
-    "searchEmpty": "該当するコースが見つかりません"
+    "searchEmpty": "該当する最近の教室が見つかりません"
   },
   "upload": {
     "pdfSizeLimit": "50MBまでのPDFファイルに対応しています",

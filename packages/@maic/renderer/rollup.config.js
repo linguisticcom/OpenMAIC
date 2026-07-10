@@ -57,4 +57,6 @@ const buildBundle = (format) => ({
   plugins,
 });
 
-export default [buildBundle('es'), buildBundle('cjs')];
+const configs = [buildBundle('es'), buildBundle('cjs')];
+
+export default configs;

@@ -382,10 +382,10 @@
     "rename": "重命名",
     "renamePlaceholder": "输入课堂名称",
     "renameFailed": "重命名失败",
-    "searchPlaceholder": "搜索课程...",
-    "searchAriaLabel": "搜索课程",
+    "searchPlaceholder": "搜索最近的课堂...",
+    "searchAriaLabel": "搜索最近的课堂",
     "clearSearch": "清空",
-    "searchEmpty": "没有找到匹配的课程"
+    "searchEmpty": "没有找到匹配的最近课堂"
   },
   "upload": {
     "pdfSizeLimit": "支持最大50MB的PDF文件",

@@ -6,7 +6,7 @@
 
 import katex from 'katex';
 import type { RenderContext } from './RenderContext';
-import type { TextBody, TextParagraph, TextRun } from '../model/nodes/ShapeNode';
+import type { TextBody, TextRun } from '../model/nodes/ShapeNode';
 import type { PlaceholderInfo } from '../model/nodes/BaseNode';
 import { SafeXmlNode } from '../parser/XmlParser';
 import { resolveColor, resolveColorToCss } from './StyleResolver';

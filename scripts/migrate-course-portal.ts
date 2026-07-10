@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import postgres from 'postgres';
 import { PostgresCoursePortalStore } from '@/lib/server/course-portal-store/postgres-store';
+import { runCoursePortalMigrations } from '@/lib/server/course-portal-migrations';
 import type { CoursePortalDataset } from '@/lib/types/course-portal';
 
 const EMPTY_DATASET: CoursePortalDataset = {
@@ -64,17 +65,6 @@ function normalizeDataset(input: Partial<CoursePortalDataset>): CoursePortalData
   };
 }
 
-async function runMigrations(sql: ReturnType<typeof postgres>) {
-  const migrationsDir = path.join(process.cwd(), 'db', 'migrations');
-  const files = (await fs.readdir(migrationsDir)).filter((file) => file.endsWith('.sql')).sort();
-
-  for (const file of files) {
-    const migrationSql = await fs.readFile(path.join(migrationsDir, file), 'utf-8');
-    await sql.unsafe(migrationSql);
-    console.log(`[course-portal:migrate] applied ${file}`);
-  }
-}
-
 async function readCatalogDataset(): Promise<CoursePortalDataset | undefined> {
   const catalogPath = path.join(process.cwd(), 'data', 'course-portal', 'catalog.json');
   try {
@@ -96,7 +86,15 @@ async function main() {
 
   const sql = postgres(databaseUrl, { max: 1 });
   try {
-    await runMigrations(sql);
+    const migrationResult = await runCoursePortalMigrations(sql);
+    for (const file of migrationResult.applied) {
+      console.log(`[course-portal:migrate] applied ${file}`);
+    }
+    if (migrationResult.skipped.length > 0) {
+      console.log(
+        `[course-portal:migrate] skipped ${migrationResult.skipped.length} previously applied migration(s).`,
+      );
+    }
     const [{ count }] = await sql<
       { count: string }[]
     >`select count(*)::text as count from organizations`;

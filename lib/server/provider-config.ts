@@ -295,7 +295,8 @@ function buildConfig(yamlData: YamlData): ServerConfig {
     const yamlOpenAITts = yamlData.tts?.['openai-tts'];
     tts['openai-tts'] = {
       apiKey: process.env.OPENAI_API_KEY,
-      baseUrl: yamlOpenAITts?.baseUrl || process.env.TTS_OPENAI_BASE_URL || process.env.OPENAI_BASE_URL,
+      baseUrl:
+        yamlOpenAITts?.baseUrl || process.env.TTS_OPENAI_BASE_URL || process.env.OPENAI_BASE_URL,
       models: yamlOpenAITts?.models,
       proxy: yamlOpenAITts?.proxy,
     };
@@ -306,12 +307,15 @@ function buildConfig(yamlData: YamlData): ServerConfig {
   });
   if (!asr['openai-whisper']) {
     const openAIASRKey =
-      process.env.ASR_OPENAI_API_KEY || process.env.OPENAI_API_KEY || process.env.TTS_OPENAI_API_KEY;
+      process.env.ASR_OPENAI_API_KEY ||
+      process.env.OPENAI_API_KEY ||
+      process.env.TTS_OPENAI_API_KEY;
     if (openAIASRKey) {
       const yamlOpenAIASR = yamlData.asr?.['openai-whisper'];
       asr['openai-whisper'] = {
         apiKey: openAIASRKey,
-        baseUrl: yamlOpenAIASR?.baseUrl || process.env.ASR_OPENAI_BASE_URL || process.env.OPENAI_BASE_URL,
+        baseUrl:
+          yamlOpenAIASR?.baseUrl || process.env.ASR_OPENAI_BASE_URL || process.env.OPENAI_BASE_URL,
         models: yamlOpenAIASR?.models,
         proxy: yamlOpenAIASR?.proxy,
       };

@@ -160,10 +160,13 @@ export function useAudioRecorder(options: UseAudioRecorderOptions = {}) {
           formData.append('audio', audioBlob, 'recording.webm');
         }
 
-        const response = await fetch(useLocalWhisper ? '/api/transcription/local-whisper' : '/api/transcription', {
-          method: 'POST',
-          body: formData,
-        });
+        const response = await fetch(
+          useLocalWhisper ? '/api/transcription/local-whisper' : '/api/transcription',
+          {
+            method: 'POST',
+            body: formData,
+          },
+        );
 
         if (!response.ok) {
           const error = await response.json();
@@ -174,7 +177,9 @@ export function useAudioRecorder(options: UseAudioRecorderOptions = {}) {
         onTranscription?.(result.text || '');
       } catch (error) {
         log.warn('Transcription error:', error);
-        onError?.(error instanceof Error ? error.message : 'Speech recognition failed. Please try again.');
+        onError?.(
+          error instanceof Error ? error.message : 'Speech recognition failed. Please try again.',
+        );
       } finally {
         setIsProcessing(false);
         setRecordingTime(0);
@@ -186,7 +191,9 @@ export function useAudioRecorder(options: UseAudioRecorderOptions = {}) {
   const startBrowserRecognition = useCallback(
     (language: string) => {
       if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
-        onError?.('This browser does not support speech recognition. Try Chrome or use text input.');
+        onError?.(
+          'This browser does not support speech recognition. Try Chrome or use text input.',
+        );
         resetRecordingState();
         return;
       }
@@ -287,7 +294,9 @@ export function useAudioRecorder(options: UseAudioRecorderOptions = {}) {
           } else if (errorMessage) {
             onError?.(errorMessage);
           } else {
-            onError?.('No transcript captured. Check that Chrome is using the correct microphone input.');
+            onError?.(
+              'No transcript captured. Check that Chrome is using the correct microphone input.',
+            );
           }
         }
 

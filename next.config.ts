@@ -1,9 +1,16 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+  typescript: {
+    tsconfigPath: process.env.NEXT_TYPESCRIPT_CONFIG || 'tsconfig.json',
+  },
   output: process.env.VERCEL ? undefined : 'standalone',
   transpilePackages: ['mathml2omml', 'pptxgenjs', '@maic/importer'],
   serverExternalPackages: [],
+  turbopack: {
+    root: process.cwd(),
+  },
   experimental: {
     proxyClientMaxBodySize: '200mb',
   },

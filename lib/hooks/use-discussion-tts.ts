@@ -59,7 +59,9 @@ function browserVoiceForAgent(
   const studentHints = /zira|aria|jenny|susan|samantha|female|eva|hazel|helen|sara|sarah/i;
 
   if (agent?.role === 'teacher') {
-    return candidates.find((voice) => teacherHints.test(voice.name))?.voiceURI || candidates[0].voiceURI;
+    return (
+      candidates.find((voice) => teacherHints.test(voice.name))?.voiceURI || candidates[0].voiceURI
+    );
   }
 
   const studentCandidates = candidates.filter((voice) => studentHints.test(voice.name));
@@ -99,8 +101,8 @@ export function useDiscussionTTS({ enabled, agents, onAudioStateChange }: Discus
     resume: browserResume,
     cancel: browserCancel,
   } = useBrowserTTS({
-    rate: ttsSpeed,
-    pitch: 1.04,
+    rate: ttsSpeed * 0.96,
+    pitch: 1,
     volume: ttsMuted ? 0 : ttsVolume,
     lang: locale,
     onEnd: () => {
@@ -205,6 +207,7 @@ export function useDiscussionTTS({ enabled, agents, onAudioStateChange }: Discus
       globalTtsVoice,
       agentVoiceOverrides,
       forceBrowserTTS,
+      locale,
     ],
   );
 

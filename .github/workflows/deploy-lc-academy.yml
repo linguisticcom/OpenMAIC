@@ -88,7 +88,7 @@ jobs:
           set -euo pipefail
           cd "${REMOTE_APP_DIR}"
 
-          echo "Deploying ${DEPLOY_BRANCH} into ${REMOTE_APP_DIR}"
+          echo "Preparing ${DEPLOY_BRANCH} from ${REMOTE_APP_DIR}"
           git fetch origin --prune
           git checkout "${DEPLOY_BRANCH}"
           git reset --hard "origin/${DEPLOY_BRANCH}"
@@ -96,6 +96,27 @@ jobs:
 
           corepack enable
           corepack prepare pnpm@10.28.0 --activate
+
+          RELEASES_DIR="${REMOTE_APP_DIR}-releases"
+          SHARED_DATA_DIR="${REMOTE_APP_DIR}-shared/data"
+          RELEASE_ID="$(date -u +%Y%m%d%H%M%S)-$(git rev-parse --short=12 HEAD)"
+          RELEASE_DIR="${RELEASES_DIR}/${RELEASE_ID}"
+          CURRENT_LINK="${RELEASES_DIR}/current"
+          PREVIOUS_RELEASE="$(readlink -f "${CURRENT_LINK}" 2>/dev/null || true)"
+          if [ -z "${PREVIOUS_RELEASE}" ] && [ -f "${REMOTE_APP_DIR}/.next/standalone/server.js" ]; then
+            PREVIOUS_RELEASE="${REMOTE_APP_DIR}/.next/standalone"
+          fi
+
+          mkdir -p "${RELEASE_DIR}" "${SHARED_DATA_DIR}"
+          git archive "origin/${DEPLOY_BRANCH}" | tar -x -C "${RELEASE_DIR}"
+          if [ -f .env.local ]; then
+            cp .env.local "${RELEASE_DIR}/.env.local"
+          fi
+          if [ -f server-providers.yml ]; then
+            cp server-providers.yml "${RELEASE_DIR}/server-providers.yml"
+          fi
+
+          cd "${RELEASE_DIR}"
           pnpm install --frozen-lockfile
 
           if [ -f .env.local ]; then
@@ -105,13 +126,6 @@ jobs:
             set +a
           fi
 
-          # Preserve generated classroom data from the running app's data directory
-          CLASSROOMS_BACKUP=$(mktemp -d)
-          if [ -d .next/standalone/data/classrooms ]; then
-            cp -R .next/standalone/data/classrooms "$CLASSROOMS_BACKUP/classrooms"
-          fi
-
-          rm -rf .next
           pnpm build
           if [ -n "${DATABASE_URL:-}" ]; then
             pnpm migrate:course-portal
@@ -123,18 +137,41 @@ jobs:
           cp -R public .next/standalone/public
           if [ -d data ]; then
             rm -rf .next/standalone/data
-            mkdir -p .next/standalone/data
-            find data -mindepth 1 -maxdepth 1 ! -name course-portal -exec cp -R {} .next/standalone/data/ \;
-            if [ -z "${DATABASE_URL:-}" ] && [ -d data/course-portal ]; then
-              cp -R data/course-portal .next/standalone/data/course-portal
+            cp -R data .next/standalone/data
+          fi
+
+          # Generated classrooms are durable runtime data. Seed the shared directory
+          # from the old deployment once, then overlay version-controlled classrooms.
+          SHARED_CLASSROOMS_DIR="${SHARED_DATA_DIR}/classrooms"
+          if [ ! -d "${SHARED_CLASSROOMS_DIR}" ]; then
+            mkdir -p "${SHARED_CLASSROOMS_DIR}"
+            if [ -d "${REMOTE_APP_DIR}/.next/standalone/data/classrooms" ]; then
+              cp -R "${REMOTE_APP_DIR}/.next/standalone/data/classrooms/." "${SHARED_CLASSROOMS_DIR}/"
             fi
           fi
-          # Restore generated classrooms
-          if [ -d "$CLASSROOMS_BACKUP/classrooms" ]; then
-            mkdir -p .next/standalone/data/classrooms
-            cp -R "$CLASSROOMS_BACKUP/classrooms"/* .next/standalone/data/classrooms/ 2>/dev/null || true
+          if [ -d data/classrooms ]; then
+            cp -R data/classrooms/. "${SHARED_CLASSROOMS_DIR}/"
           fi
-          rm -rf "$CLASSROOMS_BACKUP"
+          mkdir -p .next/standalone/data
+          rm -rf .next/standalone/data/classrooms
+          ln -s "${SHARED_CLASSROOMS_DIR}" .next/standalone/data/classrooms
+
+          # JSON catalog fallback must also survive releases when Postgres is absent.
+          if [ -z "${DATABASE_URL:-}" ]; then
+            SHARED_PORTAL_DIR="${SHARED_DATA_DIR}/course-portal"
+            if [ ! -f "${SHARED_PORTAL_DIR}/catalog.json" ]; then
+              mkdir -p "${SHARED_PORTAL_DIR}"
+              if [ -f "${REMOTE_APP_DIR}/.next/standalone/data/course-portal/catalog.json" ]; then
+                cp "${REMOTE_APP_DIR}/.next/standalone/data/course-portal/catalog.json" \
+                  "${SHARED_PORTAL_DIR}/catalog.json"
+              elif [ -f data/course-portal/catalog.json ]; then
+                cp data/course-portal/catalog.json "${SHARED_PORTAL_DIR}/catalog.json"
+              fi
+            fi
+            rm -rf .next/standalone/data/course-portal
+            ln -s "${SHARED_PORTAL_DIR}" .next/standalone/data/course-portal
+          fi
+
           if [ -f .env.local ]; then
             cp .env.local .next/standalone/.env.local
           fi
@@ -142,16 +179,56 @@ jobs:
             cp server-providers.yml .next/standalone/server-providers.yml
           fi
 
-          cd .next/standalone
+          STANDALONE_DIR="${RELEASE_DIR}/.next/standalone"
+          rm -f "${CURRENT_LINK}.next"
+          ln -s "${STANDALONE_DIR}" "${CURRENT_LINK}.next"
+          mv -Tf "${CURRENT_LINK}.next" "${CURRENT_LINK}"
+
+          cd "${CURRENT_LINK}"
           export NODE_ENV=production
           export HOSTNAME=0.0.0.0
           export PORT="${APP_PORT}"
           if pm2 describe "${PM2_APP_NAME}" >/dev/null 2>&1; then
-            pm2 restart "${PM2_APP_NAME}" --update-env
-          else
-            pm2 start server.js --name "${PM2_APP_NAME}" --update-env
+            pm2 delete "${PM2_APP_NAME}"
           fi
+          pm2 start "${CURRENT_LINK}/server.js" \
+            --name "${PM2_APP_NAME}" \
+            --cwd "${CURRENT_LINK}" \
+            --update-env
           pm2 save
+
+          HEALTHY=false
+          for i in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:${APP_PORT}/api/health" >/dev/null; then
+              HEALTHY=true
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "${HEALTHY}" != true ]; then
+            echo "Release ${RELEASE_ID} failed its health check." >&2
+            if [ -n "${PREVIOUS_RELEASE}" ] && [ -f "${PREVIOUS_RELEASE}/server.js" ]; then
+              echo "Rolling back to ${PREVIOUS_RELEASE}" >&2
+              rm -f "${CURRENT_LINK}.rollback"
+              ln -s "${PREVIOUS_RELEASE}" "${CURRENT_LINK}.rollback"
+              mv -Tf "${CURRENT_LINK}.rollback" "${CURRENT_LINK}"
+              pm2 delete "${PM2_APP_NAME}" >/dev/null 2>&1 || true
+              pm2 start "${CURRENT_LINK}/server.js" \
+                --name "${PM2_APP_NAME}" \
+                --cwd "${CURRENT_LINK}" \
+                --update-env
+              pm2 save
+            fi
+            exit 1
+          fi
+
+          echo "Release ${RELEASE_ID} is healthy."
+          find "${RELEASES_DIR}" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
+            | sort -nr \
+            | tail -n +6 \
+            | cut -d' ' -f2- \
+            | xargs -r rm -rf
           APP_USER_SCRIPT
 
           for i in $(seq 1 30); do

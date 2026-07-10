@@ -10,6 +10,7 @@ const version = process.env.npm_package_version || '0.1.0';
 
 export async function GET() {
   return apiSuccess({
+    service: 'openmaic',
     status: 'ok',
     version,
     capabilities: {

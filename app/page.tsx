@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, useDeferredValue } from 'react';
+import { useState, useEffect, useMemo, useRef, useDeferredValue, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowUp,
@@ -23,6 +24,7 @@ import {
   Atom,
   X,
   Presentation,
+  GraduationCap,
 } from 'lucide-react';
 import { useI18n } from '@/lib/hooks/use-i18n';
 import { LanguageSwitcher } from '@/components/language-switcher';
@@ -169,12 +171,12 @@ function HomePage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const thumbnailsRef = useRef<Record<string, Slide>>({});
 
-  const replaceThumbnails = (slides: Record<string, Slide>) => {
+  const replaceThumbnails = useCallback((slides: Record<string, Slide>) => {
     const previous = thumbnailsRef.current;
     thumbnailsRef.current = slides;
     setThumbnails(slides);
     window.setTimeout(() => revokeThumbnailSlideMediaUrls(previous), 0);
-  };
+  }, []);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -188,7 +190,7 @@ function HomePage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [themeOpen]);
 
-  const loadClassrooms = async () => {
+  const loadClassrooms = useCallback(async () => {
     try {
       const list = await listStages();
       setClassrooms(list);
@@ -202,7 +204,7 @@ function HomePage() {
     } catch (err) {
       log.error('Failed to load classrooms:', err);
     }
-  };
+  }, [replaceThumbnails]);
 
   const { importing, fileInputRef, triggerFileSelect, handleFileChange } = useImportClassroom(
     () => {
@@ -231,7 +233,7 @@ function HomePage() {
       revokeThumbnailSlideMediaUrls(thumbnailsRef.current);
       thumbnailsRef.current = {};
     };
-  }, []);
+  }, [loadClassrooms]);
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -386,6 +388,14 @@ function HomePage() {
           className="hidden"
         />
       )}
+      <Link
+        href="/courses"
+        className="fixed left-4 top-4 z-50 inline-flex min-h-10 items-center gap-2 rounded-full border border-violet-200/80 bg-white/85 px-4 text-sm font-semibold text-violet-700 shadow-sm backdrop-blur-md transition hover:border-violet-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 dark:border-violet-700/60 dark:bg-slate-900/85 dark:text-violet-200 dark:hover:bg-slate-900"
+      >
+        <GraduationCap className="size-4" />
+        <span className="hidden sm:inline">Institution courses</span>
+        <span className="sm:hidden">Courses</span>
+      </Link>
       {/* ═══ Top-right pill (unchanged) ═══ */}
       <div
         ref={toolbarRef}
@@ -399,6 +409,8 @@ function HomePage() {
         {/* Theme Selector */}
         <div className="relative">
           <button
+            type="button"
+            aria-label="Change color theme"
             onClick={() => {
               setThemeOpen(!themeOpen);
             }}
@@ -461,6 +473,8 @@ function HomePage() {
         {/* Settings Button */}
         <div className="relative">
           <button
+            type="button"
+            aria-label="Open settings"
             onClick={() => setSettingsOpen(true)}
             className="p-2 rounded-full text-gray-400 dark:text-gray-500 hover:bg-white dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200 hover:shadow-sm transition-all group"
           >

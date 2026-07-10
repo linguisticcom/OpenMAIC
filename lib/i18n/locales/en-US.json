@@ -382,10 +382,10 @@
     "rename": "Rename",
     "renamePlaceholder": "Enter classroom name",
     "renameFailed": "Failed to rename classroom",
-    "searchPlaceholder": "Search courses...",
-    "searchAriaLabel": "Search courses",
+    "searchPlaceholder": "Search recent classrooms...",
+    "searchAriaLabel": "Search recent classrooms",
     "clearSearch": "Clear",
-    "searchEmpty": "No courses match your search"
+    "searchEmpty": "No recent classrooms match your search"
   },
   "upload": {
     "pdfSizeLimit": "Supports PDF files up to 50MB",

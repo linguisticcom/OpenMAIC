@@ -77,25 +77,20 @@ export function CourseAccessGate({
         setSuccess(true);
         setCode('');
 
-        // Refresh the page so the server re-checks access with the new cookie
-        // and renders with accessGranted=true.
-        // If the caller provides onSuccess (e.g. client-only pages that need to
-        // re-run their own data fetch), use it; otherwise fall back to router.refresh()
-        // which works for server-rendered pages.
-        setTimeout(() => {
-          if (onSuccess) {
-            onSuccess();
-          } else {
-            router.refresh();
-          }
-        }, 600);
+        // The validation response has already committed the access cookie.
+        // Re-check immediately instead of leaving learners behind an arbitrary delay.
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          router.refresh();
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unable to validate this access code.');
       } finally {
         setIsSubmitting(false);
       }
     },
-    [code, isSubmitting, courseId, universityId, cohortId, router],
+    [code, isSubmitting, courseId, universityId, cohortId, onSuccess, router],
   );
 
   return (

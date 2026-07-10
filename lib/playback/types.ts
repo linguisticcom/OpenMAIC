@@ -17,6 +17,9 @@ export type EngineMode = 'idle' | 'playing' | 'paused' | 'live';
 /** Discussion topic state */
 export type TopicState = 'active' | 'pending' | 'closed';
 
+/** Recoverable audio failures that require a fresh learner gesture. */
+export type AudioPlaybackIssue = 'permission-denied' | 'browser-tts-error';
+
 /** Trigger event (for proactive discussion card) */
 export interface TriggerEvent {
   id: string;
@@ -31,6 +34,7 @@ export interface PlaybackEngineCallbacks {
   onSceneChange?: (sceneId: string) => void;
   onSpeechStart?: (text: string) => void;
   onSpeechEnd?: () => void;
+  onAudioPlaybackIssue?: (issue: AudioPlaybackIssue) => void;
   onTextDelta?: (content: string) => void;
   onSpeakerChange?: (role: string) => void;
   onEffectFire?: (effect: Effect) => void;

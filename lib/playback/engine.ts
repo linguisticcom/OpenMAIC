@@ -48,13 +48,21 @@ const log = createLogger('PlaybackEngine');
  * numbers, and short Latin fragments (e.g. "AI课堂").
  */
 const CJK_LANG_THRESHOLD = 0.3;
+const NATURAL_BROWSER_NARRATION_RATE = 0.96;
 
 function isBrowserTTSUrlOverride(): boolean {
   if (typeof window === 'undefined') return false;
   return new URLSearchParams(window.location.search).get('tts') === 'browser';
 }
 
-function pickNaturalBrowserVoice(
+export function isAudioPlaybackPermissionError(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === 'NotAllowedError') return true;
+
+  const message = error instanceof Error ? error.message : String(error);
+  return /not.?allowed|user (?:did not|didn't) interact|play\(\).*interact|autoplay/i.test(message);
+}
+
+export function pickNaturalBrowserVoice(
   voices: SpeechSynthesisVoice[],
   text: string,
 ): SpeechSynthesisVoice | undefined {
@@ -63,14 +71,73 @@ function pickNaturalBrowserVoice(
   const targetLang = cjkRatio > CJK_LANG_THRESHOLD ? 'zh' : 'en';
   const languageVoices = voices.filter((voice) => voice.lang.toLowerCase().startsWith(targetLang));
   const candidates = languageVoices.length > 0 ? languageVoices : voices;
-  const naturalNameHints =
-    /natural|neural|online|premium|aria|jenny|guy|brian|emma|ava|andrew|samantha|google|microsoft/i;
+  const premiumNames = /premium|enhanced|natural/i;
+  const expressiveNames = /ava|aria|jenny|emma|andrew|brian|guy|samantha|google us english/i;
+  const clearFallbackNames = /daniel|karen|moira|tessa/i;
+  const qualityHints = /neural|online/i;
+  const syntheticHints = /compact|espeak|festival|robot|novelty/i;
 
-  return (
-    candidates.find((voice) => naturalNameHints.test(voice.name)) ||
-    candidates.find((voice) => !voice.localService) ||
-    candidates[0]
-  );
+  return candidates
+    .map((voice, index) => {
+      let score = 0;
+      if (premiumNames.test(voice.name)) score += 140;
+      if (expressiveNames.test(voice.name)) score += 120;
+      if (clearFallbackNames.test(voice.name)) score += 100;
+      if (qualityHints.test(voice.name)) score += 40;
+      if (!voice.localService) score += 15;
+      if (voice.default) score += 5;
+      if (syntheticHints.test(voice.name)) score -= 200;
+      return { voice, score, index };
+    })
+    .sort((a, b) => b.score - a.score || a.index - b.index)[0]?.voice;
+}
+
+/**
+ * Keep enough surrounding context for natural prosody without exceeding the
+ * browser speech engines' roughly 15-second reliability window.
+ */
+export function buildBrowserNarrationChunks(text: string, maxLength = 220): string[] {
+  const sentences = text
+    .split(/(?<=[.!?。！？\n])\s*/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+  const units = sentences.length > 0 ? sentences : [text.trim()];
+  const chunks: string[] = [];
+  let current = '';
+
+  const append = (unit: string) => {
+    const candidate = current ? `${current} ${unit}` : unit;
+    if (candidate.length <= maxLength) {
+      current = candidate;
+      return;
+    }
+    if (current) chunks.push(current);
+    current = unit;
+  };
+
+  for (const unit of units) {
+    if (unit.length <= maxLength) {
+      append(unit);
+      continue;
+    }
+
+    const clauses = unit
+      .split(/(?<=[,;:，；：])\s*/)
+      .map((clause) => clause.trim())
+      .filter(Boolean);
+    for (const clause of clauses.length > 1 ? clauses : [unit]) {
+      if (clause.length <= maxLength) {
+        append(clause);
+        continue;
+      }
+      for (let start = 0; start < clause.length; start += maxLength) {
+        append(clause.slice(start, start + maxLength));
+      }
+    }
+  }
+
+  if (current) chunks.push(current);
+  return chunks;
 }
 
 export class PlaybackEngine {
@@ -465,6 +532,23 @@ export class PlaybackEngine {
     this.callbacks.onModeChange?.(mode);
   }
 
+  /** Keep the current sentence pending until a new learner gesture can retry it. */
+  private pauseForAudioRecovery(issue: 'permission-denied' | 'browser-tts-error'): void {
+    if (this.mode !== 'playing') return;
+
+    this.actionIndex = Math.max(0, this.actionIndex - 1);
+    this.audioPlayer.stop();
+    this.browserTTSActive = false;
+    this.browserTTSChunks = [];
+    this.browserTTSChunkIndex = 0;
+    this.browserTTSPausedChunks = [];
+    if (typeof window !== 'undefined') {
+      window.speechSynthesis?.cancel();
+    }
+    this.setMode('paused');
+    this.callbacks.onAudioPlaybackIssue?.(issue);
+  }
+
   private restoreSavedLectureState(): void {
     if (this.savedSceneIndex !== null && this.savedActionIndex !== null) {
       this.sceneIndex = this.savedSceneIndex;
@@ -529,6 +613,7 @@ export class PlaybackEngine {
     switch (action.type) {
       case 'speech': {
         const speechAction = action as SpeechAction;
+        const forceBrowserTTS = isBrowserTTSUrlOverride();
         this.callbacks.onSpeechStart?.(speechAction.text);
 
         // onEnded → processNext; if paused, resume() will call processNext
@@ -568,7 +653,6 @@ export class PlaybackEngine {
           // No playable pre-generated audio — try browser-native TTS only when it is
           // explicitly forced by URL or selected/enabled in settings.
           const settings = useSettingsStore.getState();
-          const forceBrowserTTS = isBrowserTTSUrlOverride();
           const canUseConfiguredBrowserTTS =
             settings.ttsEnabled &&
             settings.ttsProviderId === 'browser-native-tts' &&
@@ -581,13 +665,31 @@ export class PlaybackEngine {
             typeof window !== 'undefined' &&
             window.speechSynthesis
           ) {
-            log.info('[BrowserTTS] Using browser TTS, force:', forceBrowserTTS, 'voices:', window.speechSynthesis.getVoices().length);
+            log.info(
+              '[BrowserTTS] Using browser TTS, force:',
+              forceBrowserTTS,
+              'voices:',
+              window.speechSynthesis.getVoices().length,
+            );
             this.playBrowserTTS(speechAction);
           } else {
-            log.info('[BrowserTTS] Scheduling reading timer instead (force:', forceBrowserTTS, 'has speechSynthesis:', typeof window !== 'undefined' && !!window.speechSynthesis, ')');
+            log.info(
+              '[BrowserTTS] Scheduling reading timer instead (force:',
+              forceBrowserTTS,
+              'has speechSynthesis:',
+              typeof window !== 'undefined' && !!window.speechSynthesis,
+              ')',
+            );
             scheduleReadingTimer();
           }
         };
+
+        // Course-portal links explicitly request the learner's best local voice.
+        // Honour that override before touching legacy pre-generated MP3s.
+        if (forceBrowserTTS) {
+          tryBrowserTTSOrScheduleReadingTimer();
+          break;
+        }
 
         this.audioPlayer
           .play(speechAction.audioId || '', speechAction.audioUrl)
@@ -596,6 +698,10 @@ export class PlaybackEngine {
           })
           .catch((err) => {
             log.error('TTS error:', err);
+            if (isAudioPlaybackPermissionError(err)) {
+              this.pauseForAudioRecovery('permission-denied');
+              return;
+            }
             tryBrowserTTSOrScheduleReadingTimer();
           });
         break;
@@ -691,24 +797,15 @@ export class PlaybackEngine {
    * Chrome has a bug where utterances >~15s are silently cut off and onend
    * never fires, causing the engine to hang. Chunking avoids this.
    */
-  private splitIntoChunks(text: string): string[] {
-    // Split on sentence-ending punctuation (Latin + CJK) and newlines
-    const chunks = text
-      .split(/(?<=[.!?。！？\n])\s*/)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
-    // If splitting produced nothing (no punctuation), return the original text
-    return chunks.length > 0 ? chunks : [text];
-  }
-
   /**
    * Play text using the Web Speech API (browser-native TTS).
-   * Splits text into sentence-level chunks to avoid Chrome's ~15s cutoff.
+   * Keeps short neighboring sentences together for more natural cadence while
+   * still avoiding Chrome's ~15s cutoff.
    * Uses cancel+re-speak for pause/resume (Firefox compatibility).
    */
   private playBrowserTTS(speechAction: SpeechAction): void {
     log.info('[BrowserTTS] playBrowserTTS called, text length:', speechAction.text.length);
-    this.browserTTSChunks = this.splitIntoChunks(speechAction.text);
+    this.browserTTSChunks = buildBrowserNarrationChunks(speechAction.text);
     this.browserTTSChunkIndex = 0;
     this.browserTTSPausedChunks = [];
     this.browserTTSActive = true;
@@ -742,7 +839,7 @@ export class PlaybackEngine {
 
     // Apply settings
     const speed = this.callbacks.getPlaybackSpeed?.() ?? 1;
-    utterance.rate = (settings.ttsSpeed ?? 1) * speed;
+    utterance.rate = (settings.ttsSpeed ?? 1) * speed * NATURAL_BROWSER_NARRATION_RATE;
     utterance.volume = settings.ttsMuted ? 0 : (settings.ttsVolume ?? 1);
 
     // Ensure voices are loaded (Chrome loads them asynchronously)
@@ -767,7 +864,7 @@ export class PlaybackEngine {
         utterance.lang = 'en-US';
       }
     }
-    utterance.pitch = 1.04;
+    utterance.pitch = 1;
 
     utterance.onend = () => {
       this.browserTTSChunkIndex++;
@@ -780,18 +877,31 @@ export class PlaybackEngine {
       // 'canceled' is expected when stop/pause is called — not a real error
       if (event.error !== 'canceled') {
         log.warn('Browser TTS chunk error:', event.error);
-        // Skip failed chunk, try next
-        this.browserTTSChunkIndex++;
-        if (this.mode === 'playing') {
-          this.playBrowserTTSChunk();
-        }
+        // Never skip narration on synthesis failures. Preserve the sentence
+        // cursor and wait for an explicit learner retry instead.
+        this.pauseForAudioRecovery(
+          event.error === 'not-allowed' ? 'permission-denied' : 'browser-tts-error',
+        );
       }
       // On 'canceled': do nothing — pause handler already saved state
     };
 
     // Chrome bug workaround: cancel() before speak() to clear stale synthesis
     // state that can produce garbled/broken audio output.
-    log.info('[BrowserTTS] Speaking chunk', this.browserTTSChunkIndex + 1, '/', this.browserTTSChunks.length, 'lang:', utterance.lang, 'voice:', utterance.voice?.name || 'default', 'volume:', utterance.volume, 'rate:', utterance.rate);
+    log.info(
+      '[BrowserTTS] Speaking chunk',
+      this.browserTTSChunkIndex + 1,
+      '/',
+      this.browserTTSChunks.length,
+      'lang:',
+      utterance.lang,
+      'voice:',
+      utterance.voice?.name || 'default',
+      'volume:',
+      utterance.volume,
+      'rate:',
+      utterance.rate,
+    );
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
   }

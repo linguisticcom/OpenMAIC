@@ -382,10 +382,10 @@
     "rename": "Renomear",
     "renamePlaceholder": "Digite o nome da sala",
     "renameFailed": "Falha ao renomear a sala",
-    "searchPlaceholder": "Pesquisar cursos...",
-    "searchAriaLabel": "Pesquisar cursos",
+    "searchPlaceholder": "Pesquisar salas recentes...",
+    "searchAriaLabel": "Pesquisar salas recentes",
     "clearSearch": "Limpar",
-    "searchEmpty": "Nenhum curso corresponde à sua busca"
+    "searchEmpty": "Nenhuma sala recente corresponde à sua busca"
   },
   "upload": {
     "pdfSizeLimit": "Suporta arquivos PDF de até 50 MB",

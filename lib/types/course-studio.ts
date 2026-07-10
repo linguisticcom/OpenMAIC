@@ -99,6 +99,14 @@ export interface CourseResource {
 }
 
 export interface PersistedCourseResource extends CourseResource {
-  storedFileName: string;
+  updatedAt?: string;
+  organizationId?: string;
+  uploadedByUserId?: string;
+  storageProvider: string;
+  storageKey: string;
+  /** Legacy JSON fallback field kept only for backward-compatible local metadata reads. */
+  storedFileName?: string;
+  originalFileName: string;
+  checksumSha256: string;
   text: string;
 }

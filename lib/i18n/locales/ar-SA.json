@@ -382,10 +382,10 @@
     "rename": "إعادة تسمية",
     "renamePlaceholder": "أدخل اسم الفصل",
     "renameFailed": "فشلت إعادة تسمية الفصل",
-    "searchPlaceholder": "البحث عن الدروس...",
-    "searchAriaLabel": "البحث عن الدروس",
+    "searchPlaceholder": "البحث في الفصول الدراسية الأخيرة...",
+    "searchAriaLabel": "البحث في الفصول الدراسية الأخيرة",
     "clearSearch": "مسح",
-    "searchEmpty": "لا توجد دروس مطابقة"
+    "searchEmpty": "لا توجد فصول دراسية حديثة مطابقة"
   },
   "upload": {
     "pdfSizeLimit": "يدعم ملفات PDF حتى 50 ميغابايت",

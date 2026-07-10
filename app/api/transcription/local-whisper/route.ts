@@ -62,7 +62,8 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const audioFile = formData.get('audio') as File | null;
-    const requestedModel = (formData.get('model') as string | null) || process.env.LOCAL_WHISPER_MODEL || 'base';
+    const requestedModel =
+      (formData.get('model') as string | null) || process.env.LOCAL_WHISPER_MODEL || 'base';
     const language = (formData.get('language') as string | null) || 'en';
 
     if (!audioFile) {
