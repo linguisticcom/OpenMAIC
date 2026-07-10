@@ -34,8 +34,6 @@ describe('LAN110 narration assets', () => {
     for (const courseModule of course!.modules) {
       expect(courseModule.classroomId, `${courseModule.id} classroomId`).toBeTruthy();
 
-      // Skip file-level checks for dynamically generated classrooms.
-      if (DYNAMIC_CLASSROOM_IDS.has(courseModule.classroomId!)) continue;
 
       const classroomPath = path.join(
         repoRoot,
