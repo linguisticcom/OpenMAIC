@@ -33,7 +33,7 @@ import type {
   University,
   PortalUserRole,
 } from '@/lib/types/course-portal';
-import type { GeneratedPortalCourseMetadata } from '@/lib/types/course-studio';
+import type { CoursePlan, GeneratedPortalCourseMetadata } from '@/lib/types/course-studio';
 import type { Scene, Stage } from '@/lib/types/stage';
 
 const COURSE_PORTAL_DATA_FILE = process.env.COURSE_PORTAL_DATA_FILE
@@ -1087,6 +1087,7 @@ function studentSummaryFromEnrollments(
 
   return {
     student,
+    learnerType: student.id.startsWith('student-access-') ? 'access-code-guest' : 'registered',
     coursesEnrolled: enrollments.length,
     averageProgress,
     lastActivityAt,
@@ -1240,6 +1241,11 @@ function buildGeneratedCourseModules(scenes: Scene[]): CourseModule[] {
   ];
 }
 
+function isCourseReadyToPublish(course: Course): boolean {
+  if (course.classroomId) return true;
+  return course.modules.length > 0 && course.modules.every((module) => Boolean(module.classroomId));
+}
+
 function validateGeneratedCoursePublishTarget(params: {
   dataset: CoursePortalDataset;
   organizationId?: string;
@@ -1308,6 +1314,59 @@ function upsertGeneratedCourseAssignment(params: {
   params.dataset.assignments.push(assignment);
 }
 
+export async function createPlannedCourseDraft(plan: CoursePlan): Promise<Course> {
+  const dataset = await readDataset();
+  const now = new Date().toISOString();
+  const title = trimText(plan.title, 160) || 'Untitled Course Studio plan';
+  const preferredSlug = normalizeCourseSlug(title, `course-studio-${Date.now()}`);
+  const slug = uniqueCourseSlug(dataset, preferredSlug);
+  let id = `course-plan-${Date.now()}-${randomBytes(3).toString('hex')}`;
+  while (dataset.courses.some((course) => course.id === id)) {
+    id = `course-plan-${Date.now()}-${randomBytes(3).toString('hex')}`;
+  }
+
+  const usedModuleIds = new Set<string>();
+  const modules = plan.modules.map((module, index): CourseModule => {
+    const requestedId = module.id.trim() || `module-${index + 1}`;
+    let moduleId = requestedId;
+    let suffix = 2;
+    while (usedModuleIds.has(moduleId)) {
+      moduleId = `${requestedId}-${suffix}`;
+      suffix += 1;
+    }
+    usedModuleIds.add(moduleId);
+
+    return {
+      id: moduleId,
+      title: trimText(module.title, 120) || `Module ${index + 1}`,
+      description:
+        trimText(module.learningObjectives.join(' '), 420) ||
+        trimText(module.classroomPrompt, 420) ||
+        'Course Studio module awaiting classroom generation.',
+      durationMinutes: Math.max(1, Math.round(module.durationMinutes)),
+    };
+  });
+
+  const course: Course = {
+    id,
+    title,
+    slug,
+    description: `Course Studio plan for ${plan.audience?.trim() || 'learners'}. Review every module before publishing.`,
+    category: title,
+    status: 'draft',
+    generatedBy: 'OpenMAIC Course Studio',
+    createdAt: now,
+    updatedAt: now,
+    estimatedDurationMinutes: modules.reduce((total, module) => total + module.durationMinutes, 0),
+    modules,
+    coverTone: 'violet',
+  };
+
+  dataset.courses.push(course);
+  await writeDataset(dataset);
+  return course;
+}
+
 export async function registerGeneratedClassroomCourse(params: {
   classroomId: string;
   stage: Stage;
@@ -1343,6 +1402,11 @@ export async function registerGeneratedClassroomCourse(params: {
     attachCourse.updatedAt = now;
 
     if (publishOrganizationId) {
+      if (params.metadata?.publishStatus !== 'draft' && !isCourseReadyToPublish(attachCourse)) {
+        throw new Error(
+          'Course cannot be published until every planned module has a generated classroom.',
+        );
+      }
       attachCourse.status = params.metadata?.publishStatus === 'draft' ? 'draft' : 'active';
       upsertGeneratedCourseAssignment({
         dataset,
@@ -1437,6 +1501,11 @@ export async function updateGlobalCourseStatus(params: {
   const dataset = await readDataset();
   const course = dataset.courses.find((item) => item.id === params.courseId);
   if (!course) return { error: 'Course not found.' };
+  if (params.status === 'active' && !isCourseReadyToPublish(course)) {
+    return {
+      error: 'Course cannot be published until every planned module has a generated classroom.',
+    };
+  }
 
   course.status = params.status as CourseStatus;
   course.updatedAt = new Date().toISOString();
@@ -1946,7 +2015,9 @@ export async function listCoursePortalCards(
   return dataset.assignments
     .filter((assignment) => !organizationId || assignment.organizationId === organizationId)
     .map((assignment) => assignmentToCard(dataset, assignment))
-    .filter((item): item is CoursePortalCardData => Boolean(item));
+    .filter((item): item is CoursePortalCardData =>
+      Boolean(item && item.course.status === 'active'),
+    );
 }
 
 export async function listOrganizationCourseSummaries(
@@ -1983,7 +2054,7 @@ export async function listVisibleOrganizationCourseSummaries(
   return visibleAssignmentsForUser(dataset, user, organizationId)
     .map((assignment) => {
       const card = assignmentToCard(dataset, assignment);
-      if (!card) return null;
+      if (!card || (user.role === 'student' && card.course.status !== 'active')) return null;
       return {
         ...card,
         organization,
@@ -2127,7 +2198,7 @@ export async function getCourseDetailContext(params: {
 > {
   const dataset = await readDataset();
   const course = dataset.courses.find((item) => item.slug === params.courseSlug);
-  if (!course) return undefined;
+  if (!course || course.status !== 'active') return undefined;
 
   const requestedSlug = params.organizationSlug || params.universitySlug;
   const organization = requestedSlug
@@ -2161,6 +2232,9 @@ export async function getOrganizationCourseDetail(
       organization: Organization;
       course: Course;
       assignment: CourseAssignment;
+      assignments: CourseAssignment[];
+      cohorts: Cohort[];
+      teachers: PortalUserView[];
       enrollments: Enrollment[];
       students: Student[];
       accessCodes: AccessCodeView[];
@@ -2186,11 +2260,26 @@ export async function getOrganizationCourseDetail(
       enrollmentMatchesAnyAssignment(dataset, enrollment, matchingAssignments),
   );
   const studentIds = new Set(enrollments.map((enrollment) => enrollment.studentId));
+  const cohortIds = new Set(
+    matchingAssignments
+      .map((item) => item.cohortId)
+      .filter((cohortId): cohortId is string => Boolean(cohortId)),
+  );
+  const teacherIds = new Set(
+    matchingAssignments
+      .map((item) => item.teacherUserId)
+      .filter((teacherUserId): teacherUserId is string => Boolean(teacherUserId)),
+  );
 
   return {
     organization,
     course,
     assignment,
+    assignments: matchingAssignments,
+    cohorts: dataset.cohorts.filter((cohort) => cohortIds.has(cohort.id)),
+    teachers: dataset.users
+      .filter((user) => teacherIds.has(user.id))
+      .map((user) => toPortalUserView(user)),
     enrollments,
     students: dataset.students.filter((student) => studentIds.has(student.id)),
     accessCodes: dataset.accessCodes
@@ -2217,6 +2306,7 @@ export async function getVisibleOrganizationCourseDetail(
   const dataset = await readDataset();
   const course = findCourse(dataset, courseIdOrSlug);
   if (!course) return undefined;
+  if (course.status !== 'active' && user.role === 'student') return undefined;
   const visibleAssignments = visibleAssignmentsForUser(dataset, user, organizationId);
   const matchingAssignments = visibleAssignments.filter(
     (assignment) => assignment.courseId === course.id,
@@ -2237,6 +2327,13 @@ export async function getVisibleOrganizationCourseDetail(
   return {
     ...detail,
     assignment: matchingAssignments[0],
+    assignments: matchingAssignments,
+    cohorts: detail.cohorts.filter((cohort) =>
+      matchingAssignments.some((assignment) => assignment.cohortId === cohort.id),
+    ),
+    teachers: detail.teachers.filter((teacher) =>
+      matchingAssignments.some((assignment) => assignment.teacherUserId === teacher.id),
+    ),
     enrollments,
     students: detail.students.filter((student) => studentIds.has(student.id)),
     accessCodes: canViewAccessCodes

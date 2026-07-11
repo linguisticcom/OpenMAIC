@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
   PageHeader,
@@ -6,6 +7,7 @@ import {
   progressTone,
 } from '@/components/tenant-portal/tenant-shell';
 import { getVisibleOrganizationCourseDetail } from '@/lib/server/course-portal-data';
+import { canManageAccessCodes } from '@/lib/server/organization-session';
 import { requireOrganizationPageSession } from '@/lib/server/tenant-page-auth';
 
 export const dynamic = 'force-dynamic';
@@ -23,6 +25,10 @@ export default async function DashboardCourseDetailPage({
     courseId,
   );
   if (!detail) notFound();
+  const canGenerateAccessCodes = canManageAccessCodes(session.user, session.organization.id);
+  const accessCodeGuests = detail.students.filter((student) =>
+    student.id.startsWith('student-access-'),
+  ).length;
 
   return (
     <TenantShell user={session.user} organization={session.organization}>
@@ -84,6 +90,81 @@ export default async function DashboardCourseDetailPage({
                 )}
               </tbody>
             </table>
+          </div>
+          <div className="mt-8 border-t border-slate-200 pt-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold tracking-normal">People and access</h2>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  Review who can manage the course, which audience scopes are assigned, and how
+                  access codes are being used.
+                </p>
+              </div>
+              {canGenerateAccessCodes && (
+                <Link
+                  href={`/dashboard/access-codes/new?courseId=${detail.course.id}`}
+                  className="rounded-md bg-violet-700 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-800"
+                >
+                  Generate access code
+                </Link>
+              )}
+            </div>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <div className="rounded-md bg-slate-50 p-4">
+                <h3 className="text-sm font-semibold text-slate-950">Teachers</h3>
+                {detail.teachers.length > 0 ? (
+                  <ul className="mt-2 grid gap-1 text-sm text-slate-600">
+                    {detail.teachers.map((teacher) => (
+                      <li key={teacher.id}>
+                        {teacher.name} - {teacher.email}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-sm text-amber-700">
+                    Unassigned. A platform admin must assign a teacher before teacher-scoped tools
+                    become available.
+                  </p>
+                )}
+              </div>
+              <div className="rounded-md bg-slate-50 p-4">
+                <h3 className="text-sm font-semibold text-slate-950">Audience scope</h3>
+                <ul className="mt-2 grid gap-1 text-sm text-slate-600">
+                  {detail.assignments.some((assignment) => !assignment.cohortId) && (
+                    <li>Entire organization</li>
+                  )}
+                  {detail.cohorts.map((cohort) => (
+                    <li key={cohort.id}>Cohort: {cohort.name}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-md bg-slate-50 p-4">
+                <h3 className="text-sm font-semibold text-slate-950">Enrolled learners</h3>
+                <p className="mt-2 text-sm text-slate-600">
+                  {detail.students.length - accessCodeGuests} registered students
+                </p>
+                <p className="text-sm text-slate-600">{accessCodeGuests} access-code guests</p>
+              </div>
+              <div className="rounded-md bg-slate-50 p-4">
+                <h3 className="text-sm font-semibold text-slate-950">Access codes</h3>
+                {detail.accessCodes.length > 0 ? (
+                  <ul className="mt-2 grid gap-1 text-sm text-slate-600">
+                    {detail.accessCodes.map((accessCode) => (
+                      <li key={accessCode.id}>
+                        {accessCode.studentName
+                          ? `Student: ${accessCode.studentName}`
+                          : accessCode.cohortName
+                            ? `Cohort: ${accessCode.cohortName}`
+                            : 'Organization-wide'}{' '}
+                        - {accessCode.currentUses}/{accessCode.maxUses ?? 'unlimited'} uses
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-sm text-slate-600">No access codes created.</p>
+                )}
+              </div>
+            </div>
           </div>
         </section>
         <aside className="space-y-4">

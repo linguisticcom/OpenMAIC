@@ -90,6 +90,82 @@ async function withTempCatalog(
 }
 
 describe('registerGeneratedClassroomCourse', () => {
+  it('creates one draft parent course and nests generated classrooms by module', async () => {
+    await withTempCatalog(baseDataset(), async () => {
+      const coursePortalData = await import('@/lib/server/course-portal-data');
+      const course = await coursePortalData.createPlannedCourseDraft({
+        title: 'Practical English for a Paris Cafe',
+        audience: 'hospitality learners',
+        totalDurationHours: 1,
+        moduleDurationMinutes: 30,
+        modules: [
+          {
+            id: 'ordering',
+            order: 1,
+            title: 'Ordering and Paying',
+            durationMinutes: 30,
+            learningObjectives: ['Handle an order and payment'],
+            classroomPrompt: 'Teach ordering and paying.',
+          },
+          {
+            id: 'problems',
+            order: 2,
+            title: 'Handling Problems',
+            durationMinutes: 30,
+            learningObjectives: ['Resolve a customer problem'],
+            classroomPrompt: 'Teach complaint handling.',
+          },
+        ],
+      });
+
+      expect(course).toMatchObject({
+        status: 'draft',
+        title: 'Practical English for a Paris Cafe',
+        modules: [{ id: 'ordering' }, { id: 'problems' }],
+      });
+
+      const attached = await coursePortalData.registerGeneratedClassroomCourse({
+        classroomId: 'classroom-ordering',
+        stage: generatedStage({ id: 'classroom-ordering', name: 'Ordering and Paying' }),
+        scenes: generatedScenes(['Welcome', 'Practice']),
+        metadata: {
+          attachToCourseId: course.id,
+          attachToModuleId: 'ordering',
+          publishStatus: 'draft',
+        },
+      });
+
+      const persisted = await coursePortalData.getCoursePortalDataset();
+      expect(persisted.courses).toHaveLength(1);
+      expect(attached.modules[0]).toMatchObject({
+        id: 'ordering',
+        classroomId: 'classroom-ordering',
+      });
+      expect(attached.modules[1]).toMatchObject({ id: 'problems' });
+      expect(attached.modules[1]?.classroomId).toBeUndefined();
+      expect(attached.status).toBe('draft');
+
+      await expect(
+        coursePortalData.updateGlobalCourseStatus({ courseId: course.id, status: 'active' }),
+      ).resolves.toEqual({
+        error: 'Course cannot be published until every planned module has a generated classroom.',
+      });
+
+      await coursePortalData.registerGeneratedClassroomCourse({
+        classroomId: 'classroom-problems',
+        stage: generatedStage({ id: 'classroom-problems', name: 'Handling Problems' }),
+        scenes: generatedScenes(['Scenario', 'Recap']),
+        metadata: {
+          attachToCourseId: course.id,
+          attachToModuleId: 'problems',
+        },
+      });
+      await expect(
+        coursePortalData.updateGlobalCourseStatus({ courseId: course.id, status: 'active' }),
+      ).resolves.toMatchObject({ id: course.id, status: 'active' });
+    });
+  });
+
   it('creates an assignable LMS course for a generated classroom', async () => {
     await withTempCatalog(baseDataset(), async () => {
       const coursePortalData = await import('@/lib/server/course-portal-data');

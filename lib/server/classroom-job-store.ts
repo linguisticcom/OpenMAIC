@@ -36,6 +36,7 @@ export interface ClassroomGenerationJob {
     classroomId: string;
     url: string;
     scenesCount: number;
+    audio: GenerateClassroomResult['audio'];
     portalCourse?: GenerateClassroomResult['portalCourse'];
   };
   error?: string;
@@ -207,6 +208,7 @@ export async function markClassroomGenerationJobSucceeded(
       classroomId: result.id,
       url: result.url,
       scenesCount: result.scenesCount,
+      audio: result.audio,
       ...(result.portalCourse ? { portalCourse: result.portalCourse } : {}),
     },
   });

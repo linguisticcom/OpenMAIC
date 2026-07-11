@@ -202,10 +202,22 @@ describe('course resources API', () => {
     );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
+    const responseBody = await response.json();
+    expect(responseBody).toMatchObject({
       success: true,
       plan: expect.objectContaining({ title: 'Finance Basics' }),
+      course: expect.objectContaining({
+        title: 'Finance Basics',
+        status: 'draft',
+        modules: [expect.objectContaining({ id: 'module-1' })],
+      }),
     });
+    expect(responseBody.course.modules[0].classroomId).toBeUndefined();
+    const { getCoursePortalDataset } = await import('@/lib/server/course-portal-data');
+    const dataset = await getCoursePortalDataset();
+    expect(dataset.courses).toContainEqual(
+      expect.objectContaining({ id: responseBody.course.id, status: 'draft' }),
+    );
     const prompt = (llm.mock.calls.at(-1)?.[0] as { prompt?: string } | undefined)?.prompt;
     expect(prompt).toContain('Working capital source summary.');
     expect(prompt).toContain('Working capital equals current assets');

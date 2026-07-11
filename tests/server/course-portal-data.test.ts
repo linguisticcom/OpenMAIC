@@ -844,7 +844,10 @@ describe('validateCourseAccessGrant', () => {
     if (!teacher) return;
 
     const accessCodes = await listVisibleOrganizationAccessCodes(teacher, 'org-esilv');
-    expect(accessCodes.map((code) => code.id)).toEqual(['code-esilv-cloud']);
+    expect(accessCodes.map((code) => code.id).sort()).toEqual([
+      'access-esilv-lan110-corporate-finance',
+      'code-esilv-cloud',
+    ]);
 
     await expect(
       createOrganizationAccessCode({
@@ -1116,6 +1119,7 @@ describe('tenant visibility rules', () => {
     const courses = await listVisibleOrganizationCourseSummaries(teacher, 'org-esilv');
     expect(courses.map((item) => item.course.id).sort()).toEqual([
       'course-cloud-devsecops',
+      'course-lan110-corporate-finance',
       'course-secure-automation',
     ]);
 
@@ -1142,6 +1146,7 @@ describe('tenant visibility rules', () => {
     );
     expect(studentDetail?.progress.map((item) => item.course.id).sort()).toEqual([
       'course-cloud-devsecops',
+      'course-lan110-corporate-finance',
       'course-secure-automation',
     ]);
 
@@ -1152,6 +1157,7 @@ describe('tenant visibility rules', () => {
     );
     expect(unenrolledDetail?.progress.map((item) => item.course.id).sort()).toEqual([
       'course-cloud-devsecops',
+      'course-lan110-corporate-finance',
       'course-secure-automation',
     ]);
     expect(unenrolledDetail?.progress.every((item) => item.enrollment === undefined)).toBe(true);
@@ -1803,17 +1809,37 @@ describe('tenant visibility rules', () => {
   });
 
   it('normalizes activity actions before writing activity logs', async () => {
-    const activity = await trackStudentActivity({
-      organizationId: 'org-esilv',
-      action: '  lesson.viewed  ',
-      metadata: { source: 'course-detail' },
-    });
+    const originalCwd = process.cwd();
+    const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'openmaic-activity-normalization-'));
+    const dataset = await getCoursePortalDataset();
 
-    expect(activity).toMatchObject({
-      organizationId: 'org-esilv',
-      action: 'lesson.viewed',
-      metadata: { source: 'course-detail' },
-    });
+    try {
+      await mkdir(path.join(tempRoot, 'data', 'course-portal'), { recursive: true });
+      await writeFile(
+        path.join(tempRoot, 'data', 'course-portal', 'catalog.json'),
+        JSON.stringify(dataset),
+        'utf-8',
+      );
+      process.chdir(tempRoot);
+      vi.resetModules();
+      const scopedData = await import('@/lib/server/course-portal-data');
+
+      const activity = await scopedData.trackStudentActivity({
+        organizationId: 'org-esilv',
+        action: '  lesson.viewed  ',
+        metadata: { source: 'course-detail' },
+      });
+
+      expect(activity).toMatchObject({
+        organizationId: 'org-esilv',
+        action: 'lesson.viewed',
+        metadata: { source: 'course-detail' },
+      });
+    } finally {
+      process.chdir(originalCwd);
+      vi.resetModules();
+      await rm(tempRoot, { recursive: true, force: true });
+    }
   });
 
   it('rejects student activity when enrollment does not match an assigned cohort', async () => {

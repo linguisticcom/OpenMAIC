@@ -80,6 +80,13 @@ export interface GenerateClassroomResult {
   scenes: Scene[];
   scenesCount: number;
   createdAt: string;
+  audio: {
+    narrationActions: number;
+    serverAudioRequested: boolean;
+    serverAudioGenerated: number;
+    serverAudioComplete: boolean;
+    providerId?: string;
+  };
   portalCourse?: {
     id: string;
     title: string;
@@ -425,6 +432,11 @@ export async function generateClassroom(
   }
 
   const scenes = store.getState().scenes;
+  const initialNarrationActions = scenes.reduce(
+    (total, scene) =>
+      total + (scene.actions || []).filter((action) => action.type === 'speech').length,
+    0,
+  );
   log.info(`Pipeline complete: ${scenes.length} scenes generated`);
 
   if (scenes.length === 0) {
@@ -451,6 +463,7 @@ export async function generateClassroom(
   }
 
   // Phase: TTS generation
+  let serverTTSReport: Awaited<ReturnType<typeof generateTTSForClassroom>> | undefined;
   if (input.enableTTS) {
     await options.onProgress?.({
       step: 'generating_tts',
@@ -460,12 +473,10 @@ export async function generateClassroom(
       totalScenes: outlines.length,
     });
 
-    try {
-      await generateTTSForClassroom(scenes, stageId, options.baseUrl);
-      log.info('TTS generation complete');
-    } catch (err) {
-      log.warn('TTS generation phase failed, continuing:', err);
-    }
+    serverTTSReport = await generateTTSForClassroom(scenes, stageId, options.baseUrl);
+    log.info(
+      `TTS generation complete: ${serverTTSReport.generatedAudio}/${serverTTSReport.narrationActions} files`,
+    );
   }
 
   await options.onProgress?.({
@@ -512,13 +523,24 @@ export async function generateClassroom(
     scenes,
     scenesCount: scenes.length,
     createdAt: persisted.createdAt,
+    audio: {
+      narrationActions: serverTTSReport?.narrationActions ?? initialNarrationActions,
+      serverAudioRequested: Boolean(input.enableTTS),
+      serverAudioGenerated: serverTTSReport?.generatedAudio ?? 0,
+      serverAudioComplete: Boolean(
+        input.enableTTS &&
+        serverTTSReport &&
+        serverTTSReport.generatedAudio === serverTTSReport.narrationActions,
+      ),
+      ...(serverTTSReport ? { providerId: serverTTSReport.providerId } : {}),
+    },
     portalCourse: {
       id: registeredCourse.id,
       title: registeredCourse.title,
       slug: registeredCourse.slug,
       status: registeredCourse.status,
       ...(registeredCourse.classroomId ? { classroomId: registeredCourse.classroomId } : {}),
-      ...(publishOrganization
+      ...(publishOrganization && registeredCourse.status === 'active'
         ? {
             url: `${options.baseUrl}/courses/${registeredCourse.slug}?university=${publishOrganization.slug}`,
             organizationUrl: `${options.baseUrl}/u/${publishOrganization.slug}/courses/${registeredCourse.slug}`,

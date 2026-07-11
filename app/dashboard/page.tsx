@@ -58,9 +58,9 @@ export default async function DashboardPage() {
             helper="Assigned and active now"
           />
           <MetricCard
-            label="Students"
+            label="Enrolled learners"
             value={summary.enrolledStudents}
-            helper="Students in this organization"
+            helper="Registered students and access-code guests"
             tone="blue"
           />
           <MetricCard

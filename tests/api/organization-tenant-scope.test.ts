@@ -212,6 +212,10 @@ describe('organization API tenant scope', () => {
       success: true,
       accessCodes: [
         expect.objectContaining({
+          id: 'access-esilv-lan110-corporate-finance',
+          courseId: 'course-lan110-corporate-finance',
+        }),
+        expect.objectContaining({
           id: 'code-esilv-cloud',
           courseId: 'course-cloud-devsecops',
         }),

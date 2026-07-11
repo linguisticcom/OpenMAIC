@@ -50,6 +50,13 @@ describe('classroom generation job store', () => {
         scenes: [],
         scenesCount: 0,
         createdAt: '2026-07-08T10:00:00.000Z',
+        audio: {
+          narrationActions: 4,
+          serverAudioRequested: true,
+          serverAudioGenerated: 4,
+          serverAudioComplete: true,
+          providerId: 'openai',
+        },
         portalCourse: {
           id: 'course-classroom-ai-1',
           title: 'AI class',
@@ -65,6 +72,11 @@ describe('classroom generation job store', () => {
       expect(job?.result).toMatchObject({
         classroomId: 'classroom-ai-1',
         url: 'https://academy.example/classroom/classroom-ai-1',
+        audio: {
+          narrationActions: 4,
+          serverAudioGenerated: 4,
+          serverAudioComplete: true,
+        },
         portalCourse: {
           id: 'course-classroom-ai-1',
           url: 'https://academy.example/courses/ai-class',

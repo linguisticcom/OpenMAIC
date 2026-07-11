@@ -15,6 +15,11 @@ interface CatalogCourse {
 
 interface CatalogDataset {
   courses: CatalogCourse[];
+  assignments: Array<{
+    courseId: string;
+    organizationId: string;
+    teacherUserId?: string;
+  }>;
 }
 
 interface ClassroomScene {
@@ -34,6 +39,16 @@ function readJson<T>(relativePath: string): T {
 }
 
 describe('LAN110 produced course artifacts', () => {
+  it('assigns LAN110 to the ESILV teacher-manager account', () => {
+    const catalog = readJson<CatalogDataset>('data/course-portal/catalog.json');
+    const assignment = catalog.assignments.find(
+      (item) =>
+        item.courseId === 'course-lan110-corporate-finance' && item.organizationId === 'org-esilv',
+    );
+
+    expect(assignment).toMatchObject({ teacherUserId: 'user-esilv-teacher' });
+  });
+
   it('attaches a non-smoke generated classroom artifact to every LAN110 module', () => {
     const catalog = readJson<CatalogDataset>('data/course-portal/catalog.json');
     const course = catalog.courses.find((item) => item.slug === 'lan110-corporate-finance');

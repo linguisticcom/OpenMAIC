@@ -4,11 +4,24 @@ import {
   loginPortalUser,
   verifyPortalPasswordHash,
 } from '@/lib/server/organization-session';
-import { hashPortalPassword } from '@/lib/server/course-portal-data';
+import { hashLegacyPortalPassword } from '@/lib/server/password-hashing';
 import type { PortalUser } from '@/lib/types/course-portal';
 
 const mocks = vi.hoisted(() => ({
   cookieSet: vi.fn(),
+  getOrganizationById: vi.fn(),
+  getPortalUserByEmail: vi.fn(),
+  getPortalUserById: vi.fn(),
+  markPortalUserLoggedIn: vi.fn(),
+  updatePortalUserPasswordHash: vi.fn(),
+}));
+
+vi.mock('@/lib/server/course-portal-data', () => ({
+  getOrganizationById: mocks.getOrganizationById,
+  getPortalUserByEmail: mocks.getPortalUserByEmail,
+  getPortalUserById: mocks.getPortalUserById,
+  markPortalUserLoggedIn: mocks.markPortalUserLoggedIn,
+  updatePortalUserPasswordHash: mocks.updatePortalUserPasswordHash,
 }));
 
 vi.mock('next/headers', () => ({
@@ -90,7 +103,7 @@ describe('organization session role gates', () => {
   });
 
   it('verifies portal passwords with fixed-length hex password hashes', () => {
-    const passwordHash = hashPortalPassword('openmaic-demo');
+    const passwordHash = hashLegacyPortalPassword('openmaic-demo');
 
     expect(verifyPortalPasswordHash(passwordHash, 'openmaic-demo')).toBe(true);
     expect(verifyPortalPasswordHash(passwordHash, 'wrong-password')).toBe(false);
@@ -100,6 +113,15 @@ describe('organization session role gates', () => {
 
   it('issues a session for valid credentials and rejects invalid passwords', async () => {
     process.env.ORGANIZATION_SESSION_SECRET = 'test-organization-session-secret';
+    const esilvAdmin = user({
+      id: 'user-esilv-admin',
+      organizationId: 'org-esilv',
+      email: 'admin@esilv.local',
+      passwordHash: hashLegacyPortalPassword('openmaic-demo'),
+    });
+    mocks.getPortalUserByEmail.mockResolvedValue(esilvAdmin);
+    mocks.markPortalUserLoggedIn.mockResolvedValue(esilvAdmin);
+    mocks.getOrganizationById.mockResolvedValue({ id: 'org-esilv', name: 'ESILV' });
 
     const valid = await loginPortalUser({
       email: 'admin@esilv.local',
@@ -135,6 +157,15 @@ describe('organization session role gates', () => {
   it('requires a real signing secret before issuing production organization sessions', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     clearOrganizationSessionSecrets();
+    const esilvAdmin = user({
+      id: 'user-esilv-admin',
+      organizationId: 'org-esilv',
+      email: 'admin@esilv.local',
+      passwordHash: hashLegacyPortalPassword('openmaic-demo'),
+    });
+    mocks.getPortalUserByEmail.mockResolvedValue(esilvAdmin);
+    mocks.markPortalUserLoggedIn.mockResolvedValue(esilvAdmin);
+    mocks.getOrganizationById.mockResolvedValue({ id: 'org-esilv', name: 'ESILV' });
 
     await expect(
       loginPortalUser({

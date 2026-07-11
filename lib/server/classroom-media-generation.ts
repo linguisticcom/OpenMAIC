@@ -213,38 +213,44 @@ export function replaceMediaPlaceholders(scenes: Scene[], mediaMap: Record<strin
 // TTS generation
 // ---------------------------------------------------------------------------
 
+export interface ServerTTSGenerationReport {
+  providerId: TTSProviderId;
+  narrationActions: number;
+  generatedAudio: number;
+}
+
 export async function generateTTSForClassroom(
   scenes: Scene[],
   classroomId: string,
   baseUrl: string,
-): Promise<void> {
-  const audioDir = path.join(CLASSROOMS_DIR, classroomId, 'audio');
-  await ensureDir(audioDir);
-
+): Promise<ServerTTSGenerationReport> {
   // Resolve TTS provider (exclude browser-native-tts and operator force-disabled
   // providers — server precedence, #665).
   const ttsProviderIds = Object.entries(getServerTTSProviders())
     .filter(([id, info]) => id !== 'browser-native-tts' && !info.disabled)
     .map(([id]) => id);
   if (ttsProviderIds.length === 0) {
-    log.warn('No server TTS provider configured, skipping TTS generation');
-    return;
+    throw new Error('Server voice was requested, but no server TTS provider is configured.');
   }
 
   const providerId = ttsProviderIds[0] as TTSProviderId;
   const apiKey = resolveTTSApiKey(providerId);
   const ttsProvider = TTS_PROVIDERS[providerId as keyof typeof TTS_PROVIDERS];
   if (ttsProvider?.requiresApiKey && !apiKey) {
-    log.warn(`No API key for TTS provider "${providerId}", skipping TTS generation`);
-    return;
+    throw new Error(`Server voice provider "${providerId}" is missing its API key.`);
   }
   const ttsBaseUrl = resolveTTSBaseUrl(providerId) || ttsProvider?.defaultBaseUrl;
   const voice = DEFAULT_TTS_VOICES[providerId as keyof typeof DEFAULT_TTS_VOICES] || 'default';
   const format = ttsProvider?.supportedFormats?.[0] || 'mp3';
   if (providerId === VOXCPM_TTS_PROVIDER_ID && voice === VOXCPM_AUTO_VOICE_ID) {
-    log.warn('VoxCPM Auto Voice requires agent context; skipping server-side TTS generation');
-    return;
+    throw new Error('VoxCPM Auto Voice cannot generate server audio without agent context.');
   }
+
+  const audioDir = path.join(CLASSROOMS_DIR, classroomId, 'audio');
+  await ensureDir(audioDir);
+  let narrationActions = 0;
+  let generatedAudio = 0;
+  const failedActionIds: string[] = [];
 
   for (const scene of scenes) {
     if (!scene.actions) continue;
@@ -259,6 +265,7 @@ export async function generateTTSForClassroom(
     for (const action of scene.actions) {
       if (action.type !== 'speech' || !(action as SpeechAction).text) continue;
       const speechAction = action as SpeechAction;
+      narrationActions += 1;
       // Include scene order in audioId to prevent collision across scenes
       const audioId = `tts_s${sceneOrder}_${action.id}`;
 
@@ -275,15 +282,39 @@ export async function generateTTSForClassroom(
           speechAction.text,
         );
 
+        if (result.audio.length === 0) {
+          throw new Error('TTS provider returned an empty audio file.');
+        }
+
         const filename = `${audioId}.${result.format || format}`;
-        await fs.writeFile(path.join(audioDir, filename), result.audio);
+        const audioPath = path.join(audioDir, filename);
+        await fs.writeFile(audioPath, result.audio);
+        const audioFile = await fs.stat(audioPath);
+        if (!audioFile.isFile() || audioFile.size === 0) {
+          throw new Error('Generated audio file was not persisted correctly.');
+        }
 
         speechAction.audioId = audioId;
         speechAction.audioUrl = mediaServingUrl(baseUrl, classroomId, `audio/${filename}`);
+        generatedAudio += 1;
         log.info(`Generated TTS: ${filename} (${result.audio.length} bytes)`);
       } catch (err) {
+        failedActionIds.push(action.id);
         log.warn(`TTS generation failed for action ${action.id}:`, err);
       }
     }
   }
+
+  if (narrationActions === 0) {
+    await fs.rm(audioDir, { recursive: true, force: true });
+    throw new Error('Server voice was requested, but the classroom has no narration actions.');
+  }
+  if (generatedAudio !== narrationActions) {
+    await fs.rm(audioDir, { recursive: true, force: true });
+    throw new Error(
+      `Server audio generation failed: ${generatedAudio}/${narrationActions} narration actions have audio (${failedActionIds.length} failed).`,
+    );
+  }
+
+  return { providerId, narrationActions, generatedAudio };
 }

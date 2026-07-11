@@ -261,6 +261,7 @@ export interface OrganizationDashboardSummary {
 
 export interface StudentManagementSummary {
   student: Student;
+  learnerType: 'registered' | 'access-code-guest';
   coursesEnrolled: number;
   averageProgress: number;
   lastActivityAt?: string;

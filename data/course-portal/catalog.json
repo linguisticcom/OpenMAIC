@@ -473,7 +473,8 @@
       "courseId": "course-lan110-corporate-finance",
       "organizationId": "org-esilv",
       "assignedAt": "2026-07-04T12:05:00.000Z",
-      "assignedByUserId": "user-platform-admin"
+      "assignedByUserId": "user-platform-admin",
+      "teacherUserId": "user-esilv-teacher"
     }
   ],
   "students": [

@@ -38,6 +38,7 @@ export function StudentManagementTable({ students }: { students: StudentManageme
           summary.student.programName || '',
           summary.student.academicYear || '',
           summary.accessCodeUsed || '',
+          summary.learnerType,
           summary.completionStatus,
         ]
           .join(' ')
@@ -95,7 +96,8 @@ export function StudentManagementTable({ students }: { students: StudentManageme
           </label>
         </div>
         <p className="mt-3 text-xs text-slate-500">
-          Showing {filteredStudents.length} of {students.length} students.
+          Showing {filteredStudents.length} of {students.length} enrolled learners. Access-code
+          guests are kept separate from registered student records.
         </p>
       </div>
 
@@ -123,6 +125,11 @@ export function StudentManagementTable({ students }: { students: StudentManageme
                         {summary.student.email ||
                           summary.student.externalStudentId ||
                           'No identifier'}
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-violet-700">
+                        {summary.learnerType === 'access-code-guest'
+                          ? 'Access-code guest'
+                          : 'Registered student'}
                       </p>
                     </td>
                     <td className="px-4 py-3 text-slate-600">{summary.coursesEnrolled}</td>

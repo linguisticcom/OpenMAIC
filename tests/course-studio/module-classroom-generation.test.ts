@@ -118,7 +118,7 @@ describe('Course Studio module classroom generation helpers', () => {
       attachToModuleId: 'module-lan110-1',
       publishToOrganizationId: 'org-esilv',
       publishToCohortId: 'cohort-esilv-m2',
-      publishStatus: 'active',
+      publishStatus: 'draft',
     });
   });
 
@@ -149,7 +149,7 @@ describe('Course Studio module classroom generation helpers', () => {
     expect(request.portalCourse.attachToModuleId).toBeUndefined();
     expect(request.portalCourse).toMatchObject({
       publishToOrganizationId: 'org-esilv',
-      publishStatus: 'active',
+      publishStatus: 'draft',
     });
   });
 });

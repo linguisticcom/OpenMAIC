@@ -41,7 +41,35 @@ interface ModuleGenerationJob {
   url?: string;
   courseUrl?: string;
   globalCoursesUrl?: string;
+  browserVoiceRequested: boolean;
+  audio?: {
+    narrationActions: number;
+    serverAudioRequested: boolean;
+    serverAudioGenerated: number;
+    serverAudioComplete: boolean;
+    providerId?: string;
+  };
   error?: string;
+}
+
+function ModuleAudioStatus({ job }: { job: ModuleGenerationJob }) {
+  if (job.status !== 'succeeded' || !job.audio) return null;
+  const audio = job.audio;
+
+  return (
+    <div className="mt-2 grid gap-1 text-xs">
+      <span>Narration text ready: {audio.narrationActions}</span>
+      {audio.serverAudioRequested ? (
+        <span className={audio.serverAudioComplete ? 'text-emerald-700' : 'text-destructive'}>
+          Server audio: {audio.serverAudioGenerated}/{audio.narrationActions} generated
+        </span>
+      ) : (
+        <span>
+          {job.browserVoiceRequested ? 'Browser voice available' : 'No audio mode selected'}
+        </span>
+      )}
+    </div>
+  );
 }
 
 interface DashboardCatalogResponse {
@@ -267,7 +295,11 @@ export default function CourseStudioPage() {
     );
   };
 
-  const pollModuleJob = async (moduleId: string, pollUrl: string) => {
+  const pollModuleJob = async (
+    moduleId: string,
+    pollUrl: string,
+    browserVoiceRequested: boolean,
+  ) => {
     try {
       const response = await fetch(pollUrl);
       const json = await response.json();
@@ -284,7 +316,7 @@ export default function CourseStudioPage() {
           message:
             json.error || json.message || current[moduleId]?.message || 'Generating classroom',
           url:
-            json.result?.url && enableLocalComputerVoice
+            json.result?.url && browserVoiceRequested
               ? `${json.result.url}?tts=browser`
               : json.result?.url || current[moduleId]?.url,
           courseUrl:
@@ -294,12 +326,17 @@ export default function CourseStudioPage() {
           globalCoursesUrl: json.result?.portalCourse
             ? '/admin/courses'
             : current[moduleId]?.globalCoursesUrl,
+          audio: json.result?.audio || current[moduleId]?.audio,
+          browserVoiceRequested,
           error: json.error,
         },
       }));
 
       if (!json.done) {
-        window.setTimeout(() => void pollModuleJob(moduleId, pollUrl), json.pollIntervalMs || 5000);
+        window.setTimeout(
+          () => void pollModuleJob(moduleId, pollUrl, browserVoiceRequested),
+          json.pollIntervalMs || 5000,
+        );
       } else if (json.status === 'succeeded') {
         void loadDashboardCatalog();
       }
@@ -311,6 +348,7 @@ export default function CourseStudioPage() {
             jobId: '',
             progress: 0,
             message: '',
+            browserVoiceRequested,
           }),
           status: 'failed',
           message: error instanceof Error ? error.message : String(error),
@@ -331,6 +369,7 @@ export default function CourseStudioPage() {
         status: 'queued',
         progress: 0,
         message: 'Queuing classroom generation',
+        browserVoiceRequested: enableLocalComputerVoice,
       },
     }));
 
@@ -347,7 +386,6 @@ export default function CourseStudioPage() {
         enableVideoGeneration: enableClassroomVideo,
         enableImageGeneration: enableClassroomImages,
         enableTTS: enableClassroomTts && !enableLocalComputerVoice,
-        allowSeparateGeneratedCourseOnAttachMismatch: true,
       });
 
       const response = await fetch('/api/generate-classroom', {
@@ -366,13 +404,16 @@ export default function CourseStudioPage() {
           jobId: json.jobId,
           status: json.status,
           progress: 0,
-          message: requestBody.attachWarning
-            ? `${json.message || 'Classroom generation queued'}; selected course did not match this module, so a separate generated course will be created.`
-            : json.message || 'Classroom generation queued',
+          message: json.message || 'Classroom generation queued',
+          browserVoiceRequested: enableLocalComputerVoice,
         },
       }));
 
-      void pollModuleJob(moduleId, json.pollUrl || `/api/generate-classroom/${json.jobId}`);
+      void pollModuleJob(
+        moduleId,
+        json.pollUrl || `/api/generate-classroom/${json.jobId}`,
+        enableLocalComputerVoice,
+      );
     } catch (error) {
       setModuleJobs((current) => ({
         ...current,
@@ -381,6 +422,7 @@ export default function CourseStudioPage() {
           status: 'failed',
           progress: 0,
           message: error instanceof Error ? error.message : String(error),
+          browserVoiceRequested: enableLocalComputerVoice,
           error: error instanceof Error ? error.message : String(error),
         },
       }));
@@ -410,6 +452,14 @@ export default function CourseStudioPage() {
         throw new Error(getApiErrorMessage(json, 'Course planning failed'));
       }
       setCoursePlan(json.plan);
+      if (json.course) {
+        setDashboardCourses((current) => [
+          json.course,
+          ...current.filter((course) => course.id !== json.course.id),
+        ]);
+        setAttachToCourseId(json.course.id);
+        setShowDraftCourseTargets(true);
+      }
     } catch (error) {
       setCourseError(error instanceof Error ? error.message : String(error));
     } finally {
@@ -545,7 +595,7 @@ export default function CourseStudioPage() {
                 />
               </div>
               <details className="md:col-span-2 overflow-hidden rounded-lg border border-border bg-muted/20">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-900">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-foreground">
                   <span>Optional reference materials</span>
                   <span className="text-xs font-medium text-muted-foreground">
                     {selectedResourceIds.length} selected · {resources.length} saved
@@ -697,6 +747,7 @@ export default function CourseStudioPage() {
                         setEnableClassroomTts(event.target.checked);
                         if (event.target.checked) setEnableLocalComputerVoice(false);
                       }}
+                      disabled={hasServerTts === false}
                       className="size-4 accent-primary"
                     />
                     Server voice
@@ -724,9 +775,10 @@ export default function CourseStudioPage() {
                     or Server voice.
                   </p>
                 )}
-                {enableClassroomTts && hasServerTts === false && (
+                {hasServerTts === false && (
                   <p className="mt-2 text-xs text-destructive">
-                    Server voice is selected, but no server TTS provider is configured.
+                    Server voice is unavailable because no server TTS provider is configured. Course
+                    Studio will not pretend server audio was generated.
                   </p>
                 )}
               </div>
@@ -742,12 +794,12 @@ export default function CourseStudioPage() {
                       className="mt-0.5 size-4 accent-primary"
                     />
                     <span>
-                      Publish generated classrooms to a client dashboard as active assigned course
-                      material.
+                      Assign this draft course to a client dashboard. It remains Draft until a
+                      platform admin reviews every module and publishes it from Global courses.
                     </span>
                   </label>
                   <label className="grid gap-2 text-xs font-medium text-muted-foreground">
-                    Attach generated module classrooms to existing course
+                    Parent course for generated module classrooms
                     <Input
                       value={attachCourseQuery}
                       onChange={(event) => setAttachCourseQuery(event.target.value)}
@@ -761,7 +813,9 @@ export default function CourseStudioPage() {
                       disabled={attachCourseOptions.length === 0}
                       className="h-10 rounded-md border border-border bg-white px-3 text-sm text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100 disabled:opacity-60"
                     >
-                      <option value="">Create separate generated courses</option>
+                      <option value="" disabled>
+                        Create a course plan first
+                      </option>
                       {attachCourseOptions.map((course) => (
                         <option key={course.id} value={course.id}>
                           {course.title} — {course.category} ({course.id})
@@ -825,8 +879,9 @@ export default function CourseStudioPage() {
                     <p className="text-xs text-destructive">{dashboardCatalogError}</p>
                   ) : (
                     <p className="text-xs leading-5 text-muted-foreground">
-                      If enabled, Course Studio creates the classroom, attaches it to the selected
-                      course module when chosen, and assigns that course to the selected dashboard.
+                      Course Studio creates one Draft parent course from the plan, attaches each
+                      classroom to its matching module, and optionally assigns that draft to the
+                      selected dashboard. Publishing is a separate review action.
                     </p>
                   )}
                 </div>
@@ -925,9 +980,10 @@ export default function CourseStudioPage() {
                                 rel="noreferrer"
                                 className="mt-1 block max-w-full truncate font-medium text-violet-700 underline-offset-2 hover:underline"
                               >
-                                Share classroom link: {moduleJobs[module.id].url}
+                                Review classroom: {moduleJobs[module.id].url}
                               </a>
                             ) : null}
+                            <ModuleAudioStatus job={moduleJobs[module.id]} />
                           </div>
                         )}
                       </div>

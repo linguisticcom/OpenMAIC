@@ -4,6 +4,7 @@ import { callLLM } from '@/lib/ai/llm';
 import { parseJsonResponse } from '@/lib/generation/json-repair';
 import { createLogger } from '@/lib/logger';
 import { apiError, apiSuccess } from '@/lib/server/api-response';
+import { createPlannedCourseDraft } from '@/lib/server/course-portal-data';
 import { buildResourceSummaryBlock } from '@/lib/server/course-resources';
 import { resolveModelFromRequest } from '@/lib/server/resolve-model';
 import { requirePlatformApiSession } from '@/lib/server/tenant-api-auth';
@@ -155,6 +156,7 @@ function normalizeCoursePlan(
     }
   });
   const modules = moduleSlots;
+  const usedModuleIds = new Set<string>();
 
   return {
     title: value.title || request.topic,
@@ -163,8 +165,16 @@ function normalizeCoursePlan(
     moduleDurationMinutes: Number(value.moduleDurationMinutes) || request.moduleDurationMinutes,
     modules: modules.map((module, index) => {
       const m = module as Partial<CourseModulePlan>;
+      const requestedId = typeof m.id === 'string' && m.id.trim() ? m.id.trim() : nanoid(8);
+      let id = requestedId;
+      let suffix = 2;
+      while (usedModuleIds.has(id)) {
+        id = `${requestedId}-${suffix}`;
+        suffix += 1;
+      }
+      usedModuleIds.add(id);
       return {
-        id: typeof m.id === 'string' && m.id ? m.id : nanoid(8),
+        id,
         order: index + 1,
         title: m.title || `${request.topic} - Module ${index + 1}`,
         durationMinutes: Number(m.durationMinutes) || request.moduleDurationMinutes,
@@ -280,8 +290,9 @@ The modules array must contain exactly ${expectedModuleCount} objects.`;
       moduleDurationMinutes,
       audience: body.audience,
     });
+    const course = await createPlannedCourseDraft(plan);
 
-    return apiSuccess({ plan });
+    return apiSuccess({ plan, course });
   } catch (error) {
     log.error(`Course planning failed [topic="${topicSnippet ?? 'unknown'}..."]:`, error);
     return apiError(

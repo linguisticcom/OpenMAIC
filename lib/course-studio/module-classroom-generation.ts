@@ -190,7 +190,7 @@ export function buildModuleClassroomGenerationRequest(
       ? {
           publishToOrganizationId: params.publishOrganizationId,
           ...(params.publishCohortId ? { publishToCohortId: params.publishCohortId } : {}),
-          publishStatus: 'active' as const,
+          publishStatus: 'draft' as const,
         }
       : {}),
   };
