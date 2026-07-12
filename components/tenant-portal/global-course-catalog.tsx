@@ -2,13 +2,21 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { BookOpenCheck, Search, SlidersHorizontal } from 'lucide-react';
+import {
+  ArrowUpRight,
+  BookOpenCheck,
+  CheckCircle2,
+  CircleAlert,
+  PlayCircle,
+  Search,
+  SlidersHorizontal,
+} from 'lucide-react';
 import { GlobalCourseStatusForm } from '@/components/tenant-portal/global-course-status-form';
-import type { Course } from '@/lib/types/course-portal';
+import type { Course, Organization } from '@/lib/types/course-portal';
 
 export interface GlobalCourseCatalogItem {
   course: Course;
-  assignedOrganizationCount: number;
+  assignedOrganizations: Organization[];
 }
 
 function generatedClassroomCount(course: Course): number {
@@ -24,15 +32,15 @@ export function GlobalCourseCatalog({ items }: { items: GlobalCourseCatalogItem[
   const releaseFacingCount = useMemo(
     () =>
       items.filter(
-        ({ course, assignedOrganizationCount }) =>
-          course.status !== 'draft' || assignedOrganizationCount > 0,
+        ({ course, assignedOrganizations }) =>
+          course.status !== 'draft' || assignedOrganizations.length > 0,
       ).length,
     [items],
   );
   const filteredItems = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return items.filter(({ course, assignedOrganizationCount }) => {
-      const isReleaseFacing = course.status !== 'draft' || assignedOrganizationCount > 0;
+    return items.filter(({ course, assignedOrganizations }) => {
+      const isReleaseFacing = course.status !== 'draft' || assignedOrganizations.length > 0;
       const matchesQuery = [course.title, course.category, course.description, course.id]
         .join(' ')
         .toLowerCase()
@@ -80,8 +88,13 @@ export function GlobalCourseCatalog({ items }: { items: GlobalCourseCatalogItem[
 
       {filteredItems.length > 0 ? (
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
-          {filteredItems.map(({ course, assignedOrganizationCount }) => {
+          {filteredItems.map(({ course, assignedOrganizations }) => {
             const classroomCount = generatedClassroomCount(course);
+            const generatedModuleCount = course.modules.filter(
+              (module) => module.classroomId,
+            ).length;
+            const canTestLearnerJourney =
+              course.status === 'active' && assignedOrganizations.length > 0;
             return (
               <article
                 key={course.id}
@@ -101,36 +114,100 @@ export function GlobalCourseCatalog({ items }: { items: GlobalCourseCatalogItem[
                 <p className="mt-2 text-sm leading-6 text-slate-600">{course.description}</p>
                 <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium text-slate-600">
                   <span className="rounded-full bg-slate-100 px-3 py-1">
-                    {assignedOrganizationCount} organization
-                    {assignedOrganizationCount === 1 ? '' : 's'}
+                    {assignedOrganizations.length} organization
+                    {assignedOrganizations.length === 1 ? '' : 's'}
                   </span>
                   <span className="rounded-full bg-violet-50 px-3 py-1 text-violet-700">
                     {classroomCount} generated classroom{classroomCount === 1 ? '' : 's'}
                   </span>
                 </div>
 
-                {classroomCount > 0 && (
-                  <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                    {course.classroomId && (
-                      <Link
-                        href={`/classroom/${course.classroomId}?tts=browser`}
-                        className="rounded-full border border-violet-200 px-3 py-1 font-semibold text-violet-700 hover:bg-violet-50"
-                      >
-                        Open generated classroom
-                      </Link>
-                    )}
-                    {course.modules
-                      .filter((module) => module.classroomId)
-                      .map((module) => (
+                <section className="mt-5 border-y border-slate-200 py-4">
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md ${
+                        canTestLearnerJourney
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : 'bg-amber-50 text-amber-700'
+                      }`}
+                    >
+                      {canTestLearnerJourney ? (
+                        <CheckCircle2 className="size-5" />
+                      ) : (
+                        <CircleAlert className="size-5" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-950">
+                        {canTestLearnerJourney
+                          ? 'Learner journey ready to test'
+                          : course.status !== 'active'
+                            ? 'Publish before end-to-end testing'
+                            : 'Assign an organization before end-to-end testing'}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">
+                        {generatedModuleCount}/{course.modules.length} modules have generated
+                        classrooms. Admin QA does not create learner progress.
+                      </p>
+                    </div>
+                  </div>
+
+                  {canTestLearnerJourney && (
+                    <div className="mt-4 grid gap-2">
+                      {assignedOrganizations.map((organization, index) => (
                         <Link
-                          key={module.id}
-                          href={`/classroom/${module.classroomId}?tts=browser`}
-                          className="rounded-full border border-violet-200 px-3 py-1 font-semibold text-violet-700 hover:bg-violet-50"
+                          key={organization.id}
+                          href={`/u/${organization.slug}/courses/${course.slug}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={
+                            index === 0
+                              ? 'inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-violet-700 px-4 text-sm font-semibold text-white hover:bg-violet-800'
+                              : 'inline-flex min-h-10 items-center justify-between gap-2 rounded-md border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:border-violet-200 hover:bg-violet-50 hover:text-violet-800'
+                          }
                         >
-                          Open {module.title}
+                          <span>
+                            {index === 0 ? 'Test full course' : 'Test course'} as{' '}
+                            {organization.name}
+                          </span>
+                          {index === 0 ? (
+                            <PlayCircle className="size-4" />
+                          ) : (
+                            <ArrowUpRight className="size-4" />
+                          )}
                         </Link>
                       ))}
-                  </div>
+                    </div>
+                  )}
+                </section>
+
+                {classroomCount > 0 && (
+                  <details className="mt-4 rounded-md border border-slate-200 bg-slate-50">
+                    <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700">
+                      Inspect generated classrooms ({classroomCount})
+                    </summary>
+                    <div className="flex flex-wrap gap-2 border-t border-slate-200 p-3 text-xs">
+                      {course.classroomId && (
+                        <Link
+                          href={`/classroom/${course.classroomId}?tts=browser`}
+                          className="rounded-full border border-violet-200 px-3 py-1 font-semibold text-violet-700 hover:bg-violet-50"
+                        >
+                          Open generated classroom
+                        </Link>
+                      )}
+                      {course.modules
+                        .filter((module) => module.classroomId)
+                        .map((module) => (
+                          <Link
+                            key={module.id}
+                            href={`/classroom/${module.classroomId}?tts=browser`}
+                            className="rounded-full border border-violet-200 px-3 py-1 font-semibold text-violet-700 hover:bg-violet-50"
+                          >
+                            Open {module.title}
+                          </Link>
+                        ))}
+                    </div>
+                  </details>
                 )}
                 <GlobalCourseStatusForm course={course} />
               </article>

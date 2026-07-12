@@ -2408,11 +2408,21 @@ export async function hasPortalAccountCourseAccess(
     cohortId?: string;
   },
 ): Promise<boolean> {
+  const dataset = await readDataset();
+
+  if (user.role === 'platform-admin') {
+    return dataset.assignments.some(
+      (assignment) =>
+        assignment.organizationId === params.organizationId &&
+        assignment.courseId === params.courseId &&
+        (!params.cohortId || assignment.cohortId === params.cohortId),
+    );
+  }
+
   if (user.role !== 'student' || user.organizationId !== params.organizationId || !user.studentId) {
     return false;
   }
 
-  const dataset = await readDataset();
   const student = dataset.students.find(
     (item) => item.id === user.studentId && item.organizationId === params.organizationId,
   );

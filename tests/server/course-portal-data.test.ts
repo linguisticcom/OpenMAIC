@@ -1228,6 +1228,33 @@ describe('tenant visibility rules', () => {
     );
   });
 
+  it('grants platform admins assigned-course access for end-to-end QA without widening tenant accounts', async () => {
+    const platform = await getPortalUserByEmail('platform@openmaic.local');
+    const organizationAdmin = await getPortalUserByEmail('admin@esilv.local');
+    expect(platform).toBeDefined();
+    expect(organizationAdmin).toBeDefined();
+    if (!platform || !organizationAdmin) return;
+
+    await expect(
+      hasPortalAccountCourseAccess(platform, {
+        organizationId: 'org-esilv',
+        courseId: 'course-lan110-corporate-finance',
+      }),
+    ).resolves.toBe(true);
+    await expect(
+      hasPortalAccountCourseAccess(platform, {
+        organizationId: 'org-esilv',
+        courseId: 'course-business-genai',
+      }),
+    ).resolves.toBe(false);
+    await expect(
+      hasPortalAccountCourseAccess(organizationAdmin, {
+        organizationId: 'org-esilv',
+        courseId: 'course-lan110-corporate-finance',
+      }),
+    ).resolves.toBe(false);
+  });
+
   it('limits student accounts to their own enrolled course and enrollment detail', async () => {
     const student = await getPortalUserByEmail('student@esilv.local');
     expect(student).toBeDefined();

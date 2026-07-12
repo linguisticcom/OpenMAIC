@@ -9,6 +9,7 @@ type CourseStartButtonProps = {
   organizationId: string;
   courseId: string;
   cohortId?: string;
+  trackActivity?: boolean;
 };
 
 export function CourseStartButton({
@@ -16,8 +17,11 @@ export function CourseStartButton({
   organizationId,
   courseId,
   cohortId,
+  trackActivity = true,
 }: CourseStartButtonProps) {
   function trackCourseStart() {
+    if (!trackActivity) return;
+
     const body = JSON.stringify({
       organizationId,
       courseId,

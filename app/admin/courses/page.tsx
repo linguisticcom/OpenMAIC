@@ -19,7 +19,7 @@ export default async function AdminCoursesPage() {
       <PageHeader
         label="Global courses"
         title="Linguistic Communication Academy courses"
-        description="Academy courses can be assigned to one or more organizations."
+        description="Test the complete learner journey, inspect generated modules, and manage publishing state."
         action={
           <Button asChild className="bg-violet-700 text-white hover:bg-violet-800">
             <Link href="/course-studio">Course Studio</Link>
@@ -29,11 +29,12 @@ export default async function AdminCoursesPage() {
       <GlobalCourseCatalog
         items={courses.map((course) => ({
           course,
-          assignedOrganizationCount: new Set(
-            dataset.assignments
-              .filter((assignment) => assignment.courseId === course.id)
-              .map((assignment) => assignment.organizationId),
-          ).size,
+          assignedOrganizations: dataset.organizations.filter((organization) =>
+            dataset.assignments.some(
+              (assignment) =>
+                assignment.courseId === course.id && assignment.organizationId === organization.id,
+            ),
+          ),
         }))}
       />
     </TenantShell>

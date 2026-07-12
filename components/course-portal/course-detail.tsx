@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Building2, Clock3, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { Building2, Clock3, FlaskConical, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { CourseAccessForm } from '@/components/course-portal/course-access-form';
 import { CourseStartButton } from '@/components/course-portal/course-start-button';
 import type { Course, CourseAssignment, CourseModule, University } from '@/lib/types/course-portal';
@@ -39,17 +39,31 @@ export function CourseDetail({
   university,
   assignment,
   accessGranted,
+  adminPreview = false,
 }: {
   course: Course;
   university: University;
   assignment: CourseAssignment;
   accessGranted: boolean;
+  adminPreview?: boolean;
 }) {
   const startHref = getCourseStartHref(course, university);
 
   return (
     <section className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_380px] lg:px-8">
       <article className="rounded-lg bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        {adminPreview && (
+          <div className="mb-6 flex items-start gap-3 rounded-md border border-violet-200 bg-violet-50 p-4 text-sm text-violet-900">
+            <FlaskConical className="mt-0.5 size-4 shrink-0" />
+            <div>
+              <p className="font-semibold">Admin QA mode</p>
+              <p className="mt-1 leading-6 text-violet-800">
+                You have full course access for testing. Starting modules will not create learner
+                progress or activity records.
+              </p>
+            </div>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-violet-50 px-3 py-1 text-sm font-semibold text-violet-700">
             {course.category}
@@ -154,6 +168,7 @@ export function CourseDetail({
                 organizationId={university.id}
                 courseId={course.id}
                 cohortId={assignment.cohortId}
+                trackActivity={!adminPreview}
               />
             </div>
           ) : (

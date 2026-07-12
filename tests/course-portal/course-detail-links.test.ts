@@ -1,6 +1,12 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { getCourseModuleHref, getCourseStartHref } from '@/components/course-portal/course-detail';
-import type { Course, University } from '@/lib/types/course-portal';
+import {
+  CourseDetail,
+  getCourseModuleHref,
+  getCourseStartHref,
+} from '@/components/course-portal/course-detail';
+import type { Course, CourseAssignment, University } from '@/lib/types/course-portal';
 
 const university = {
   id: 'org-esilv',
@@ -36,6 +42,28 @@ function course(overrides: Partial<Course> = {}): Course {
 }
 
 describe('course portal module links', () => {
+  it('identifies platform-admin course playback as non-tracking QA mode', () => {
+    const assignment: CourseAssignment = {
+      id: 'assignment-esilv-lan110',
+      courseId: 'course-lan110-corporate-finance',
+      organizationId: university.id,
+      assignedAt: '2026-01-01T00:00:00.000Z',
+      assignedByUserId: 'user-platform-admin',
+    };
+    const html = renderToStaticMarkup(
+      createElement(CourseDetail, {
+        course: course(),
+        university,
+        assignment,
+        accessGranted: true,
+        adminPreview: true,
+      }),
+    );
+
+    expect(html).toContain('Admin QA mode');
+    expect(html).toContain('will not create learner progress or activity records');
+  });
+
   it('starts catalog-only courses at the first module page instead of a dead anchor', () => {
     expect(getCourseStartHref(course(), university)).toBe(
       '/u/esilv/courses/lan110-corporate-finance/modules/module-lan110-1',

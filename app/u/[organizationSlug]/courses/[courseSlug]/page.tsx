@@ -6,6 +6,7 @@ import { CoursePortalShell } from '@/components/course-portal/portal-shell';
 import { CourseAccessGate } from '@/components/course-portal/course-access-gate';
 import { findCourseAccessAssignment } from '@/lib/server/course-access';
 import { getCourseDetailContext } from '@/lib/server/course-portal-data';
+import { getCurrentPortalSession, isPlatformAdmin } from '@/lib/server/organization-session';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,10 +16,10 @@ export default async function PublicOrganizationCoursePage({
   params: Promise<{ organizationSlug: string; courseSlug: string }>;
 }) {
   const { organizationSlug, courseSlug } = await params;
-  const context = await getCourseDetailContext({
-    organizationSlug,
-    courseSlug,
-  });
+  const [context, session] = await Promise.all([
+    getCourseDetailContext({ organizationSlug, courseSlug }),
+    getCurrentPortalSession(),
+  ]);
   if (!context) notFound();
 
   const accessAssignment = await findCourseAccessAssignment({
@@ -53,6 +54,7 @@ export default async function PublicOrganizationCoursePage({
           university={context.organization}
           assignment={assignment}
           accessGranted={accessGranted}
+          adminPreview={Boolean(session && isPlatformAdmin(session.user))}
         />
       </CoursePortalShell>
     </CourseAccessGate>
