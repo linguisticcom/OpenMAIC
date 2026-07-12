@@ -21,8 +21,7 @@ export async function POST(request: Request) {
     return apiError('INVALID_REQUEST', 401, result.error);
   }
 
-  const dashboardUrl =
-    result.session.user.role === 'platform-admin' ? '/admin/organizations' : '/dashboard';
+  const dashboardUrl = result.session.user.role === 'platform-admin' ? '/admin' : '/dashboard';
 
   return apiSuccess({
     ...serializeSession(result.session),

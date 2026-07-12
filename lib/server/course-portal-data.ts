@@ -1966,6 +1966,7 @@ export async function updateOrganizationSettings(params: {
   description?: string;
   contactEmail?: string;
   welcomeMessage?: string;
+  subscriptionStatus?: Organization['subscriptionStatus'];
 }): Promise<Organization | { error: string }> {
   const dataset = await readDataset();
   const organization = dataset.organizations.find((item) => item.id === params.organizationId);
@@ -1976,6 +1977,7 @@ export async function updateOrganizationSettings(params: {
   const logoUrl = params.logoUrl?.trim();
   const description = params.description?.trim();
   const welcomeMessage = params.welcomeMessage?.trim();
+  const subscriptionStatus = params.subscriptionStatus;
 
   if (params.name !== undefined && !name) return { error: 'Organization name is required.' };
   if (params.contactEmail !== undefined && !contactEmail) {
@@ -1990,6 +1992,9 @@ export async function updateOrganizationSettings(params: {
   if (logoUrl && !isValidLogoUrl(logoUrl)) {
     return { error: 'Logo URL must be a relative path or an HTTP(S) URL.' };
   }
+  if (subscriptionStatus && !subscriptionStatuses.has(subscriptionStatus)) {
+    return { error: 'Subscription status is invalid.' };
+  }
 
   if (name) organization.name = name;
   if (params.logoUrl !== undefined) organization.logoUrl = logoUrl || undefined;
@@ -1998,10 +2003,58 @@ export async function updateOrganizationSettings(params: {
   if (params.welcomeMessage !== undefined) {
     organization.welcomeMessage = welcomeMessage || undefined;
   }
+  if (subscriptionStatus) organization.subscriptionStatus = subscriptionStatus;
   organization.updatedAt = new Date().toISOString();
 
   await writeDataset(dataset);
   return organization;
+}
+
+export async function deleteOrganization(
+  organizationId: string,
+): Promise<{ organization: Organization } | { error: string }> {
+  const dataset = await readDataset();
+  const organization = dataset.organizations.find((item) => item.id === organizationId);
+  if (!organization) return { error: 'Organization not found.' };
+
+  const userIds = new Set(
+    dataset.users.filter((user) => user.organizationId === organizationId).map((user) => user.id),
+  );
+
+  dataset.organizations = dataset.organizations.filter((item) => item.id !== organizationId);
+  dataset.users = dataset.users.filter((user) => user.organizationId !== organizationId);
+  dataset.students = dataset.students.filter(
+    (student) => student.organizationId !== organizationId,
+  );
+  dataset.cohorts = dataset.cohorts.filter((cohort) => cohort.organizationId !== organizationId);
+  dataset.assignments = dataset.assignments.filter(
+    (assignment) => assignment.organizationId !== organizationId,
+  );
+  dataset.accessCodes = dataset.accessCodes.filter(
+    (accessCode) => accessCode.organizationId !== organizationId,
+  );
+  dataset.enrollments = dataset.enrollments.filter(
+    (enrollment) => enrollment.organizationId !== organizationId,
+  );
+  dataset.activityLogs = dataset.activityLogs.filter(
+    (activity) => activity.organizationId !== organizationId,
+  );
+  dataset.accountInvitations = (dataset.accountInvitations || []).filter(
+    (invitation) => invitation.organizationId !== organizationId,
+  );
+  dataset.authAuditEvents = (dataset.authAuditEvents || []).filter(
+    (event) =>
+      event.organizationId !== organizationId && (!event.userId || !userIds.has(event.userId)),
+  );
+  dataset.passwordResetTokens = (dataset.passwordResetTokens || []).filter(
+    (token) => !userIds.has(token.userId),
+  );
+  dataset.emailVerificationTokens = (dataset.emailVerificationTokens || []).filter(
+    (token) => !userIds.has(token.userId),
+  );
+
+  await writeDataset(dataset);
+  return { organization };
 }
 
 export async function listCoursePortalCards(

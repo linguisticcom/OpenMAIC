@@ -13,6 +13,9 @@ export function OrganizationSettingsForm({ organization }: { organization: Organ
   const [logoUrl, setLogoUrl] = useState(organization.logoUrl || '');
   const [description, setDescription] = useState(organization.description);
   const [welcomeMessage, setWelcomeMessage] = useState(organization.welcomeMessage || '');
+  const [subscriptionStatus, setSubscriptionStatus] = useState<
+    NonNullable<Organization['subscriptionStatus']>
+  >(organization.subscriptionStatus || 'trial');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,6 +38,7 @@ export function OrganizationSettingsForm({ organization }: { organization: Organ
           logoUrl,
           description,
           welcomeMessage,
+          subscriptionStatus,
         }),
       });
       const payload = (await response.json()) as { success: boolean; error?: string };
@@ -74,6 +78,23 @@ export function OrganizationSettingsForm({ organization }: { organization: Organ
             className="h-11 rounded-md border border-slate-200 px-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100"
             required
           />
+        </label>
+        <label className="grid gap-2 text-sm font-medium text-slate-700">
+          Subscription status
+          <select
+            value={subscriptionStatus}
+            onChange={(event) =>
+              setSubscriptionStatus(
+                event.target.value as NonNullable<Organization['subscriptionStatus']>,
+              )
+            }
+            className="h-11 min-w-0 w-full rounded-md border border-slate-200 px-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100"
+          >
+            <option value="trial">Trial</option>
+            <option value="active">Active</option>
+            <option value="past_due">Past due</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
         </label>
         <label className="grid gap-2 text-sm font-medium text-slate-700">
           Logo URL optional

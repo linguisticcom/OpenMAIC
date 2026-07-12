@@ -78,8 +78,8 @@ export function CourseAssignmentForm({
       onSubmit={handleSubmit}
       className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
     >
-      <div className="grid gap-4 lg:grid-cols-4">
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-4">
+        <label className="grid min-w-0 gap-2 text-sm font-medium text-slate-700">
           Organization
           <select
             value={organizationId}
@@ -88,7 +88,7 @@ export function CourseAssignmentForm({
               setCohortId('');
               setTeacherUserId('');
             }}
-            className="h-11 rounded-md border border-slate-200 px-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100"
+            className="h-11 min-w-0 w-full max-w-full rounded-md border border-slate-200 px-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100"
           >
             {organizations.map((organization) => (
               <option key={organization.id} value={organization.id}>
@@ -97,12 +97,12 @@ export function CourseAssignmentForm({
             ))}
           </select>
         </label>
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
+        <label className="grid min-w-0 gap-2 text-sm font-medium text-slate-700">
           Course
           <select
             value={courseId}
             onChange={(event) => setCourseId(event.target.value)}
-            className="h-11 rounded-md border border-slate-200 px-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100"
+            className="h-11 min-w-0 w-full max-w-full rounded-md border border-slate-200 px-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100"
           >
             {courses.map((course) => (
               <option key={course.id} value={course.id}>
@@ -111,12 +111,12 @@ export function CourseAssignmentForm({
             ))}
           </select>
         </label>
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
+        <label className="grid min-w-0 gap-2 text-sm font-medium text-slate-700">
           Cohort optional
           <select
             value={cohortId}
             onChange={(event) => setCohortId(event.target.value)}
-            className="h-11 rounded-md border border-slate-200 px-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100"
+            className="h-11 min-w-0 w-full max-w-full rounded-md border border-slate-200 px-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100"
           >
             <option value="">All students</option>
             {organizationCohorts.map((cohort) => (
@@ -126,12 +126,12 @@ export function CourseAssignmentForm({
             ))}
           </select>
         </label>
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
+        <label className="grid min-w-0 gap-2 text-sm font-medium text-slate-700">
           Teacher optional
           <select
             value={teacherUserId}
             onChange={(event) => setTeacherUserId(event.target.value)}
-            className="h-11 rounded-md border border-slate-200 px-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100"
+            className="h-11 min-w-0 w-full max-w-full rounded-md border border-slate-200 px-3 text-slate-950 outline-none focus:border-violet-400 focus:ring-3 focus:ring-violet-100"
           >
             <option value="">No assigned teacher</option>
             {organizationTeacherManagers.map((teacher) => (

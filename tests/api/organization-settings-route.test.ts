@@ -67,6 +67,7 @@ describe('organization settings API', () => {
       description: 'Business-focused AI literacy and product strategy courses.',
       contactEmail: 'faculty-success@psb.example',
       welcomeMessage: undefined,
+      subscriptionStatus: undefined,
     });
     await expect(response.json()).resolves.toMatchObject({
       success: true,

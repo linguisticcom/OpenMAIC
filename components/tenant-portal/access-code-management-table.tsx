@@ -18,16 +18,21 @@ export function AccessCodeManagementTable({
   organizationId,
   accessCodes,
 }: {
-  organizationId: string;
+  organizationId?: string;
   accessCodes: AccessCodeView[];
 }) {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [scope, setScope] = useState('all');
+  const [now] = useState(() => Date.now());
 
   const filteredAccessCodes = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return accessCodes.filter((accessCode) => {
+      const isExpired = Boolean(
+        accessCode.expiresAt && new Date(accessCode.expiresAt).getTime() < now,
+      );
+      const statusLabel = !accessCode.isActive ? 'disabled' : isExpired ? 'expired' : 'active';
       const scopeLabel =
         accessCode.studentName ||
         accessCode.cohortName ||
@@ -42,15 +47,12 @@ export function AccessCodeManagementTable({
           accessCode.cohortAcademicYear || '',
           accessCode.cohortProgramName || '',
           scopeLabel,
-          accessCode.isActive ? 'active' : 'disabled',
+          statusLabel,
         ]
           .join(' ')
           .toLowerCase()
           .includes(normalizedQuery);
-      const matchesStatus =
-        status === 'all' ||
-        (status === 'active' && accessCode.isActive) ||
-        (status === 'disabled' && !accessCode.isActive);
+      const matchesStatus = status === 'all' || status === statusLabel;
       const matchesScope =
         scope === 'all' ||
         (scope === 'student' && !!accessCode.studentId) ||
@@ -58,7 +60,7 @@ export function AccessCodeManagementTable({
         (scope === 'organization' && !accessCode.cohortId && !accessCode.studentId);
       return matchesQuery && matchesStatus && matchesScope;
     });
-  }, [accessCodes, query, scope, status]);
+  }, [accessCodes, now, query, scope, status]);
 
   return (
     <div className="grid gap-5 p-5 sm:p-8">
@@ -83,6 +85,7 @@ export function AccessCodeManagementTable({
             >
               <option value="all">All statuses</option>
               <option value="active">Active</option>
+              <option value="expired">Expired</option>
               <option value="disabled">Disabled</option>
             </select>
           </label>
@@ -126,7 +129,7 @@ export function AccessCodeManagementTable({
                     <td className="px-4 py-3">
                       <p className="font-semibold text-slate-950">{accessCode.courseTitle}</p>
                       <p className="text-xs text-slate-500">
-                        Created by {accessCode.createdByName}
+                        {accessCode.organizationName} · Created by {accessCode.createdByName}
                       </p>
                     </td>
                     <td className="px-4 py-3 text-slate-600">
@@ -151,12 +154,16 @@ export function AccessCodeManagementTable({
                     </td>
                     <td className="px-4 py-3">
                       <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize text-slate-700">
-                        {accessCode.isActive ? 'Active' : 'Disabled'}
+                        {!accessCode.isActive
+                          ? 'Disabled'
+                          : accessCode.expiresAt && new Date(accessCode.expiresAt).getTime() < now
+                            ? 'Expired'
+                            : 'Active'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <AccessCodeDisableButton
-                        organizationId={organizationId}
+                        organizationId={organizationId || accessCode.organizationId}
                         accessCodeId={accessCode.id}
                         disabled={!accessCode.isActive}
                       />

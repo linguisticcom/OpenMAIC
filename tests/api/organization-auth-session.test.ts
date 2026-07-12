@@ -166,7 +166,7 @@ describe('organization auth session API', () => {
 
     await expect(response.json()).resolves.toMatchObject({
       success: true,
-      dashboardUrl: '/admin/organizations',
+      dashboardUrl: '/admin',
       user: {
         id: 'user-platform-admin',
         role: 'platform-admin',

@@ -13,7 +13,7 @@ export async function requireOrganizationPageSession(): Promise<
 > {
   const session = await getCurrentPortalSession();
   if (!session) redirect('/login');
-  if (isPlatformAdmin(session.user)) redirect('/admin/organizations');
+  if (isPlatformAdmin(session.user)) redirect('/admin');
   if (!session.organization) redirect('/login');
   return session as PortalSession & { organization: NonNullable<PortalSession['organization']> };
 }

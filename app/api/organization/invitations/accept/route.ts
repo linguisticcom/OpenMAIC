@@ -45,8 +45,7 @@ export async function POST(request: Request) {
     ip,
   });
 
-  const dashboardUrl =
-    result.user.role === 'platform-admin' ? '/admin/organizations' : '/dashboard';
+  const dashboardUrl = result.user.role === 'platform-admin' ? '/admin' : '/dashboard';
   return apiSuccess({
     ...serializeSession({ user: result.user }),
     dashboardUrl,

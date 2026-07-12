@@ -13,7 +13,13 @@ export async function PATCH(request: Request) {
 
   let body: Partial<
     Record<
-      'organizationId' | 'name' | 'logoUrl' | 'description' | 'contactEmail' | 'welcomeMessage',
+      | 'organizationId'
+      | 'name'
+      | 'logoUrl'
+      | 'description'
+      | 'contactEmail'
+      | 'welcomeMessage'
+      | 'subscriptionStatus',
       unknown
     >
   >;
@@ -40,13 +46,15 @@ export async function PATCH(request: Request) {
   const descriptionField = stringField('description');
   const contactEmailField = stringField('contactEmail');
   const welcomeMessageField = stringField('welcomeMessage');
+  const subscriptionStatusField = stringField('subscriptionStatus');
   const fieldError =
     organizationIdField.error ||
     nameField.error ||
     logoUrlField.error ||
     descriptionField.error ||
     contactEmailField.error ||
-    welcomeMessageField.error;
+    welcomeMessageField.error ||
+    subscriptionStatusField.error;
   if (fieldError) return fieldError;
 
   const organizationId = organizationIdField.value || session.user.organizationId;
@@ -65,6 +73,12 @@ export async function PATCH(request: Request) {
     description: descriptionField.value,
     contactEmail: contactEmailField.value,
     welcomeMessage: welcomeMessageField.value,
+    subscriptionStatus: subscriptionStatusField.value as
+      | 'trial'
+      | 'active'
+      | 'past_due'
+      | 'cancelled'
+      | undefined,
   });
 
   if ('error' in result) return apiError('INVALID_REQUEST', 400, result.error);

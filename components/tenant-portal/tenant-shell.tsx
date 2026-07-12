@@ -1,12 +1,15 @@
 import Link from 'next/link';
 import {
   BarChart3,
+  BookOpenCheck,
   Building2,
   GraduationCap,
   KeyRound,
   LayoutDashboard,
+  Menu,
   Settings,
   UserPlus,
+  UserRoundCheck,
   Users,
 } from 'lucide-react';
 import { LogoutButton } from '@/components/tenant-portal/logout-button';
@@ -24,10 +27,14 @@ const dashboardLinks = [
 ];
 
 const adminLinks = [
+  { href: '/admin', label: 'Overview', icon: LayoutDashboard },
   { href: '/admin/organizations', label: 'Organizations', icon: Building2 },
-  { href: '/admin/invitations', label: 'Invitations', icon: UserPlus },
-  { href: '/admin/courses', label: 'Global courses', icon: GraduationCap },
+  { href: '/admin/students', label: 'Students', icon: Users },
+  { href: '/admin/teachers', label: 'Teachers', icon: UserRoundCheck },
+  { href: '/admin/access-codes', label: 'Access codes', icon: KeyRound },
+  { href: '/admin/courses', label: 'Global courses', icon: BookOpenCheck },
   { href: '/admin/course-assignments', label: 'Assignments', icon: BarChart3 },
+  { href: '/admin/invitations', label: 'Invitations', icon: UserPlus },
 ];
 
 export function TenantShell({
@@ -65,10 +72,7 @@ export function TenantShell({
         <aside className="border-b border-slate-200 bg-white lg:sticky lg:top-0 lg:h-screen lg:self-start lg:overflow-y-auto lg:border-b-0 lg:border-r">
           <div className="flex h-full flex-col">
             <div className="border-b border-slate-200 p-5">
-              <Link
-                href={admin ? '/admin/organizations' : '/dashboard'}
-                className="flex items-center gap-3"
-              >
+              <Link href={admin ? '/admin' : '/dashboard'} className="flex items-center gap-3">
                 <img
                   src="/lc-academy-logo.webp"
                   alt="Linguistic Communication Academy"
@@ -88,7 +92,28 @@ export function TenantShell({
                 <p className="mt-1 text-xs leading-5 text-slate-500">{user.name}</p>
               </div>
             </div>
-            <nav className="grid gap-1 p-3">
+            <details className="border-t border-slate-200 lg:hidden">
+              <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-4 text-sm font-semibold text-slate-700 marker:content-none">
+                <Menu className="size-4" />
+                {admin ? 'Admin navigation' : 'Dashboard navigation'}
+              </summary>
+              <nav className="grid gap-1 border-t border-slate-100 p-3">
+                {links.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-violet-50 hover:text-violet-800"
+                  >
+                    <item.icon className="size-4" />
+                    {item.label}
+                  </Link>
+                ))}
+                <div className="mt-2 border-t border-slate-200 pt-3">
+                  <LogoutButton />
+                </div>
+              </nav>
+            </details>
+            <nav className="hidden gap-1 p-3 lg:grid">
               {links.map((item) => (
                 <Link
                   key={item.href}
@@ -100,7 +125,7 @@ export function TenantShell({
                 </Link>
               ))}
             </nav>
-            <div className="mt-auto border-t border-slate-200 p-4 pb-16">
+            <div className="mt-auto hidden border-t border-slate-200 p-4 pb-16 lg:block">
               <LogoutButton />
             </div>
           </div>
