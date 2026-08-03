@@ -6,6 +6,7 @@ import {
 } from '@/lib/server/classroom-job-store';
 import { buildRequestOrigin } from '@/lib/server/classroom-storage';
 import { createLogger } from '@/lib/logger';
+import { getCurrentPortalSession, isPlatformAdmin } from '@/lib/server/organization-session';
 
 const log = createLogger('ClassroomJob API');
 
@@ -24,6 +25,14 @@ export async function GET(req: NextRequest, context: { params: Promise<{ jobId: 
     const job = await readClassroomGenerationJob(jobId);
     if (!job) {
       return apiError('INVALID_REQUEST', 404, 'Classroom generation job not found');
+    }
+
+    if (job.inputSummary.requiresPortalAdmin) {
+      const session = await getCurrentPortalSession();
+      if (!session) return apiError('INVALID_REQUEST', 401, 'Authentication required.');
+      if (!isPlatformAdmin(session.user)) {
+        return apiError('INVALID_REQUEST', 403, 'Platform admin required.');
+      }
     }
 
     const pollUrl = `${buildRequestOrigin(req)}/api/generate-classroom/${jobId}`;

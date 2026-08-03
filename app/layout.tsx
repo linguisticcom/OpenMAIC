@@ -28,9 +28,11 @@ import { AccessCodeGuard } from '@/components/access-code-guard';
 import '@fontsource-variable/inter';
 
 export const metadata: Metadata = {
-  title: 'OpenMAIC',
-  description:
-    'The open-source AI interactive classroom. Upload a PDF to instantly generate an immersive, multi-agent learning experience.',
+  title: {
+    default: 'Linguistic Communication Academy',
+    template: '%s | LC Academy',
+  },
+  description: 'English-language course production and interactive learning powered by OpenMAIC.',
 };
 
 export default function RootLayout({

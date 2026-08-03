@@ -6,6 +6,7 @@ import {
   markClassroomGenerationJobSucceeded,
   updateClassroomGenerationJobProgress,
 } from '@/lib/server/classroom-job-store';
+import { registerGeneratedClassroomCourse } from '@/lib/server/course-portal-data';
 
 const log = createLogger('ClassroomJob');
 const runningJobs = new Map<string, Promise<void>>();
@@ -24,12 +25,29 @@ export function runClassroomGenerationJob(
     try {
       await markClassroomGenerationJobRunning(jobId);
 
-      const result = await generateClassroom(input, {
+      let result = await generateClassroom(input, {
         baseUrl,
         onProgress: async (progress) => {
           await updateClassroomGenerationJobProgress(jobId, progress);
         },
       });
+
+      if (input.portalCourseMetadata) {
+        const course = await registerGeneratedClassroomCourse({
+          classroomId: result.id,
+          stage: result.stage,
+          scenes: result.scenes,
+          metadata: input.portalCourseMetadata,
+        });
+        result = {
+          ...result,
+          portalCourse: {
+            id: course.id,
+            slug: course.slug,
+            status: course.status,
+          },
+        };
+      }
 
       await markClassroomGenerationJobSucceeded(jobId, result);
     } catch (error) {

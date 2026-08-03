@@ -1,4 +1,4 @@
-import { type NextRequest } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { apiSuccess, apiError, API_ERROR_CODES } from '@/lib/server/api-response';
 import {
@@ -8,6 +8,11 @@ import {
   readClassroom,
 } from '@/lib/server/classroom-storage';
 import { createLogger } from '@/lib/logger';
+import { canReadClassroom } from '@/lib/server/classroom-access';
+import {
+  getClassroomCourseAccessContext,
+  getOrganizationById,
+} from '@/lib/server/course-portal-data';
 
 const log = createLogger('Classroom API');
 
@@ -62,6 +67,33 @@ export async function GET(request: NextRequest) {
 
     if (!isValidClassroomId(id)) {
       return apiError(API_ERROR_CODES.INVALID_REQUEST, 400, 'Invalid classroom id');
+    }
+
+    // Preserve OpenMAIC's public generation workflow for classrooms that are
+    // not published through LC Academy. Published LMS classrooms require an
+    // organization account or a valid course-access cookie.
+    if (!(await canReadClassroom(id))) {
+      const accessContext = await getClassroomCourseAccessContext(id);
+      if (accessContext && accessContext.assignments.length > 0) {
+        const assignment = accessContext.assignments[0]!;
+        const organization = await getOrganizationById(assignment.organizationId);
+        return NextResponse.json(
+          {
+            success: false,
+            errorCode: API_ERROR_CODES.INVALID_REQUEST,
+            error: 'Course access required.',
+            courseAccess: {
+              courseId: accessContext.course.id,
+              courseTitle: accessContext.course.title,
+              universityId: assignment.organizationId,
+              cohortId: assignment.cohortId,
+              universityName: organization?.name ?? 'your institution',
+            },
+          },
+          { status: 403 },
+        );
+      }
+      return apiError(API_ERROR_CODES.INVALID_REQUEST, 403, 'Course access required.');
     }
 
     const classroom = await readClassroom(id);

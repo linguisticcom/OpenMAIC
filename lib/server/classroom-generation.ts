@@ -33,6 +33,7 @@ import { withGenerationRetry } from '@/lib/generation/generation-retry';
 import { buildVideoManifestFromOutlines } from '@/lib/media/video-manifest';
 import type { UserRequirements } from '@/lib/types/generation';
 import type { Scene, Stage } from '@/lib/types/stage';
+import type { GeneratedPortalCourseMetadata } from '@/lib/types/course-studio';
 import { AGENT_COLOR_PALETTE, AGENT_DEFAULT_AVATARS } from '@/lib/constants/agent-defaults';
 
 const log = createLogger('Classroom');
@@ -48,6 +49,8 @@ export interface GenerateClassroomInput {
   enableVideoGeneration?: boolean;
   enableTTS?: boolean;
   agentMode?: 'default' | 'generate';
+  /** LC Academy publishing metadata. Presence makes the job platform-admin only. */
+  portalCourseMetadata?: GeneratedPortalCourseMetadata;
 }
 
 export type ClassroomGenerationStep =
@@ -75,6 +78,11 @@ export interface GenerateClassroomResult {
   scenes: Scene[];
   scenesCount: number;
   createdAt: string;
+  portalCourse?: {
+    id: string;
+    slug: string;
+    status: string;
+  };
 }
 
 function createInMemoryStore(stage: Stage): StageStore {

@@ -29,6 +29,7 @@ export interface ClassroomGenerationJob {
     hasPdf: boolean;
     pdfTextLength: number;
     pdfImageCount: number;
+    requiresPortalAdmin: boolean;
   };
   scenesGenerated: number;
   totalScenes?: number;
@@ -36,6 +37,11 @@ export interface ClassroomGenerationJob {
     classroomId: string;
     url: string;
     scenesCount: number;
+    portalCourse?: {
+      id: string;
+      slug: string;
+      status: string;
+    };
   };
   error?: string;
 }
@@ -51,6 +57,7 @@ function buildInputSummary(input: GenerateClassroomInput): ClassroomGenerationJo
     hasPdf: !!input.pdfContent,
     pdfTextLength: input.pdfContent?.text.length || 0,
     pdfImageCount: input.pdfContent?.images.length || 0,
+    requiresPortalAdmin: !!input.portalCourseMetadata,
   };
 }
 
@@ -206,6 +213,7 @@ export async function markClassroomGenerationJobSucceeded(
       classroomId: result.id,
       url: result.url,
       scenesCount: result.scenesCount,
+      portalCourse: result.portalCourse,
     },
   });
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useDeferredValue } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowUp,
@@ -23,6 +24,7 @@ import {
   Atom,
   X,
   Presentation,
+  GraduationCap,
 } from 'lucide-react';
 import { useI18n } from '@/lib/hooks/use-i18n';
 import { LanguageSwitcher } from '@/components/language-switcher';
@@ -430,6 +432,13 @@ function HomePage() {
 
   return (
     <div className="min-h-[100dvh] w-full bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex flex-col items-center p-4 pt-16 md:p-8 md:pt-16 overflow-x-hidden">
+      <Link
+        href="/courses"
+        className="fixed left-4 top-4 z-50 inline-flex h-10 items-center gap-2 rounded-full border border-violet-200/70 bg-white/75 px-4 text-sm font-semibold text-violet-800 shadow-sm backdrop-blur-md transition hover:bg-white dark:border-violet-700/60 dark:bg-slate-900/75 dark:text-violet-200"
+      >
+        <GraduationCap className="size-4" />
+        LC Academy
+      </Link>
       <input
         ref={fileInputRef}
         type="file"

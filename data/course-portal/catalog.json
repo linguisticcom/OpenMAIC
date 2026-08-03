@@ -1,0 +1,892 @@
+{
+  "organizations": [
+    {
+      "id": "org-esilv",
+      "name": "ESILV",
+      "slug": "esilv",
+      "logoUrl": "/lc-academy-logo.webp",
+      "description": "Engineering and digital innovation courses prepared for cybersecurity, cloud, and AI cohorts.",
+      "contactEmail": "learning-admin@esilv.example",
+      "subscriptionStatus": "active",
+      "welcomeMessage": "Access your Linguistic Communication Academy classrooms for platform, security, and AI engineering.",
+      "createdAt": "2026-06-01T09:00:00.000Z",
+      "updatedAt": "2026-07-02T09:00:00.000Z"
+    },
+    {
+      "id": "org-ingetis",
+      "name": "INGETIS",
+      "slug": "ingetis",
+      "logoUrl": "/lc-academy-logo.webp",
+      "description": "Professional training courses for cloud infrastructure, DevOps delivery, and applied automation.",
+      "contactEmail": "training@ingetis.example",
+      "subscriptionStatus": "trial",
+      "welcomeMessage": "Browse assigned courses and unlock the modules shared with your cohort.",
+      "createdAt": "2026-06-03T09:00:00.000Z",
+      "updatedAt": "2026-07-02T09:00:00.000Z"
+    },
+    {
+      "id": "org-psb",
+      "name": "Paris School of Business",
+      "slug": "psb",
+      "logoUrl": "/lc-academy-logo.webp",
+      "description": "Business-focused AI literacy and product strategy courses curated for Linguistic Communication Academy.",
+      "contactEmail": "faculty-success@psb.example",
+      "subscriptionStatus": "active",
+      "welcomeMessage": "Continue your assigned learning path with institution-specific access.",
+      "createdAt": "2026-06-05T09:00:00.000Z",
+      "updatedAt": "2026-07-02T09:00:00.000Z"
+    }
+  ],
+  "users": [
+    {
+      "id": "user-platform-admin",
+      "name": "Linguistic Communication Academy Platform Admin",
+      "email": "platform@openmaic.local",
+      "passwordHash": "d03d995de16bf6fa68c80e82fa7f45e6c4e0cdfd3fceee86780ee2690a1da7bd",
+      "role": "platform-admin",
+      "createdAt": "2026-06-01T09:00:00.000Z",
+      "updatedAt": "2026-07-02T09:00:00.000Z",
+      "status": "active",
+      "sessionVersion": 1
+    },
+    {
+      "id": "user-esilv-admin",
+      "organizationId": "org-esilv",
+      "name": "ESILV Learning Admin",
+      "email": "admin@esilv.local",
+      "passwordHash": "scrypt$16384$8$1$IbF_aRA909-Ol3ObHfxtkg$yqgEixhcVB-zC4vLbyUXQ1cQxbTcpiwldsvqwcXlh5q3Wo6OMQfNYG6U1AZHeDChKE9kRt6iItXYoLHYW1aDRg",
+      "role": "organization-admin",
+      "createdAt": "2026-06-01T09:15:00.000Z",
+      "updatedAt": "2026-07-10T12:31:45.942Z",
+      "status": "active",
+      "sessionVersion": 1,
+      "passwordChangedAt": "2026-07-09T18:23:34.237Z",
+      "lastLoginAt": "2026-07-10T12:31:45.942Z"
+    },
+    {
+      "id": "user-ingetis-admin",
+      "organizationId": "org-ingetis",
+      "name": "INGETIS Program Manager",
+      "email": "admin@ingetis.local",
+      "passwordHash": "d03d995de16bf6fa68c80e82fa7f45e6c4e0cdfd3fceee86780ee2690a1da7bd",
+      "role": "organization-admin",
+      "createdAt": "2026-06-03T09:15:00.000Z",
+      "updatedAt": "2026-07-02T09:00:00.000Z",
+      "status": "active",
+      "sessionVersion": 1
+    },
+    {
+      "id": "user-psb-admin",
+      "organizationId": "org-psb",
+      "name": "PSB Course Manager",
+      "email": "admin@psb.local",
+      "passwordHash": "d03d995de16bf6fa68c80e82fa7f45e6c4e0cdfd3fceee86780ee2690a1da7bd",
+      "role": "organization-admin",
+      "createdAt": "2026-06-05T09:15:00.000Z",
+      "updatedAt": "2026-07-02T09:00:00.000Z",
+      "status": "active",
+      "sessionVersion": 1
+    },
+    {
+      "id": "user-esilv-teacher",
+      "organizationId": "org-esilv",
+      "name": "ESILV Cloud Teacher",
+      "email": "teacher@esilv.local",
+      "passwordHash": "d03d995de16bf6fa68c80e82fa7f45e6c4e0cdfd3fceee86780ee2690a1da7bd",
+      "role": "teacher-manager",
+      "canGenerateAccessCodes": true,
+      "createdAt": "2026-06-07T09:00:00.000Z",
+      "updatedAt": "2026-07-02T09:00:00.000Z",
+      "status": "active",
+      "sessionVersion": 1
+    },
+    {
+      "id": "user-esilv-student-1",
+      "organizationId": "org-esilv",
+      "studentId": "student-esilv-1",
+      "name": "Amina Laurent",
+      "email": "student@esilv.local",
+      "passwordHash": "d03d995de16bf6fa68c80e82fa7f45e6c4e0cdfd3fceee86780ee2690a1da7bd",
+      "role": "student",
+      "createdAt": "2026-06-14T09:20:00.000Z",
+      "updatedAt": "2026-07-02T09:00:00.000Z",
+      "status": "active",
+      "sessionVersion": 1
+    },
+    {
+      "id": "user-psb-student-1",
+      "organizationId": "org-psb",
+      "studentId": "student-psb-1",
+      "name": "Lucas Martin",
+      "email": "student@psb.local",
+      "passwordHash": "d03d995de16bf6fa68c80e82fa7f45e6c4e0cdfd3fceee86780ee2690a1da7bd",
+      "role": "student",
+      "createdAt": "2026-06-19T09:20:00.000Z",
+      "updatedAt": "2026-07-02T09:00:00.000Z",
+      "status": "active",
+      "sessionVersion": 1
+    }
+  ],
+  "courses": [
+    {
+      "id": "course-ai-foundations",
+      "title": "AI Foundations for Higher Education",
+      "slug": "ai-foundations-higher-education",
+      "description": "A practical introduction to generative AI concepts, responsible use, prompting, and classroom-ready workflows.",
+      "category": "Artificial Intelligence",
+      "level": "Beginner",
+      "status": "active",
+      "generatedBy": "OpenMAIC",
+      "createdAt": "2026-06-01T09:00:00.000Z",
+      "updatedAt": "2026-06-28T14:30:00.000Z",
+      "estimatedDurationMinutes": 180,
+      "coverAsset": "/avatars/scholar.svg",
+      "coverTone": "violet",
+      "modules": [
+        {
+          "id": "module-ai-1",
+          "title": "How generative AI systems work",
+          "description": "Core vocabulary, model behavior, and practical limits.",
+          "durationMinutes": 35
+        },
+        {
+          "id": "module-ai-2",
+          "title": "Prompting and classroom workflows",
+          "description": "Structured prompts, examples, and classroom task patterns.",
+          "durationMinutes": 45
+        },
+        {
+          "id": "module-ai-3",
+          "title": "Responsible use and assessment",
+          "description": "Bias, privacy, academic integrity, and evaluation guardrails.",
+          "durationMinutes": 55
+        }
+      ]
+    },
+    {
+      "id": "course-cloud-devsecops",
+      "title": "Cloud DevSecOps Delivery Lab",
+      "slug": "cloud-devsecops-delivery-lab",
+      "description": "Hands-on Kubernetes, Terraform, CI/CD, and security controls for platform engineering teams.",
+      "category": "Cloud and DevSecOps",
+      "level": "Advanced",
+      "status": "active",
+      "generatedBy": "OpenMAIC",
+      "createdAt": "2026-06-04T10:00:00.000Z",
+      "updatedAt": "2026-06-25T11:20:00.000Z",
+      "estimatedDurationMinutes": 240,
+      "coverAsset": "/avatars/builder.svg",
+      "coverTone": "blue",
+      "modules": [
+        {
+          "id": "module-cloud-1",
+          "title": "Platform baseline and environments",
+          "description": "Repository layout, environment strategy, and release flow.",
+          "durationMinutes": 40
+        },
+        {
+          "id": "module-cloud-2",
+          "title": "Infrastructure as code controls",
+          "description": "Terraform structure, review gates, tagging, and drift checks.",
+          "durationMinutes": 65
+        },
+        {
+          "id": "module-cloud-3",
+          "title": "GitOps deployment and rollback",
+          "description": "ArgoCD promotion, health signals, and safe rollback paths.",
+          "durationMinutes": 75
+        }
+      ]
+    },
+    {
+      "id": "course-secure-automation",
+      "title": "Secure Automation with AI Agents",
+      "slug": "secure-automation-ai-agents",
+      "description": "Design automation workflows that combine AI assistance with reviewable evidence and operational guardrails.",
+      "category": "Security Automation",
+      "level": "Intermediate",
+      "status": "locked",
+      "generatedBy": "OpenMAIC",
+      "createdAt": "2026-06-08T08:45:00.000Z",
+      "updatedAt": "2026-06-30T08:45:00.000Z",
+      "estimatedDurationMinutes": 150,
+      "coverAsset": "/avatars/coder.svg",
+      "coverTone": "emerald",
+      "modules": [
+        {
+          "id": "module-auto-1",
+          "title": "Automation risk model",
+          "description": "Where AI agents help, where deterministic controls must win.",
+          "durationMinutes": 35
+        },
+        {
+          "id": "module-auto-2",
+          "title": "Evidence-first workflow design",
+          "description": "Logs, diffs, validations, and reviewer-readable summaries.",
+          "durationMinutes": 50
+        },
+        {
+          "id": "module-auto-3",
+          "title": "Human approval and rollback",
+          "description": "Designing intervention points for sensitive operations.",
+          "durationMinutes": 45
+        }
+      ]
+    },
+    {
+      "id": "course-business-genai",
+      "title": "Generative AI Product Strategy",
+      "slug": "generative-ai-product-strategy",
+      "description": "A client-facing business course on identifying AI opportunities, scoping pilots, and measuring adoption.",
+      "category": "Business and Product",
+      "level": "Intermediate",
+      "status": "draft",
+      "generatedBy": "OpenMAIC",
+      "createdAt": "2026-06-12T12:00:00.000Z",
+      "updatedAt": "2026-06-26T16:00:00.000Z",
+      "estimatedDurationMinutes": 210,
+      "coverAsset": "/avatars/teacher.svg",
+      "coverTone": "rose",
+      "modules": [
+        {
+          "id": "module-product-1",
+          "title": "Opportunity framing",
+          "description": "Finding useful, feasible, and measurable AI product ideas.",
+          "durationMinutes": 45
+        },
+        {
+          "id": "module-product-2",
+          "title": "Pilot design",
+          "description": "Scope, assumptions, data readiness, and stakeholder alignment.",
+          "durationMinutes": 60
+        },
+        {
+          "id": "module-product-3",
+          "title": "Adoption and governance",
+          "description": "Metrics, support, risk review, and post-pilot decisions.",
+          "durationMinutes": 55
+        }
+      ]
+    },
+    {
+      "id": "course-data-literacy",
+      "title": "Data Literacy for Applied AI",
+      "slug": "data-literacy-applied-ai",
+      "description": "Build the analytical vocabulary needed to evaluate AI outputs, datasets, and decision quality.",
+      "category": "Data and Analytics",
+      "level": "Beginner",
+      "status": "completed",
+      "generatedBy": "OpenMAIC",
+      "createdAt": "2026-05-18T09:30:00.000Z",
+      "updatedAt": "2026-06-18T09:30:00.000Z",
+      "estimatedDurationMinutes": 120,
+      "coverAsset": "/avatars/explorer.svg",
+      "coverTone": "amber",
+      "modules": [
+        {
+          "id": "module-data-1",
+          "title": "Reading data with context",
+          "description": "Population, sample, metric definitions, and caveats.",
+          "durationMinutes": 30
+        },
+        {
+          "id": "module-data-2",
+          "title": "Signals and uncertainty",
+          "description": "Variation, confidence, and quality checks.",
+          "durationMinutes": 45
+        },
+        {
+          "id": "module-data-3",
+          "title": "Decision-ready summaries",
+          "description": "Turning analysis into clear recommendations.",
+          "durationMinutes": 35
+        }
+      ]
+    },
+    {
+      "id": "course-lan110-corporate-finance",
+      "title": "LAN110 Corporate Finance",
+      "slug": "lan110-corporate-finance",
+      "description": "A Linguistic Communication Academy course built from the LAN 110 materials on corporate finance and financial reporting: company law, business structures, bookkeeping, auditing, accounting principles, assets, depreciation, cash-flow reporting, financial statements, agile finance, and assessment practice.",
+      "category": "Corporate Finance and Financial Reporting",
+      "level": "Business English / Introductory finance",
+      "status": "active",
+      "generatedBy": "OpenMAIC",
+      "createdAt": "2026-07-04T12:05:00.000Z",
+      "updatedAt": "2026-07-04T22:05:00.000Z",
+      "estimatedDurationMinutes": 540,
+      "coverAsset": "/avatars/teacher.svg",
+      "coverTone": "amber",
+      "modules": [
+        {
+          "id": "module-lan110-1",
+          "title": "Course orientation: finance language and reporting goals",
+          "description": "Set the LAN110 context, define the expected business-English outcomes, and connect corporate finance vocabulary to financial reporting tasks.",
+          "durationMinutes": 45,
+          "classroomId": "a1wNxs34ed"
+        },
+        {
+          "id": "module-lan110-2",
+          "title": "Company law and forms of business",
+          "description": "Compare sole traders, partnerships, limited companies, corporations, subsidiaries, shareholders, creditors, liability, and bankruptcy risk.",
+          "durationMinutes": 45,
+          "classroomId": "lan110_module_02"
+        },
+        {
+          "id": "module-lan110-3",
+          "title": "Capital, shares, creditors, and venture finance",
+          "description": "Explain how companies raise capital through shares, prospectuses, banks, venture capital, and other financing sources while managing creditor claims.",
+          "durationMinutes": 45,
+          "classroomId": "lan110_module_03"
+        },
+        {
+          "id": "module-lan110-4",
+          "title": "Bookkeeping fundamentals",
+          "description": "Introduce bookkeeping records, transactions, accounts, accuracy, and the role of financial premises in reliable reporting.",
+          "durationMinutes": 45,
+          "classroomId": "lan110_module_04"
+        },
+        {
+          "id": "module-lan110-5",
+          "title": "Auditing and reporting reliability",
+          "description": "Clarify what auditing checks, why accuracy matters, and how stakeholders use audited information to trust financial statements.",
+          "durationMinutes": 45,
+          "classroomId": "lan110_module_05"
+        },
+        {
+          "id": "module-lan110-6",
+          "title": "Accounting principles for financial reports",
+          "description": "Practice the continuity principle and core reporting assumptions that guide how income, expenses, assets, and liabilities are recognized.",
+          "durationMinutes": 45,
+          "classroomId": "lan110_module_06"
+        },
+        {
+          "id": "module-lan110-7",
+          "title": "Types of assets: tangible, intangible, current, and wasting assets",
+          "description": "Classify assets and explain how different asset types affect valuation, reporting, operations, and business interpretation.",
+          "durationMinutes": 45,
+          "classroomId": "lan110_module_07"
+        },
+        {
+          "id": "module-lan110-8",
+          "title": "Depreciation, wear, write-offs, and asset value",
+          "description": "Compare straight-line and declining depreciation, explain wear and tear, and practice language for writing off assets.",
+          "durationMinutes": 45,
+          "classroomId": "lan110_module_08"
+        },
+        {
+          "id": "module-lan110-9",
+          "title": "Cash flow and funds-flow statements",
+          "description": "Read cash-flow and funds-flow information, distinguish cash from profit, and discuss liquidity using finance vocabulary.",
+          "durationMinutes": 45,
+          "classroomId": "lan110_module_09"
+        },
+        {
+          "id": "module-lan110-10",
+          "title": "Financial statements: structure and interpretation",
+          "description": "Bring together company law, accounting records, assets, liabilities, cash flow, and reporting principles to interpret complete statements.",
+          "durationMinutes": 45,
+          "classroomId": "lan110_module_10"
+        },
+        {
+          "id": "module-lan110-11",
+          "title": "Agile finance, budgeting limits, and throughput accounting",
+          "description": "Use the Finance Agile references to discuss why traditional budgeting can constrain innovation and how throughput accounting reframes performance.",
+          "durationMinutes": 45,
+          "classroomId": "lan110_module_11"
+        },
+        {
+          "id": "module-lan110-12",
+          "title": "Assessment workshop: definitions and reporting assignment",
+          "description": "Prepare for the LAN110 evaluation by explaining key terms in English and drafting a 300-word report on a financial reporting assignment.",
+          "durationMinutes": 45,
+          "classroomId": "lan110_module_12"
+        }
+      ]
+    }
+  ],
+  "assignments": [
+    {
+      "id": "assign-esilv-ai",
+      "courseId": "course-ai-foundations",
+      "organizationId": "org-esilv",
+      "assignedAt": "2026-06-10T09:00:00.000Z",
+      "assignedByUserId": "user-platform-admin"
+    },
+    {
+      "id": "assign-esilv-cloud",
+      "courseId": "course-cloud-devsecops",
+      "organizationId": "org-esilv",
+      "cohortId": "cohort-esilv-m2-cyber-cloud",
+      "assignedAt": "2026-06-11T09:00:00.000Z",
+      "assignedByUserId": "user-platform-admin",
+      "teacherUserId": "user-esilv-teacher"
+    },
+    {
+      "id": "assign-esilv-auto",
+      "courseId": "course-secure-automation",
+      "organizationId": "org-esilv",
+      "cohortId": "cohort-esilv-m2-cyber-cloud",
+      "assignedAt": "2026-06-12T09:00:00.000Z",
+      "assignedByUserId": "user-platform-admin",
+      "teacherUserId": "user-esilv-teacher"
+    },
+    {
+      "id": "assign-ingetis-cloud",
+      "courseId": "course-cloud-devsecops",
+      "organizationId": "org-ingetis",
+      "cohortId": "cohort-ingetis-devops",
+      "assignedAt": "2026-06-12T12:00:00.000Z",
+      "assignedByUserId": "user-platform-admin"
+    },
+    {
+      "id": "assign-ingetis-auto",
+      "courseId": "course-secure-automation",
+      "organizationId": "org-ingetis",
+      "assignedAt": "2026-06-13T12:00:00.000Z",
+      "assignedByUserId": "user-platform-admin"
+    },
+    {
+      "id": "assign-psb-ai",
+      "courseId": "course-ai-foundations",
+      "organizationId": "org-psb",
+      "assignedAt": "2026-06-14T09:00:00.000Z",
+      "assignedByUserId": "user-platform-admin"
+    },
+    {
+      "id": "assign-psb-product",
+      "courseId": "course-business-genai",
+      "organizationId": "org-psb",
+      "cohortId": "cohort-psb-ai-product",
+      "assignedAt": "2026-06-15T09:00:00.000Z",
+      "assignedByUserId": "user-platform-admin"
+    },
+    {
+      "id": "assign-psb-data",
+      "courseId": "course-data-literacy",
+      "organizationId": "org-psb",
+      "assignedAt": "2026-06-16T09:00:00.000Z",
+      "assignedByUserId": "user-platform-admin"
+    },
+    {
+      "id": "assign-esilv-lan110-corporate-finance",
+      "courseId": "course-lan110-corporate-finance",
+      "organizationId": "org-esilv",
+      "assignedAt": "2026-07-04T12:05:00.000Z",
+      "assignedByUserId": "user-platform-admin",
+      "teacherUserId": "user-esilv-teacher"
+    }
+  ],
+  "students": [
+    {
+      "id": "student-esilv-1",
+      "organizationId": "org-esilv",
+      "cohortId": "cohort-esilv-m2-cyber-cloud",
+      "name": "Amina Laurent",
+      "email": "amina.laurent@esilv.example",
+      "externalStudentId": "ESILV-2026-001",
+      "academicYear": "2026-2027",
+      "programName": "Cybersecurity and Cloud Computing",
+      "createdAt": "2026-06-14T09:00:00.000Z",
+      "updatedAt": "2026-07-02T09:00:00.000Z"
+    },
+    {
+      "id": "student-esilv-2",
+      "organizationId": "org-esilv",
+      "cohortId": "cohort-esilv-m2-cyber-cloud",
+      "name": "Nolan Bernard",
+      "email": "nolan.bernard@esilv.example",
+      "externalStudentId": "ESILV-2026-002",
+      "academicYear": "2026-2027",
+      "programName": "Cybersecurity and Cloud Computing",
+      "createdAt": "2026-06-14T09:10:00.000Z",
+      "updatedAt": "2026-07-02T09:00:00.000Z"
+    },
+    {
+      "id": "student-esilv-3",
+      "organizationId": "org-esilv",
+      "cohortId": "cohort-esilv-m2-cyber-cloud",
+      "name": "Leila Morel",
+      "email": "leila.morel@esilv.example",
+      "externalStudentId": "ESILV-2026-003",
+      "academicYear": "2026-2027",
+      "programName": "Cybersecurity and Cloud Computing",
+      "createdAt": "2026-06-14T09:20:00.000Z",
+      "updatedAt": "2026-07-02T09:00:00.000Z"
+    },
+    {
+      "id": "student-ingetis-1",
+      "organizationId": "org-ingetis",
+      "cohortId": "cohort-ingetis-devops",
+      "name": "Sarah Moreau",
+      "email": "sarah.moreau@ingetis.example",
+      "externalStudentId": "ING-DEVOPS-01",
+      "academicYear": "2026",
+      "programName": "Cloud Infrastructure",
+      "createdAt": "2026-06-18T09:00:00.000Z",
+      "updatedAt": "2026-07-02T09:00:00.000Z"
+    },
+    {
+      "id": "student-psb-1",
+      "organizationId": "org-psb",
+      "cohortId": "cohort-psb-ai-product",
+      "name": "Lucas Martin",
+      "email": "lucas.martin@psb.example",
+      "externalStudentId": "PSB-AI-01",
+      "academicYear": "2026",
+      "programName": "Business and Product",
+      "createdAt": "2026-06-19T09:00:00.000Z",
+      "updatedAt": "2026-07-02T09:00:00.000Z"
+    },
+    {
+      "id": "student-psb-2",
+      "organizationId": "org-psb",
+      "name": "Maya Singh",
+      "email": "maya.singh@psb.example",
+      "externalStudentId": "PSB-DATA-02",
+      "academicYear": "2026",
+      "programName": "Business Analytics",
+      "createdAt": "2026-06-19T09:15:00.000Z",
+      "updatedAt": "2026-07-02T09:00:00.000Z"
+    }
+  ],
+  "enrollments": [
+    {
+      "id": "enroll-esilv-1-cloud",
+      "studentId": "student-esilv-1",
+      "courseId": "course-cloud-devsecops",
+      "organizationId": "org-esilv",
+      "accessCodeId": "code-esilv-cloud",
+      "status": "in_progress",
+      "progressPercentage": 62,
+      "startedAt": "2026-06-20T09:00:00.000Z",
+      "lastActivityAt": "2026-07-01T16:20:00.000Z"
+    },
+    {
+      "id": "enroll-esilv-2-cloud",
+      "studentId": "student-esilv-2",
+      "courseId": "course-cloud-devsecops",
+      "organizationId": "org-esilv",
+      "accessCodeId": "code-esilv-cloud",
+      "status": "in_progress",
+      "progressPercentage": 38,
+      "startedAt": "2026-06-21T09:00:00.000Z",
+      "lastActivityAt": "2026-06-30T11:00:00.000Z"
+    },
+    {
+      "id": "enroll-ingetis-1-cloud",
+      "studentId": "student-ingetis-1",
+      "courseId": "course-cloud-devsecops",
+      "organizationId": "org-ingetis",
+      "accessCodeId": "code-ingetis-cloud",
+      "status": "completed",
+      "progressPercentage": 100,
+      "startedAt": "2026-06-19T09:00:00.000Z",
+      "completedAt": "2026-06-29T09:00:00.000Z",
+      "lastActivityAt": "2026-06-29T09:00:00.000Z"
+    },
+    {
+      "id": "enroll-psb-1-product",
+      "studentId": "student-psb-1",
+      "courseId": "course-business-genai",
+      "organizationId": "org-psb",
+      "accessCodeId": "code-psb-product",
+      "status": "in_progress",
+      "progressPercentage": 48,
+      "startedAt": "2026-06-22T09:00:00.000Z",
+      "lastActivityAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": "enroll-psb-2-data",
+      "studentId": "student-psb-2",
+      "courseId": "course-data-literacy",
+      "organizationId": "org-psb",
+      "status": "completed",
+      "progressPercentage": 100,
+      "startedAt": "2026-06-18T09:00:00.000Z",
+      "completedAt": "2026-06-28T09:00:00.000Z",
+      "lastActivityAt": "2026-06-28T09:00:00.000Z"
+    }
+  ],
+  "accessCodes": [
+    {
+      "id": "code-esilv-ai",
+      "codeHash": "fa644e292ab679365f0590e45050142f81f5972c4a22e8b903ec2dfb517a2f89",
+      "organizationId": "org-esilv",
+      "courseId": "course-ai-foundations",
+      "createdByUserId": "user-esilv-admin",
+      "currentUses": 12,
+      "maxUses": 250,
+      "expiresAt": "2027-09-01T00:00:00.000Z",
+      "isActive": true,
+      "createdAt": "2026-06-10T10:00:00.000Z"
+    },
+    {
+      "id": "code-esilv-cloud",
+      "codeHash": "f1045fc00d6470c22fe36b906f4e1395c4bca46eb10520ff9338ef4939d0162a",
+      "organizationId": "org-esilv",
+      "courseId": "course-cloud-devsecops",
+      "cohortId": "cohort-esilv-m2-cyber-cloud",
+      "createdByUserId": "user-esilv-admin",
+      "currentUses": 18,
+      "maxUses": 90,
+      "expiresAt": "2027-09-01T00:00:00.000Z",
+      "isActive": true,
+      "createdAt": "2026-06-11T10:00:00.000Z"
+    },
+    {
+      "id": "code-ingetis-cloud",
+      "codeHash": "879510365f137ff361033294ed794bb00e60de1fa2705133c224b5da107269cd",
+      "organizationId": "org-ingetis",
+      "courseId": "course-cloud-devsecops",
+      "cohortId": "cohort-ingetis-devops",
+      "createdByUserId": "user-ingetis-admin",
+      "currentUses": 7,
+      "maxUses": 120,
+      "expiresAt": "2027-09-01T00:00:00.000Z",
+      "isActive": true,
+      "createdAt": "2026-06-12T10:00:00.000Z"
+    },
+    {
+      "id": "code-psb-product",
+      "codeHash": "33b665108361e3d12ac04796bd851ddc045992e9fb477fbc9368a85d6a827f69",
+      "organizationId": "org-psb",
+      "courseId": "course-business-genai",
+      "cohortId": "cohort-psb-ai-product",
+      "createdByUserId": "user-psb-admin",
+      "currentUses": 4,
+      "maxUses": 160,
+      "expiresAt": "2027-09-01T00:00:00.000Z",
+      "isActive": true,
+      "createdAt": "2026-06-15T10:00:00.000Z"
+    },
+    {
+      "id": "code-expired-demo",
+      "codeHash": "18f34e9338884257448092a3e0759761a9d807c80ce40227d8cb86b2519c384d",
+      "organizationId": "org-esilv",
+      "courseId": "course-ai-foundations",
+      "createdByUserId": "user-esilv-admin",
+      "currentUses": 0,
+      "maxUses": 10,
+      "expiresAt": "2025-09-01T00:00:00.000Z",
+      "isActive": true,
+      "createdAt": "2025-06-01T10:00:00.000Z"
+    },
+    {
+      "id": "access-esilv-lan110-corporate-finance",
+      "codeHash": "9ce9b696ed0828da5f4feeec11f7ed864e1246d916018c1a5fa0d8fc512ae539",
+      "organizationId": "org-esilv",
+      "courseId": "course-lan110-corporate-finance",
+      "createdByUserId": "user-platform-admin",
+      "maxUses": 200,
+      "currentUses": 0,
+      "isActive": true,
+      "createdAt": "2026-07-04T12:05:00.000Z"
+    }
+  ],
+  "cohorts": [
+    {
+      "id": "cohort-esilv-m2-cyber-cloud",
+      "organizationId": "org-esilv",
+      "name": "M2 Cybersecurity and Cloud Computing",
+      "academicYear": "2026-2027",
+      "programName": "Cybersecurity and Cloud Computing",
+      "createdAt": "2026-06-01T10:00:00.000Z"
+    },
+    {
+      "id": "cohort-ingetis-devops",
+      "organizationId": "org-ingetis",
+      "name": "DevOps Professional Track",
+      "academicYear": "2026",
+      "programName": "Cloud Infrastructure",
+      "createdAt": "2026-06-03T10:00:00.000Z"
+    },
+    {
+      "id": "cohort-psb-ai-product",
+      "organizationId": "org-psb",
+      "name": "AI Product Strategy Cohort",
+      "academicYear": "2026",
+      "programName": "Business and Product",
+      "createdAt": "2026-06-05T10:00:00.000Z"
+    }
+  ],
+  "activityLogs": [
+    {
+      "id": "activity-esilv-1",
+      "organizationId": "org-esilv",
+      "studentId": "student-esilv-1",
+      "courseId": "course-cloud-devsecops",
+      "action": "module.completed",
+      "metadata": {
+        "moduleId": "module-cloud-1",
+        "progressPercentage": 62
+      },
+      "createdAt": "2026-07-01T16:20:00.000Z"
+    },
+    {
+      "id": "activity-esilv-2",
+      "organizationId": "org-esilv",
+      "studentId": "student-esilv-2",
+      "courseId": "course-cloud-devsecops",
+      "action": "lesson.viewed",
+      "metadata": {
+        "moduleId": "module-cloud-2",
+        "progressPercentage": 38
+      },
+      "createdAt": "2026-06-30T11:00:00.000Z"
+    },
+    {
+      "id": "activity-ingetis-1",
+      "organizationId": "org-ingetis",
+      "studentId": "student-ingetis-1",
+      "courseId": "course-cloud-devsecops",
+      "action": "course.completed",
+      "metadata": {
+        "progressPercentage": 100
+      },
+      "createdAt": "2026-06-29T09:00:00.000Z"
+    },
+    {
+      "id": "activity-psb-1",
+      "organizationId": "org-psb",
+      "studentId": "student-psb-1",
+      "courseId": "course-business-genai",
+      "action": "lesson.viewed",
+      "metadata": {
+        "moduleId": "module-product-2",
+        "progressPercentage": 48
+      },
+      "createdAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": "activity-1783192455851-6b8818",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-04T19:14:15.852Z"
+    },
+    {
+      "id": "activity-1783192498066-20cae3",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-04T19:14:58.066Z"
+    },
+    {
+      "id": "activity-1783621414515-51252b",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-09T18:23:34.515Z"
+    },
+    {
+      "id": "activity-1783621463919-8e29c3",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-09T18:24:23.919Z"
+    },
+    {
+      "id": "activity-1783626955578-5147d6",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-09T19:55:55.578Z"
+    },
+    {
+      "id": "activity-1783626970799-c331ab",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-09T19:56:10.799Z"
+    },
+    {
+      "id": "activity-1783627008516-decbf3",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-09T19:56:48.516Z"
+    },
+    {
+      "id": "activity-1783669744604-a57e2d",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-10T07:49:04.604Z"
+    },
+    {
+      "id": "activity-1783670125785-8b5608",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-10T07:55:25.785Z"
+    },
+    {
+      "id": "activity-1783670245365-d66dc5",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-10T07:57:25.365Z"
+    },
+    {
+      "id": "activity-1783673603310-13f7ca",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-10T08:53:23.313Z"
+    },
+    {
+      "id": "activity-1783686256104-971ecf",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-10T12:24:16.104Z"
+    },
+    {
+      "id": "activity-1783686706310-569c72",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-10T12:31:46.310Z"
+    },
+    {
+      "id": "activity-1783704698479-a7de27",
+      "organizationId": "org-esilv",
+      "action": "lesson.viewed",
+      "metadata": {
+        "source": "course-detail"
+      },
+      "createdAt": "2026-07-10T17:31:38.479Z"
+    }
+  ],
+  "passwordResetTokens": [],
+  "accountInvitations": [],
+  "emailVerificationTokens": [],
+  "authAuditEvents": []
+}
