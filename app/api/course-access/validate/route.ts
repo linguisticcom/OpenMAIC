@@ -2,6 +2,7 @@ import { apiError, apiSuccess } from '@/lib/server/api-response';
 import { createCourseAccessToken, getCourseAccessCookieName } from '@/lib/server/course-access';
 import { consumeCourseAccessGrant } from '@/lib/server/course-portal-data';
 import { getCurrentPortalSession, isStudent } from '@/lib/server/organization-session';
+import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit';
 import { cookies } from 'next/headers';
 
 function stringField(value: unknown): string | undefined {
@@ -9,6 +10,21 @@ function stringField(value: unknown): string | undefined {
 }
 
 export async function POST(request: Request) {
+  const rateLimit = checkRateLimit({
+    key: `course-access:${getClientIp(request)}`,
+    limit: 12,
+    windowMs: 5 * 60 * 1000,
+  });
+  if (!rateLimit.allowed) {
+    const response = apiError(
+      'RATE_LIMITED',
+      429,
+      'Too many access-code attempts. Please try again later.',
+    );
+    response.headers.set('Retry-After', String(rateLimit.retryAfterSeconds));
+    return response;
+  }
+
   let body: {
     organizationId?: unknown;
     organizationSlug?: unknown;

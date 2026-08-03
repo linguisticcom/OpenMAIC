@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { POST } from '@/app/api/course-access/validate/route';
+import { resetRateLimitBucketsForTests } from '@/lib/server/rate-limit';
 
 const mocks = vi.hoisted(() => ({
   consumeCourseAccessGrant: vi.fn(),
@@ -26,6 +27,7 @@ function invalidCodeResult() {
 describe('course access validation API', () => {
   afterEach(() => {
     vi.clearAllMocks();
+    resetRateLimitBucketsForTests();
   });
 
   it('does not trust a frontend studentId when no student session exists', async () => {
@@ -128,5 +130,36 @@ describe('course access validation API', () => {
       cohortId: undefined,
       studentId: 'student-esilv-1',
     });
+  });
+
+  it('rate limits repeated access-code guesses by client IP', async () => {
+    mocks.getCurrentPortalSession.mockResolvedValue(null);
+    mocks.consumeCourseAccessGrant.mockResolvedValue(invalidCodeResult());
+    const request = () =>
+      new Request('http://localhost/api/course-access/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-forwarded-for': '203.0.113.15',
+        },
+        body: JSON.stringify({
+          organizationSlug: 'esilv',
+          courseSlug: 'cloud-devsecops-delivery-lab',
+          accessCode: 'INVALID-CODE',
+        }),
+      });
+
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      expect((await POST(request())).status).toBe(200);
+    }
+    const blocked = await POST(request());
+
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers.get('Retry-After')).toMatch(/^\d+$/);
+    await expect(blocked.json()).resolves.toMatchObject({
+      success: false,
+      errorCode: 'RATE_LIMITED',
+    });
+    expect(mocks.consumeCourseAccessGrant).toHaveBeenCalledTimes(12);
   });
 });

@@ -5,6 +5,7 @@ import { PostgresCoursePortalStore } from './postgres-store';
 export interface CoursePortalStore {
   readDataset(): Promise<CoursePortalDataset>;
   writeDataset(dataset: CoursePortalDataset): Promise<void>;
+  mutateDataset<T>(mutator: (dataset: CoursePortalDataset) => T | Promise<T>): Promise<T>;
 }
 
 type StoreOptions = {

@@ -807,12 +807,14 @@ async function readDataset(): Promise<CoursePortalDataset> {
   }).readDataset();
 }
 
-async function writeDataset(dataset: CoursePortalDataset): Promise<void> {
-  await getCoursePortalStore({
+async function mutateDataset<T>(
+  mutator: (dataset: CoursePortalDataset) => T | Promise<T>,
+): Promise<T> {
+  return getCoursePortalStore({
     jsonFilePath: COURSE_PORTAL_DATA_FILE,
     fallbackDataset: seedDataset,
     normalizeDataset,
-  }).writeDataset(normalizeDataset(dataset));
+  }).mutateDataset(mutator);
 }
 
 function findOrganization(
@@ -1315,56 +1317,60 @@ function upsertGeneratedCourseAssignment(params: {
 }
 
 export async function createPlannedCourseDraft(plan: CoursePlan): Promise<Course> {
-  const dataset = await readDataset();
-  const now = new Date().toISOString();
-  const title = trimText(plan.title, 160) || 'Untitled Course Studio plan';
-  const preferredSlug = normalizeCourseSlug(title, `course-studio-${Date.now()}`);
-  const slug = uniqueCourseSlug(dataset, preferredSlug);
-  let id = `course-plan-${Date.now()}-${randomBytes(3).toString('hex')}`;
-  while (dataset.courses.some((course) => course.id === id)) {
-    id = `course-plan-${Date.now()}-${randomBytes(3).toString('hex')}`;
-  }
-
-  const usedModuleIds = new Set<string>();
-  const modules = plan.modules.map((module, index): CourseModule => {
-    const requestedId = module.id.trim() || `module-${index + 1}`;
-    let moduleId = requestedId;
-    let suffix = 2;
-    while (usedModuleIds.has(moduleId)) {
-      moduleId = `${requestedId}-${suffix}`;
-      suffix += 1;
+  return mutateDataset(async (dataset) => {
+    const now = new Date().toISOString();
+    const title = trimText(plan.title, 160) || 'Untitled Course Studio plan';
+    const preferredSlug = normalizeCourseSlug(title, `course-studio-${Date.now()}`);
+    const slug = uniqueCourseSlug(dataset, preferredSlug);
+    let id = `course-plan-${Date.now()}-${randomBytes(3).toString('hex')}`;
+    while (dataset.courses.some((course) => course.id === id)) {
+      id = `course-plan-${Date.now()}-${randomBytes(3).toString('hex')}`;
     }
-    usedModuleIds.add(moduleId);
 
-    return {
-      id: moduleId,
-      title: trimText(module.title, 120) || `Module ${index + 1}`,
-      description:
-        trimText(module.learningObjectives.join(' '), 420) ||
-        trimText(module.classroomPrompt, 420) ||
-        'Course Studio module awaiting classroom generation.',
-      durationMinutes: Math.max(1, Math.round(module.durationMinutes)),
+    const usedModuleIds = new Set<string>();
+    const modules = plan.modules.map((module, index): CourseModule => {
+      const requestedId = module.id.trim() || `module-${index + 1}`;
+      let moduleId = requestedId;
+      let suffix = 2;
+      while (usedModuleIds.has(moduleId)) {
+        moduleId = `${requestedId}-${suffix}`;
+        suffix += 1;
+      }
+      usedModuleIds.add(moduleId);
+
+      return {
+        id: moduleId,
+        title: trimText(module.title, 120) || `Module ${index + 1}`,
+        description:
+          trimText(module.learningObjectives.join(' '), 420) ||
+          trimText(module.classroomPrompt, 420) ||
+          'Course Studio module awaiting classroom generation.',
+        durationMinutes: Math.max(1, Math.round(module.durationMinutes)),
+      };
+    });
+
+    const course: Course = {
+      id,
+      title,
+      slug,
+      description: `Course Studio plan for ${plan.audience?.trim() || 'learners'}. Review every module before publishing.`,
+      category: title,
+      status: 'draft',
+      generatedBy: 'OpenMAIC Course Studio',
+      createdAt: now,
+      updatedAt: now,
+      estimatedDurationMinutes: modules.reduce(
+        (total, module) => total + module.durationMinutes,
+        0,
+      ),
+      modules,
+      coverTone: 'violet',
     };
+
+    dataset.courses.push(course);
+
+    return course;
   });
-
-  const course: Course = {
-    id,
-    title,
-    slug,
-    description: `Course Studio plan for ${plan.audience?.trim() || 'learners'}. Review every module before publishing.`,
-    category: title,
-    status: 'draft',
-    generatedBy: 'OpenMAIC Course Studio',
-    createdAt: now,
-    updatedAt: now,
-    estimatedDurationMinutes: modules.reduce((total, module) => total + module.durationMinutes, 0),
-    modules,
-    coverTone: 'violet',
-  };
-
-  dataset.courses.push(course);
-  await writeDataset(dataset);
-  return course;
 }
 
 export async function registerGeneratedClassroomCourse(params: {
@@ -1373,44 +1379,114 @@ export async function registerGeneratedClassroomCourse(params: {
   scenes: Scene[];
   metadata?: GeneratedPortalCourseMetadata;
 }): Promise<Course> {
-  const dataset = await readDataset();
-  const now = new Date().toISOString();
-  const publishOrganizationId = params.metadata?.publishToOrganizationId?.trim() || undefined;
-  const publishCohortId = params.metadata?.publishToCohortId?.trim() || undefined;
-  const publishTeacherUserId = params.metadata?.publishToTeacherUserId?.trim() || undefined;
+  return mutateDataset(async (dataset) => {
+    const now = new Date().toISOString();
+    const publishOrganizationId = params.metadata?.publishToOrganizationId?.trim() || undefined;
+    const publishCohortId = params.metadata?.publishToCohortId?.trim() || undefined;
+    const publishTeacherUserId = params.metadata?.publishToTeacherUserId?.trim() || undefined;
 
-  validateGeneratedCoursePublishTarget({
-    dataset,
-    organizationId: publishOrganizationId,
-    cohortId: publishCohortId,
-    teacherUserId: publishTeacherUserId,
-  });
+    validateGeneratedCoursePublishTarget({
+      dataset,
+      organizationId: publishOrganizationId,
+      cohortId: publishCohortId,
+      teacherUserId: publishTeacherUserId,
+    });
 
-  const attachCourseRef = params.metadata?.attachToCourseId?.trim();
-  const attachModuleId = params.metadata?.attachToModuleId?.trim();
-  const attachCourse = attachCourseRef ? findCourse(dataset, attachCourseRef) : undefined;
-  const attachModule = attachCourse?.modules.find((module) => module.id === attachModuleId);
-  if (attachCourseRef || attachModuleId) {
-    if (!attachCourse || !attachModule) {
-      throw new Error('Generated classroom attach target course/module not found.');
+    const attachCourseRef = params.metadata?.attachToCourseId?.trim();
+    const attachModuleId = params.metadata?.attachToModuleId?.trim();
+    const attachCourse = attachCourseRef ? findCourse(dataset, attachCourseRef) : undefined;
+    const attachModule = attachCourse?.modules.find((module) => module.id === attachModuleId);
+    if (attachCourseRef || attachModuleId) {
+      if (!attachCourse || !attachModule) {
+        throw new Error('Generated classroom attach target course/module not found.');
+      }
+
+      attachModule.classroomId = params.classroomId;
+      if (
+        params.metadata?.estimatedDurationMinutes &&
+        params.metadata.estimatedDurationMinutes > 0
+      ) {
+        attachModule.durationMinutes = Math.round(params.metadata.estimatedDurationMinutes);
+      }
+      attachCourse.updatedAt = now;
+
+      if (publishOrganizationId) {
+        if (params.metadata?.publishStatus !== 'draft' && !isCourseReadyToPublish(attachCourse)) {
+          throw new Error(
+            'Course cannot be published until every planned module has a generated classroom.',
+          );
+        }
+        attachCourse.status = params.metadata?.publishStatus === 'draft' ? 'draft' : 'active';
+        upsertGeneratedCourseAssignment({
+          dataset,
+          courseId: attachCourse.id,
+          organizationId: publishOrganizationId,
+          cohortId: publishCohortId,
+          teacherUserId: publishTeacherUserId,
+          now,
+        });
+      }
+
+      return attachCourse;
     }
 
-    attachModule.classroomId = params.classroomId;
-    if (params.metadata?.estimatedDurationMinutes && params.metadata.estimatedDurationMinutes > 0) {
-      attachModule.durationMinutes = Math.round(params.metadata.estimatedDurationMinutes);
-    }
-    attachCourse.updatedAt = now;
+    const courseId = `course-${params.classroomId}`;
+    const existing = dataset.courses.find(
+      (course) => course.classroomId === params.classroomId || course.id === courseId,
+    );
+    const title =
+      trimText(params.metadata?.title, 160) ||
+      trimText(params.stage.name, 160) ||
+      `Linguistic Communication Academy Classroom ${params.classroomId}`;
+    const description =
+      trimText(params.metadata?.description, 420) ||
+      trimText(params.stage.description, 420) ||
+      `Linguistic Communication Academy classroom with ${params.scenes.length} scene${params.scenes.length === 1 ? '' : 's'}.`;
+    const category =
+      trimText(params.metadata?.category, 80) || 'Linguistic Communication Academy Generated';
+    const level = trimText(params.metadata?.level, 80);
+    const modules = buildGeneratedCourseModules(params.scenes);
+    const estimatedDurationMinutes =
+      params.metadata?.estimatedDurationMinutes && params.metadata.estimatedDurationMinutes > 0
+        ? Math.round(params.metadata.estimatedDurationMinutes)
+        : modules.reduce((total, module) => total + module.durationMinutes, 0);
+    const preferredSlug = normalizeCourseSlug(title, `openmaic-classroom-${params.classroomId}`);
+    const slug = uniqueCourseSlug(dataset, preferredSlug, existing?.id);
+
+    const course: Course = {
+      ...(existing || {
+        id: courseId,
+        status: 'draft' as CourseStatus,
+        createdAt: now,
+        coverTone: 'violet' as const,
+      }),
+      id: existing?.id || courseId,
+      title,
+      slug,
+      description,
+      category,
+      level,
+      generatedBy: 'OpenMAIC',
+      updatedAt: now,
+      estimatedDurationMinutes,
+      modules,
+      classroomId: params.classroomId,
+    };
 
     if (publishOrganizationId) {
-      if (params.metadata?.publishStatus !== 'draft' && !isCourseReadyToPublish(attachCourse)) {
-        throw new Error(
-          'Course cannot be published until every planned module has a generated classroom.',
-        );
-      }
-      attachCourse.status = params.metadata?.publishStatus === 'draft' ? 'draft' : 'active';
+      course.status = params.metadata?.publishStatus === 'draft' ? 'draft' : 'active';
+    }
+
+    if (existing) {
+      Object.assign(existing, course);
+    } else {
+      dataset.courses.push(course);
+    }
+
+    if (publishOrganizationId) {
       upsertGeneratedCourseAssignment({
         dataset,
-        courseId: attachCourse.id,
+        courseId: course.id,
         organizationId: publishOrganizationId,
         cohortId: publishCohortId,
         teacherUserId: publishTeacherUserId,
@@ -1418,76 +1494,8 @@ export async function registerGeneratedClassroomCourse(params: {
       });
     }
 
-    await writeDataset(dataset);
-    return attachCourse;
-  }
-
-  const courseId = `course-${params.classroomId}`;
-  const existing = dataset.courses.find(
-    (course) => course.classroomId === params.classroomId || course.id === courseId,
-  );
-  const title =
-    trimText(params.metadata?.title, 160) ||
-    trimText(params.stage.name, 160) ||
-    `Linguistic Communication Academy Classroom ${params.classroomId}`;
-  const description =
-    trimText(params.metadata?.description, 420) ||
-    trimText(params.stage.description, 420) ||
-    `Linguistic Communication Academy classroom with ${params.scenes.length} scene${params.scenes.length === 1 ? '' : 's'}.`;
-  const category =
-    trimText(params.metadata?.category, 80) || 'Linguistic Communication Academy Generated';
-  const level = trimText(params.metadata?.level, 80);
-  const modules = buildGeneratedCourseModules(params.scenes);
-  const estimatedDurationMinutes =
-    params.metadata?.estimatedDurationMinutes && params.metadata.estimatedDurationMinutes > 0
-      ? Math.round(params.metadata.estimatedDurationMinutes)
-      : modules.reduce((total, module) => total + module.durationMinutes, 0);
-  const preferredSlug = normalizeCourseSlug(title, `openmaic-classroom-${params.classroomId}`);
-  const slug = uniqueCourseSlug(dataset, preferredSlug, existing?.id);
-
-  const course: Course = {
-    ...(existing || {
-      id: courseId,
-      status: 'draft' as CourseStatus,
-      createdAt: now,
-      coverTone: 'violet' as const,
-    }),
-    id: existing?.id || courseId,
-    title,
-    slug,
-    description,
-    category,
-    level,
-    generatedBy: 'OpenMAIC',
-    updatedAt: now,
-    estimatedDurationMinutes,
-    modules,
-    classroomId: params.classroomId,
-  };
-
-  if (publishOrganizationId) {
-    course.status = params.metadata?.publishStatus === 'draft' ? 'draft' : 'active';
-  }
-
-  if (existing) {
-    Object.assign(existing, course);
-  } else {
-    dataset.courses.push(course);
-  }
-
-  if (publishOrganizationId) {
-    upsertGeneratedCourseAssignment({
-      dataset,
-      courseId: course.id,
-      organizationId: publishOrganizationId,
-      cohortId: publishCohortId,
-      teacherUserId: publishTeacherUserId,
-      now,
-    });
-  }
-
-  await writeDataset(dataset);
-  return course;
+    return course;
+  });
 }
 
 export async function updateGlobalCourseStatus(params: {
@@ -1498,19 +1506,20 @@ export async function updateGlobalCourseStatus(params: {
     return { error: 'Invalid course status.' };
   }
 
-  const dataset = await readDataset();
-  const course = dataset.courses.find((item) => item.id === params.courseId);
-  if (!course) return { error: 'Course not found.' };
-  if (params.status === 'active' && !isCourseReadyToPublish(course)) {
-    return {
-      error: 'Course cannot be published until every planned module has a generated classroom.',
-    };
-  }
+  return mutateDataset(async (dataset) => {
+    const course = dataset.courses.find((item) => item.id === params.courseId);
+    if (!course) return { error: 'Course not found.' };
+    if (params.status === 'active' && !isCourseReadyToPublish(course)) {
+      return {
+        error: 'Course cannot be published until every planned module has a generated classroom.',
+      };
+    }
 
-  course.status = params.status as CourseStatus;
-  course.updatedAt = new Date().toISOString();
-  await writeDataset(dataset);
-  return course;
+    course.status = params.status as CourseStatus;
+    course.updatedAt = new Date().toISOString();
+
+    return course;
+  });
 }
 
 export async function deleteGlobalCourse(params: { courseId: string }): Promise<
@@ -1526,32 +1535,32 @@ export async function deleteGlobalCourse(params: { courseId: string }): Promise<
     }
   | { error: string }
 > {
-  const dataset = await readDataset();
-  const course = dataset.courses.find((item) => item.id === params.courseId);
-  if (!course) return { error: 'Course not found.' };
+  return mutateDataset(async (dataset) => {
+    const course = dataset.courses.find((item) => item.id === params.courseId);
+    if (!course) return { error: 'Course not found.' };
 
-  const assignmentsBefore = dataset.assignments.length;
-  const accessCodesBefore = dataset.accessCodes.length;
-  const enrollmentsBefore = dataset.enrollments.length;
-  const activityLogsBefore = dataset.activityLogs.length;
+    const assignmentsBefore = dataset.assignments.length;
+    const accessCodesBefore = dataset.accessCodes.length;
+    const enrollmentsBefore = dataset.enrollments.length;
+    const activityLogsBefore = dataset.activityLogs.length;
 
-  dataset.courses = dataset.courses.filter((item) => item.id !== params.courseId);
-  dataset.assignments = dataset.assignments.filter((item) => item.courseId !== params.courseId);
-  dataset.accessCodes = dataset.accessCodes.filter((item) => item.courseId !== params.courseId);
-  dataset.enrollments = dataset.enrollments.filter((item) => item.courseId !== params.courseId);
-  dataset.activityLogs = dataset.activityLogs.filter((item) => item.courseId !== params.courseId);
+    dataset.courses = dataset.courses.filter((item) => item.id !== params.courseId);
+    dataset.assignments = dataset.assignments.filter((item) => item.courseId !== params.courseId);
+    dataset.accessCodes = dataset.accessCodes.filter((item) => item.courseId !== params.courseId);
+    dataset.enrollments = dataset.enrollments.filter((item) => item.courseId !== params.courseId);
+    dataset.activityLogs = dataset.activityLogs.filter((item) => item.courseId !== params.courseId);
 
-  await writeDataset(dataset);
-  return {
-    deleted: true,
-    course,
-    removed: {
-      assignments: assignmentsBefore - dataset.assignments.length,
-      accessCodes: accessCodesBefore - dataset.accessCodes.length,
-      enrollments: enrollmentsBefore - dataset.enrollments.length,
-      activityLogs: activityLogsBefore - dataset.activityLogs.length,
-    },
-  };
+    return {
+      deleted: true,
+      course,
+      removed: {
+        assignments: assignmentsBefore - dataset.assignments.length,
+        accessCodes: accessCodesBefore - dataset.accessCodes.length,
+        enrollments: enrollmentsBefore - dataset.enrollments.length,
+        activityLogs: activityLogsBefore - dataset.activityLogs.length,
+      },
+    };
+  });
 }
 
 export async function getPortalUserByEmail(email: string): Promise<PortalUser | undefined> {
@@ -1576,34 +1585,35 @@ export async function updatePortalUserPasswordHash(params: {
   activate?: boolean;
   bumpSessionVersion?: boolean;
 }): Promise<PortalUser | undefined> {
-  const dataset = await readDataset();
-  const user = dataset.users.find((item) => item.id === params.userId);
-  if (!user) return undefined;
+  return mutateDataset(async (dataset) => {
+    const user = dataset.users.find((item) => item.id === params.userId);
+    if (!user) return undefined;
 
-  const now = new Date().toISOString();
-  user.passwordHash = params.passwordHash;
-  user.passwordChangedAt = now;
-  user.updatedAt = now;
-  if (params.markEmailVerified) user.emailVerifiedAt = user.emailVerifiedAt || now;
-  if (params.activate) user.status = 'active';
-  if (params.bumpSessionVersion !== false) {
-    user.sessionVersion = (user.sessionVersion || 1) + 1;
-  }
+    const now = new Date().toISOString();
+    user.passwordHash = params.passwordHash;
+    user.passwordChangedAt = now;
+    user.updatedAt = now;
+    if (params.markEmailVerified) user.emailVerifiedAt = user.emailVerifiedAt || now;
+    if (params.activate) user.status = 'active';
+    if (params.bumpSessionVersion !== false) {
+      user.sessionVersion = (user.sessionVersion || 1) + 1;
+    }
 
-  await writeDataset(dataset);
-  return user;
+    return user;
+  });
 }
 
 export async function markPortalUserLoggedIn(userId: string): Promise<PortalUser | undefined> {
-  const dataset = await readDataset();
-  const user = dataset.users.find((item) => item.id === userId);
-  if (!user) return undefined;
+  return mutateDataset(async (dataset) => {
+    const user = dataset.users.find((item) => item.id === userId);
+    if (!user) return undefined;
 
-  const now = new Date().toISOString();
-  user.lastLoginAt = now;
-  user.updatedAt = now;
-  await writeDataset(dataset);
-  return user;
+    const now = new Date().toISOString();
+    user.lastLoginAt = now;
+    user.updatedAt = now;
+
+    return user;
+  });
 }
 
 export async function recordAuthAuditEvent(params: {
@@ -1614,20 +1624,21 @@ export async function recordAuthAuditEvent(params: {
   ip?: string;
   metadata?: Record<string, unknown>;
 }): Promise<AuthAuditEvent> {
-  const dataset = await readDataset();
-  const event: AuthAuditEvent = {
-    id: `auth-audit-${Date.now()}-${randomBytes(3).toString('hex')}`,
-    userId: params.userId,
-    organizationId: params.organizationId,
-    email: params.email?.trim().toLowerCase(),
-    action: params.action,
-    ip: params.ip,
-    metadata: params.metadata || {},
-    createdAt: new Date().toISOString(),
-  };
-  (dataset.authAuditEvents ||= []).push(event);
-  await writeDataset(dataset);
-  return event;
+  return mutateDataset(async (dataset) => {
+    const event: AuthAuditEvent = {
+      id: `auth-audit-${Date.now()}-${randomBytes(3).toString('hex')}`,
+      userId: params.userId,
+      organizationId: params.organizationId,
+      email: params.email?.trim().toLowerCase(),
+      action: params.action,
+      ip: params.ip,
+      metadata: params.metadata || {},
+      createdAt: new Date().toISOString(),
+    };
+    (dataset.authAuditEvents ||= []).push(event);
+
+    return event;
+  });
 }
 
 export async function createPasswordResetToken(params: {
@@ -1636,51 +1647,53 @@ export async function createPasswordResetToken(params: {
   expiresAt: string;
   requestedIp?: string;
 }): Promise<PasswordResetToken | { error: string }> {
-  const dataset = await readDataset();
-  const user = dataset.users.find((item) => item.id === params.userId);
-  if (!user) return { error: 'User not found.' };
+  return mutateDataset(async (dataset) => {
+    const user = dataset.users.find((item) => item.id === params.userId);
+    if (!user) return { error: 'User not found.' };
 
-  const now = new Date().toISOString();
-  const token: PasswordResetToken = {
-    id: `reset-${Date.now()}-${randomBytes(3).toString('hex')}`,
-    userId: user.id,
-    tokenHash: params.tokenHash,
-    createdAt: now,
-    expiresAt: params.expiresAt,
-    requestedIp: params.requestedIp,
-  };
-  (dataset.passwordResetTokens ||= []).push(token);
-  await writeDataset(dataset);
-  return token;
+    const now = new Date().toISOString();
+    const token: PasswordResetToken = {
+      id: `reset-${Date.now()}-${randomBytes(3).toString('hex')}`,
+      userId: user.id,
+      tokenHash: params.tokenHash,
+      createdAt: now,
+      expiresAt: params.expiresAt,
+      requestedIp: params.requestedIp,
+    };
+    (dataset.passwordResetTokens ||= []).push(token);
+
+    return token;
+  });
 }
 
 export async function consumePasswordResetToken(params: {
   tokenHash: string;
   passwordHash: string;
 }): Promise<{ user: PortalUser } | { error: string }> {
-  const dataset = await readDataset();
-  const token = (dataset.passwordResetTokens || []).find(
-    (item) => item.tokenHash === params.tokenHash,
-  );
-  if (!token || token.usedAt) return { error: 'Reset link is invalid or has already been used.' };
-  if (new Date(token.expiresAt).getTime() < Date.now()) {
-    return { error: 'Reset link has expired.' };
-  }
+  return mutateDataset(async (dataset) => {
+    const token = (dataset.passwordResetTokens || []).find(
+      (item) => item.tokenHash === params.tokenHash,
+    );
+    if (!token || token.usedAt) return { error: 'Reset link is invalid or has already been used.' };
+    if (new Date(token.expiresAt).getTime() < Date.now()) {
+      return { error: 'Reset link has expired.' };
+    }
 
-  const user = dataset.users.find((item) => item.id === token.userId);
-  if (!user) return { error: 'Reset link is invalid or has already been used.' };
-  if (user.status === 'disabled') return { error: 'This account is disabled.' };
+    const user = dataset.users.find((item) => item.id === token.userId);
+    if (!user) return { error: 'Reset link is invalid or has already been used.' };
+    if (user.status === 'disabled') return { error: 'This account is disabled.' };
 
-  const now = new Date().toISOString();
-  token.usedAt = now;
-  user.passwordHash = params.passwordHash;
-  user.passwordChangedAt = now;
-  user.emailVerifiedAt = user.emailVerifiedAt || now;
-  user.status = 'active';
-  user.sessionVersion = (user.sessionVersion || 1) + 1;
-  user.updatedAt = now;
-  await writeDataset(dataset);
-  return { user };
+    const now = new Date().toISOString();
+    token.usedAt = now;
+    user.passwordHash = params.passwordHash;
+    user.passwordChangedAt = now;
+    user.emailVerifiedAt = user.emailVerifiedAt || now;
+    user.status = 'active';
+    user.sessionVersion = (user.sessionVersion || 1) + 1;
+    user.updatedAt = now;
+
+    return { user };
+  });
 }
 
 export async function createAccountInvitation(params: {
@@ -1695,51 +1708,61 @@ export async function createAccountInvitation(params: {
   const email = params.email.trim().toLowerCase();
   if (!isValidEmail(email)) return { error: 'Invitation email must be valid.' };
 
-  const dataset = await readDataset();
-  const inviter = dataset.users.find((item) => item.id === params.invitedByUserId);
-  if (!inviter) return { error: 'Inviting user not found.' };
+  return mutateDataset(async (dataset) => {
+    const inviter = dataset.users.find((item) => item.id === params.invitedByUserId);
+    if (!inviter) return { error: 'Inviting user not found.' };
 
-  if (params.role === 'platform-admin')
-    return { error: 'Platform-admin invitations are disabled.' };
-  if (params.role === 'organization-admin') {
-    if (inviter.role !== 'platform-admin') {
-      return { error: 'Only platform admins can invite organization admins.' };
+    if (params.role === 'platform-admin')
+      return { error: 'Platform-admin invitations are disabled.' };
+    if (params.role === 'organization-admin') {
+      if (inviter.role !== 'platform-admin') {
+        return { error: 'Only platform admins can invite organization admins.' };
+      }
+      if (!params.organizationId) return { error: 'Organization is required.' };
+    } else {
+      if (!params.organizationId) return { error: 'Organization is required.' };
+      if (inviter.role !== 'platform-admin' && inviter.organizationId !== params.organizationId) {
+        return { error: 'Cannot invite users outside your organization.' };
+      }
+      if (inviter.role !== 'organization-admin' && inviter.role !== 'platform-admin') {
+        return { error: 'Only organization admins can invite tenant users.' };
+      }
     }
-    if (!params.organizationId) return { error: 'Organization is required.' };
-  } else {
-    if (!params.organizationId) return { error: 'Organization is required.' };
-    if (inviter.role !== 'platform-admin' && inviter.organizationId !== params.organizationId) {
-      return { error: 'Cannot invite users outside your organization.' };
-    }
-    if (inviter.role !== 'organization-admin' && inviter.role !== 'platform-admin') {
-      return { error: 'Only organization admins can invite tenant users.' };
-    }
-  }
 
-  const organization = params.organizationId
-    ? dataset.organizations.find((item) => item.id === params.organizationId)
-    : undefined;
-  if (params.organizationId && !organization) return { error: 'Organization not found.' };
-  if (dataset.users.some((user) => user.email.toLowerCase() === email)) {
-    return { error: 'An account already exists for this email.' };
-  }
+    const organization = params.organizationId
+      ? dataset.organizations.find((item) => item.id === params.organizationId)
+      : undefined;
+    if (params.organizationId && !organization) return { error: 'Organization not found.' };
+    if (dataset.users.some((user) => user.email.toLowerCase() === email)) {
+      return { error: 'An account already exists for this email.' };
+    }
 
-  const now = new Date().toISOString();
-  const invitation: AccountInvitation = {
-    id: `invite-${Date.now()}-${randomBytes(3).toString('hex')}`,
-    organizationId: params.organizationId,
-    email,
-    name: params.name?.trim() || undefined,
-    role: params.role,
-    invitedByUserId: inviter.id,
-    tokenHash: params.tokenHash,
-    status: 'pending',
-    createdAt: now,
-    expiresAt: params.expiresAt,
-  };
-  (dataset.accountInvitations ||= []).push(invitation);
-  await writeDataset(dataset);
-  return invitation;
+    const now = new Date().toISOString();
+    for (const existing of dataset.accountInvitations || []) {
+      if (
+        existing.status === 'pending' &&
+        existing.email.toLowerCase() === email &&
+        existing.organizationId === params.organizationId
+      ) {
+        existing.status = 'expired';
+      }
+    }
+    const invitation: AccountInvitation = {
+      id: `invite-${Date.now()}-${randomBytes(3).toString('hex')}`,
+      organizationId: params.organizationId,
+      email,
+      name: params.name?.trim() || undefined,
+      role: params.role,
+      invitedByUserId: inviter.id,
+      tokenHash: params.tokenHash,
+      status: 'pending',
+      createdAt: now,
+      expiresAt: params.expiresAt,
+    };
+    (dataset.accountInvitations ||= []).push(invitation);
+
+    return invitation;
+  });
 }
 
 export async function getAccountInvitationByTokenHash(
@@ -1785,74 +1808,75 @@ export async function acceptAccountInvitation(params: {
   name: string;
   password: string;
 }): Promise<{ user: PortalUser } | { error: string }> {
-  const dataset = await readDataset();
-  const invitation = (dataset.accountInvitations || []).find(
-    (item) => item.tokenHash === params.tokenHash,
-  );
-  if (!invitation || invitation.status !== 'pending' || invitation.acceptedAt) {
-    return { error: 'Invitation link is invalid or has already been used.' };
-  }
-  if (new Date(invitation.expiresAt).getTime() < Date.now()) {
-    invitation.status = 'expired';
-    await writeDataset(dataset);
-    return { error: 'Invitation link has expired.' };
-  }
-
-  const name = params.name.trim() || invitation.name?.trim();
-  if (!name) return { error: 'Name is required.' };
-  if (params.password.length < 8) return { error: 'Password must be at least 8 characters.' };
-  if (dataset.users.some((user) => user.email.toLowerCase() === invitation.email.toLowerCase())) {
-    return { error: 'An account already exists for this email.' };
-  }
-
-  let studentId: string | undefined;
-  const now = new Date().toISOString();
-  if (invitation.role === 'student') {
-    const existingStudent = dataset.students.find(
-      (student) =>
-        student.organizationId === invitation.organizationId &&
-        student.email?.toLowerCase() === invitation.email.toLowerCase(),
+  return mutateDataset(async (dataset) => {
+    const invitation = (dataset.accountInvitations || []).find(
+      (item) => item.tokenHash === params.tokenHash,
     );
-    if (existingStudent) {
-      studentId = existingStudent.id;
-      existingStudent.name = name;
-      existingStudent.updatedAt = now;
-    } else if (invitation.organizationId) {
-      const student: Student = {
-        id: `student-invite-${Date.now()}-${randomBytes(3).toString('hex')}`,
-        organizationId: invitation.organizationId,
-        name,
-        email: invitation.email,
-        createdAt: now,
-        updatedAt: now,
-      };
-      dataset.students.push(student);
-      studentId = student.id;
+    if (!invitation || invitation.status !== 'pending' || invitation.acceptedAt) {
+      return { error: 'Invitation link is invalid or has already been used.' };
     }
-  }
+    if (new Date(invitation.expiresAt).getTime() < Date.now()) {
+      invitation.status = 'expired';
 
-  const user: PortalUser = {
-    id: `user-invite-${Date.now()}-${randomBytes(3).toString('hex')}`,
-    organizationId: invitation.organizationId,
-    studentId,
-    name,
-    email: invitation.email,
-    passwordHash: hashPortalPasswordScrypt(params.password),
-    role: invitation.role,
-    canGenerateAccessCodes: invitation.role === 'teacher-manager',
-    status: 'active',
-    emailVerifiedAt: now,
-    passwordChangedAt: now,
-    sessionVersion: 1,
-    createdAt: now,
-    updatedAt: now,
-  };
-  dataset.users.push(user);
-  invitation.status = 'accepted';
-  invitation.acceptedAt = now;
-  invitation.acceptedUserId = user.id;
-  await writeDataset(dataset);
-  return { user };
+      return { error: 'Invitation link has expired.' };
+    }
+
+    const name = params.name.trim() || invitation.name?.trim();
+    if (!name) return { error: 'Name is required.' };
+    if (params.password.length < 8) return { error: 'Password must be at least 8 characters.' };
+    if (dataset.users.some((user) => user.email.toLowerCase() === invitation.email.toLowerCase())) {
+      return { error: 'An account already exists for this email.' };
+    }
+
+    let studentId: string | undefined;
+    const now = new Date().toISOString();
+    if (invitation.role === 'student') {
+      const existingStudent = dataset.students.find(
+        (student) =>
+          student.organizationId === invitation.organizationId &&
+          student.email?.toLowerCase() === invitation.email.toLowerCase(),
+      );
+      if (existingStudent) {
+        studentId = existingStudent.id;
+        existingStudent.name = name;
+        existingStudent.updatedAt = now;
+      } else if (invitation.organizationId) {
+        const student: Student = {
+          id: `student-invite-${Date.now()}-${randomBytes(3).toString('hex')}`,
+          organizationId: invitation.organizationId,
+          name,
+          email: invitation.email,
+          createdAt: now,
+          updatedAt: now,
+        };
+        dataset.students.push(student);
+        studentId = student.id;
+      }
+    }
+
+    const user: PortalUser = {
+      id: `user-invite-${Date.now()}-${randomBytes(3).toString('hex')}`,
+      organizationId: invitation.organizationId,
+      studentId,
+      name,
+      email: invitation.email,
+      passwordHash: hashPortalPasswordScrypt(params.password),
+      role: invitation.role,
+      canGenerateAccessCodes: invitation.role === 'teacher-manager',
+      status: 'active',
+      emailVerifiedAt: now,
+      passwordChangedAt: now,
+      sessionVersion: 1,
+      createdAt: now,
+      updatedAt: now,
+    };
+    dataset.users.push(user);
+    invitation.status = 'accepted';
+    invitation.acceptedAt = now;
+    invitation.acceptedUserId = user.id;
+
+    return { user };
+  });
 }
 
 export async function listOrganizationAdminUsers(
@@ -1911,52 +1935,52 @@ export async function createOrganizationWithAdmin(params: {
     return { error: 'Admin password must be at least 8 characters.' };
   }
 
-  const dataset = await readDataset();
-  const organizationId = `org-${slug}`;
-  if (
-    dataset.organizations.some(
-      (organization) => organization.id === organizationId || organization.slug === slug,
-    )
-  ) {
-    return { error: 'Organization slug is already in use.' };
-  }
-  if (dataset.users.some((user) => user.email.toLowerCase() === adminEmail)) {
-    return { error: 'Admin email is already in use.' };
-  }
+  return mutateDataset(async (dataset) => {
+    const organizationId = `org-${slug}`;
+    if (
+      dataset.organizations.some(
+        (organization) => organization.id === organizationId || organization.slug === slug,
+      )
+    ) {
+      return { error: 'Organization slug is already in use.' };
+    }
+    if (dataset.users.some((user) => user.email.toLowerCase() === adminEmail)) {
+      return { error: 'Admin email is already in use.' };
+    }
 
-  const now = new Date().toISOString();
-  const organization: Organization = {
-    id: organizationId,
-    name,
-    slug,
-    logoUrl: logoUrl || undefined,
-    description,
-    contactEmail,
-    subscriptionStatus: subscriptionStatus as NonNullable<Organization['subscriptionStatus']>,
-    welcomeMessage: welcomeMessage || undefined,
-    createdAt: now,
-    updatedAt: now,
-  };
-  const adminUser: PortalUser = {
-    id: `user-${slug}-admin`,
-    organizationId,
-    name: adminName,
-    email: adminEmail,
-    passwordHash: hashPortalPasswordScrypt(adminPassword),
-    role: 'organization-admin',
-    status: 'active',
-    emailVerifiedAt: now,
-    passwordChangedAt: now,
-    sessionVersion: 1,
-    createdAt: now,
-    updatedAt: now,
-  };
+    const now = new Date().toISOString();
+    const organization: Organization = {
+      id: organizationId,
+      name,
+      slug,
+      logoUrl: logoUrl || undefined,
+      description,
+      contactEmail,
+      subscriptionStatus: subscriptionStatus as NonNullable<Organization['subscriptionStatus']>,
+      welcomeMessage: welcomeMessage || undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const adminUser: PortalUser = {
+      id: `user-${slug}-admin`,
+      organizationId,
+      name: adminName,
+      email: adminEmail,
+      passwordHash: hashPortalPasswordScrypt(adminPassword),
+      role: 'organization-admin',
+      status: 'active',
+      emailVerifiedAt: now,
+      passwordChangedAt: now,
+      sessionVersion: 1,
+      createdAt: now,
+      updatedAt: now,
+    };
 
-  dataset.organizations.push(organization);
-  dataset.users.push(adminUser);
-  await writeDataset(dataset);
+    dataset.organizations.push(organization);
+    dataset.users.push(adminUser);
 
-  return { organization, adminUser: toPortalUserView(adminUser) };
+    return { organization, adminUser: toPortalUserView(adminUser) };
+  });
 }
 
 export async function updateOrganizationSettings(params: {
@@ -1968,93 +1992,93 @@ export async function updateOrganizationSettings(params: {
   welcomeMessage?: string;
   subscriptionStatus?: Organization['subscriptionStatus'];
 }): Promise<Organization | { error: string }> {
-  const dataset = await readDataset();
-  const organization = dataset.organizations.find((item) => item.id === params.organizationId);
-  if (!organization) return { error: 'Organization not found.' };
+  return mutateDataset(async (dataset) => {
+    const organization = dataset.organizations.find((item) => item.id === params.organizationId);
+    if (!organization) return { error: 'Organization not found.' };
 
-  const name = params.name?.trim();
-  const contactEmail = params.contactEmail?.trim().toLowerCase();
-  const logoUrl = params.logoUrl?.trim();
-  const description = params.description?.trim();
-  const welcomeMessage = params.welcomeMessage?.trim();
-  const subscriptionStatus = params.subscriptionStatus;
+    const name = params.name?.trim();
+    const contactEmail = params.contactEmail?.trim().toLowerCase();
+    const logoUrl = params.logoUrl?.trim();
+    const description = params.description?.trim();
+    const welcomeMessage = params.welcomeMessage?.trim();
+    const subscriptionStatus = params.subscriptionStatus;
 
-  if (params.name !== undefined && !name) return { error: 'Organization name is required.' };
-  if (params.contactEmail !== undefined && !contactEmail) {
-    return { error: 'Contact email is required.' };
-  }
-  if (params.description !== undefined && !description) {
-    return { error: 'Organization description is required.' };
-  }
-  if (contactEmail && !isValidEmail(contactEmail)) {
-    return { error: 'Contact email must be valid.' };
-  }
-  if (logoUrl && !isValidLogoUrl(logoUrl)) {
-    return { error: 'Logo URL must be a relative path or an HTTP(S) URL.' };
-  }
-  if (subscriptionStatus && !subscriptionStatuses.has(subscriptionStatus)) {
-    return { error: 'Subscription status is invalid.' };
-  }
+    if (params.name !== undefined && !name) return { error: 'Organization name is required.' };
+    if (params.contactEmail !== undefined && !contactEmail) {
+      return { error: 'Contact email is required.' };
+    }
+    if (params.description !== undefined && !description) {
+      return { error: 'Organization description is required.' };
+    }
+    if (contactEmail && !isValidEmail(contactEmail)) {
+      return { error: 'Contact email must be valid.' };
+    }
+    if (logoUrl && !isValidLogoUrl(logoUrl)) {
+      return { error: 'Logo URL must be a relative path or an HTTP(S) URL.' };
+    }
+    if (subscriptionStatus && !subscriptionStatuses.has(subscriptionStatus)) {
+      return { error: 'Subscription status is invalid.' };
+    }
 
-  if (name) organization.name = name;
-  if (params.logoUrl !== undefined) organization.logoUrl = logoUrl || undefined;
-  if (description) organization.description = description;
-  if (contactEmail) organization.contactEmail = contactEmail;
-  if (params.welcomeMessage !== undefined) {
-    organization.welcomeMessage = welcomeMessage || undefined;
-  }
-  if (subscriptionStatus) organization.subscriptionStatus = subscriptionStatus;
-  organization.updatedAt = new Date().toISOString();
+    if (name) organization.name = name;
+    if (params.logoUrl !== undefined) organization.logoUrl = logoUrl || undefined;
+    if (description) organization.description = description;
+    if (contactEmail) organization.contactEmail = contactEmail;
+    if (params.welcomeMessage !== undefined) {
+      organization.welcomeMessage = welcomeMessage || undefined;
+    }
+    if (subscriptionStatus) organization.subscriptionStatus = subscriptionStatus;
+    organization.updatedAt = new Date().toISOString();
 
-  await writeDataset(dataset);
-  return organization;
+    return organization;
+  });
 }
 
 export async function deleteOrganization(
   organizationId: string,
 ): Promise<{ organization: Organization } | { error: string }> {
-  const dataset = await readDataset();
-  const organization = dataset.organizations.find((item) => item.id === organizationId);
-  if (!organization) return { error: 'Organization not found.' };
+  return mutateDataset(async (dataset) => {
+    const organization = dataset.organizations.find((item) => item.id === organizationId);
+    if (!organization) return { error: 'Organization not found.' };
 
-  const userIds = new Set(
-    dataset.users.filter((user) => user.organizationId === organizationId).map((user) => user.id),
-  );
+    const userIds = new Set(
+      dataset.users.filter((user) => user.organizationId === organizationId).map((user) => user.id),
+    );
 
-  dataset.organizations = dataset.organizations.filter((item) => item.id !== organizationId);
-  dataset.users = dataset.users.filter((user) => user.organizationId !== organizationId);
-  dataset.students = dataset.students.filter(
-    (student) => student.organizationId !== organizationId,
-  );
-  dataset.cohorts = dataset.cohorts.filter((cohort) => cohort.organizationId !== organizationId);
-  dataset.assignments = dataset.assignments.filter(
-    (assignment) => assignment.organizationId !== organizationId,
-  );
-  dataset.accessCodes = dataset.accessCodes.filter(
-    (accessCode) => accessCode.organizationId !== organizationId,
-  );
-  dataset.enrollments = dataset.enrollments.filter(
-    (enrollment) => enrollment.organizationId !== organizationId,
-  );
-  dataset.activityLogs = dataset.activityLogs.filter(
-    (activity) => activity.organizationId !== organizationId,
-  );
-  dataset.accountInvitations = (dataset.accountInvitations || []).filter(
-    (invitation) => invitation.organizationId !== organizationId,
-  );
-  dataset.authAuditEvents = (dataset.authAuditEvents || []).filter(
-    (event) =>
-      event.organizationId !== organizationId && (!event.userId || !userIds.has(event.userId)),
-  );
-  dataset.passwordResetTokens = (dataset.passwordResetTokens || []).filter(
-    (token) => !userIds.has(token.userId),
-  );
-  dataset.emailVerificationTokens = (dataset.emailVerificationTokens || []).filter(
-    (token) => !userIds.has(token.userId),
-  );
+    dataset.organizations = dataset.organizations.filter((item) => item.id !== organizationId);
+    dataset.users = dataset.users.filter((user) => user.organizationId !== organizationId);
+    dataset.students = dataset.students.filter(
+      (student) => student.organizationId !== organizationId,
+    );
+    dataset.cohorts = dataset.cohorts.filter((cohort) => cohort.organizationId !== organizationId);
+    dataset.assignments = dataset.assignments.filter(
+      (assignment) => assignment.organizationId !== organizationId,
+    );
+    dataset.accessCodes = dataset.accessCodes.filter(
+      (accessCode) => accessCode.organizationId !== organizationId,
+    );
+    dataset.enrollments = dataset.enrollments.filter(
+      (enrollment) => enrollment.organizationId !== organizationId,
+    );
+    dataset.activityLogs = dataset.activityLogs.filter(
+      (activity) => activity.organizationId !== organizationId,
+    );
+    dataset.accountInvitations = (dataset.accountInvitations || []).filter(
+      (invitation) => invitation.organizationId !== organizationId,
+    );
+    dataset.authAuditEvents = (dataset.authAuditEvents || []).filter(
+      (event) =>
+        event.organizationId !== organizationId && (!event.userId || !userIds.has(event.userId)),
+    );
+    dataset.passwordResetTokens = (dataset.passwordResetTokens || []).filter(
+      (token) => !userIds.has(token.userId),
+    );
+    dataset.emailVerificationTokens = (dataset.emailVerificationTokens || []).filter(
+      (token) => !userIds.has(token.userId),
+    );
 
-  await writeDataset(dataset);
-  return { organization };
+    return { organization };
+  });
 }
 
 export async function listCoursePortalCards(
@@ -2736,88 +2760,90 @@ export async function createOrganizationAccessCode(params: {
   expiresAt?: string;
   maxUses?: number;
 }): Promise<{ accessCode: AccessCodeView; code: string } | { error: string }> {
-  const dataset = await readDataset();
-  const organization = dataset.organizations.find((item) => item.id === params.organizationId);
-  const course = dataset.courses.find((item) => item.id === params.courseId);
-  const assignments = dataset.assignments.filter(
-    (item) => item.organizationId === params.organizationId && item.courseId === params.courseId,
-  );
-  const creator = dataset.users.find((item) => item.id === params.createdByUserId);
-  const cohort = params.cohortId
-    ? dataset.cohorts.find(
-        (item) => item.id === params.cohortId && item.organizationId === params.organizationId,
-      )
-    : undefined;
-  const organizationWideAssignment = assignments.find((item) => !item.cohortId);
-  const assignment = params.cohortId
-    ? assignments.find((item) => item.cohortId === params.cohortId)
-    : organizationWideAssignment || (assignments.length === 1 ? assignments[0] : undefined);
-  const student = params.studentId
-    ? dataset.students.find(
-        (item) => item.id === params.studentId && item.organizationId === params.organizationId,
-      )
-    : undefined;
+  return mutateDataset(async (dataset) => {
+    const organization = dataset.organizations.find((item) => item.id === params.organizationId);
+    const course = dataset.courses.find((item) => item.id === params.courseId);
+    const assignments = dataset.assignments.filter(
+      (item) => item.organizationId === params.organizationId && item.courseId === params.courseId,
+    );
+    const creator = dataset.users.find((item) => item.id === params.createdByUserId);
+    const cohort = params.cohortId
+      ? dataset.cohorts.find(
+          (item) => item.id === params.cohortId && item.organizationId === params.organizationId,
+        )
+      : undefined;
+    const organizationWideAssignment = assignments.find((item) => !item.cohortId);
+    const assignment = params.cohortId
+      ? assignments.find((item) => item.cohortId === params.cohortId)
+      : organizationWideAssignment || (assignments.length === 1 ? assignments[0] : undefined);
+    const student = params.studentId
+      ? dataset.students.find(
+          (item) => item.id === params.studentId && item.organizationId === params.organizationId,
+        )
+      : undefined;
 
-  if (!organization || !course || assignments.length === 0)
-    return { error: 'Course is not assigned to this organization.' };
-  if (!creator) return { error: 'Access-code creator was not found.' };
-  if (creator.role !== 'platform-admin' && creator.organizationId !== organization.id) {
-    return { error: 'Access-code creator cannot manage this organization.' };
-  }
-  if (params.cohortId && !cohort) return { error: 'Cohort does not belong to this organization.' };
-  if (!assignment) {
-    return {
-      error: params.cohortId
-        ? 'Selected cohort is not assigned to this course.'
-        : 'Cohort is required when this course has multiple cohort assignments.',
+    if (!organization || !course || assignments.length === 0)
+      return { error: 'Course is not assigned to this organization.' };
+    if (!creator) return { error: 'Access-code creator was not found.' };
+    if (creator.role !== 'platform-admin' && creator.organizationId !== organization.id) {
+      return { error: 'Access-code creator cannot manage this organization.' };
+    }
+    if (params.cohortId && !cohort)
+      return { error: 'Cohort does not belong to this organization.' };
+    if (!assignment) {
+      return {
+        error: params.cohortId
+          ? 'Selected cohort is not assigned to this course.'
+          : 'Cohort is required when this course has multiple cohort assignments.',
+      };
+    }
+    if (creator.role === 'student') return { error: 'Access-code management is not allowed.' };
+    if (creator.role === 'teacher-manager') {
+      if (!creator.canGenerateAccessCodes) {
+        return { error: 'Access-code management is not allowed.' };
+      }
+      if (assignment.teacherUserId !== creator.id) {
+        return { error: 'Course is not assigned to this teacher manager.' };
+      }
+    }
+    if (params.studentId && !student)
+      return { error: 'Student does not belong to this organization.' };
+    if (params.maxUses !== undefined && (!Number.isInteger(params.maxUses) || params.maxUses < 1)) {
+      return { error: 'Maximum uses must be a positive whole number.' };
+    }
+    const expiresAtDate = params.expiresAt ? new Date(params.expiresAt) : undefined;
+    if (expiresAtDate && Number.isNaN(expiresAtDate.getTime())) {
+      return { error: 'Expiration date is invalid.' };
+    }
+    if (expiresAtDate && expiresAtDate.getTime() <= Date.now()) {
+      return { error: 'Expiration date must be in the future.' };
+    }
+    const normalizedExpiresAt = expiresAtDate?.toISOString();
+    const codeCohortId = params.cohortId || assignment.cohortId;
+    if (student && codeCohortId && student.cohortId !== codeCohortId) {
+      return { error: 'Student is not in the selected cohort.' };
+    }
+
+    const code = `${organization.slug.toUpperCase()}-${randomBytes(6).toString('hex').toUpperCase()}`;
+    const record: AccessCode = {
+      id: `code-${Date.now()}-${randomBytes(3).toString('hex')}`,
+      codeHash: hashAccessCode(code),
+      organizationId: organization.id,
+      courseId: course.id,
+      cohortId: codeCohortId,
+      studentId: params.studentId,
+      createdByUserId: creator.id,
+      expiresAt: normalizedExpiresAt,
+      maxUses: params.maxUses,
+      currentUses: 0,
+      isActive: true,
+      createdAt: new Date().toISOString(),
     };
-  }
-  if (creator.role === 'student') return { error: 'Access-code management is not allowed.' };
-  if (creator.role === 'teacher-manager') {
-    if (!creator.canGenerateAccessCodes) {
-      return { error: 'Access-code management is not allowed.' };
-    }
-    if (assignment.teacherUserId !== creator.id) {
-      return { error: 'Course is not assigned to this teacher manager.' };
-    }
-  }
-  if (params.studentId && !student)
-    return { error: 'Student does not belong to this organization.' };
-  if (params.maxUses !== undefined && (!Number.isInteger(params.maxUses) || params.maxUses < 1)) {
-    return { error: 'Maximum uses must be a positive whole number.' };
-  }
-  const expiresAtDate = params.expiresAt ? new Date(params.expiresAt) : undefined;
-  if (expiresAtDate && Number.isNaN(expiresAtDate.getTime())) {
-    return { error: 'Expiration date is invalid.' };
-  }
-  if (expiresAtDate && expiresAtDate.getTime() <= Date.now()) {
-    return { error: 'Expiration date must be in the future.' };
-  }
-  const normalizedExpiresAt = expiresAtDate?.toISOString();
-  const codeCohortId = params.cohortId || assignment.cohortId;
-  if (student && codeCohortId && student.cohortId !== codeCohortId) {
-    return { error: 'Student is not in the selected cohort.' };
-  }
 
-  const code = `${organization.slug.toUpperCase()}-${randomBytes(3).toString('hex').toUpperCase()}`;
-  const record: AccessCode = {
-    id: `code-${Date.now()}-${randomBytes(3).toString('hex')}`,
-    codeHash: hashAccessCode(code),
-    organizationId: organization.id,
-    courseId: course.id,
-    cohortId: codeCohortId,
-    studentId: params.studentId,
-    createdByUserId: creator.id,
-    expiresAt: normalizedExpiresAt,
-    maxUses: params.maxUses,
-    currentUses: 0,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-  };
+    dataset.accessCodes.push(record);
 
-  dataset.accessCodes.push(record);
-  await writeDataset(dataset);
-  return { accessCode: toAccessCodeView(dataset, record), code };
+    return { accessCode: toAccessCodeView(dataset, record), code };
+  });
 }
 
 export async function assignCourseToOrganization(params: {
@@ -2827,66 +2853,66 @@ export async function assignCourseToOrganization(params: {
   teacherUserId?: string;
   assignedByUserId: string;
 }): Promise<CourseAssignment | { error: string }> {
-  const dataset = await readDataset();
-  const organization = dataset.organizations.find((item) => item.id === params.organizationId);
-  const course = dataset.courses.find((item) => item.id === params.courseId);
-  const assignedBy = dataset.users.find((item) => item.id === params.assignedByUserId);
-  const teacherManager = params.teacherUserId
-    ? dataset.users.find(
-        (item) =>
-          item.id === params.teacherUserId &&
-          item.organizationId === params.organizationId &&
-          item.role === 'teacher-manager',
-      )
-    : undefined;
+  return mutateDataset(async (dataset) => {
+    const organization = dataset.organizations.find((item) => item.id === params.organizationId);
+    const course = dataset.courses.find((item) => item.id === params.courseId);
+    const assignedBy = dataset.users.find((item) => item.id === params.assignedByUserId);
+    const teacherManager = params.teacherUserId
+      ? dataset.users.find(
+          (item) =>
+            item.id === params.teacherUserId &&
+            item.organizationId === params.organizationId &&
+            item.role === 'teacher-manager',
+        )
+      : undefined;
 
-  if (!organization) return { error: 'Organization not found.' };
-  if (!course) return { error: 'Course not found.' };
-  if (!assignedBy) return { error: 'Assigning user not found.' };
-  if (assignedBy.role !== 'platform-admin') return { error: 'Platform admin required.' };
-  if (params.teacherUserId && !teacherManager) {
-    return { error: 'Teacher manager does not belong to this organization.' };
-  }
-
-  const existing = dataset.assignments.find(
-    (item) =>
-      item.organizationId === organization.id &&
-      item.courseId === course.id &&
-      item.cohortId === params.cohortId,
-  );
-  if (existing) {
-    const nextTeacherUserId = teacherManager?.id;
-    if (existing.teacherUserId !== nextTeacherUserId) {
-      if (nextTeacherUserId) {
-        existing.teacherUserId = nextTeacherUserId;
-      } else {
-        delete existing.teacherUserId;
-      }
-      await writeDataset(dataset);
+    if (!organization) return { error: 'Organization not found.' };
+    if (!course) return { error: 'Course not found.' };
+    if (!assignedBy) return { error: 'Assigning user not found.' };
+    if (assignedBy.role !== 'platform-admin') return { error: 'Platform admin required.' };
+    if (params.teacherUserId && !teacherManager) {
+      return { error: 'Teacher manager does not belong to this organization.' };
     }
-    return existing;
-  }
 
-  if (params.cohortId) {
-    const cohort = dataset.cohorts.find(
-      (item) => item.id === params.cohortId && item.organizationId === organization.id,
+    const existing = dataset.assignments.find(
+      (item) =>
+        item.organizationId === organization.id &&
+        item.courseId === course.id &&
+        item.cohortId === params.cohortId,
     );
-    if (!cohort) return { error: 'Cohort does not belong to this organization.' };
-  }
+    if (existing) {
+      const nextTeacherUserId = teacherManager?.id;
+      if (existing.teacherUserId !== nextTeacherUserId) {
+        if (nextTeacherUserId) {
+          existing.teacherUserId = nextTeacherUserId;
+        } else {
+          delete existing.teacherUserId;
+        }
+      }
+      return existing;
+    }
 
-  const assignment: CourseAssignment = {
-    id: `assign-${Date.now()}-${randomBytes(3).toString('hex')}`,
-    organizationId: organization.id,
-    courseId: course.id,
-    cohortId: params.cohortId,
-    assignedAt: new Date().toISOString(),
-    assignedByUserId: assignedBy.id,
-    teacherUserId: teacherManager?.id,
-  };
+    if (params.cohortId) {
+      const cohort = dataset.cohorts.find(
+        (item) => item.id === params.cohortId && item.organizationId === organization.id,
+      );
+      if (!cohort) return { error: 'Cohort does not belong to this organization.' };
+    }
 
-  dataset.assignments.push(assignment);
-  await writeDataset(dataset);
-  return assignment;
+    const assignment: CourseAssignment = {
+      id: `assign-${Date.now()}-${randomBytes(3).toString('hex')}`,
+      organizationId: organization.id,
+      courseId: course.id,
+      cohortId: params.cohortId,
+      assignedAt: new Date().toISOString(),
+      assignedByUserId: assignedBy.id,
+      teacherUserId: teacherManager?.id,
+    };
+
+    dataset.assignments.push(assignment);
+
+    return assignment;
+  });
 }
 
 export async function disableOrganizationAccessCode(params: {
@@ -2894,34 +2920,35 @@ export async function disableOrganizationAccessCode(params: {
   accessCodeId: string;
   disabledByUserId: string;
 }): Promise<AccessCodeView | { error: string } | undefined> {
-  const dataset = await readDataset();
-  const accessCode = dataset.accessCodes.find(
-    (item) => item.id === params.accessCodeId && item.organizationId === params.organizationId,
-  );
-  if (!accessCode) return undefined;
-  const disabler = dataset.users.find((item) => item.id === params.disabledByUserId);
-  if (!disabler) return { error: 'Access-code manager was not found.' };
-  if (disabler.role !== 'platform-admin' && disabler.organizationId !== params.organizationId) {
-    return { error: 'Access-code manager cannot manage this organization.' };
-  }
-  if (disabler.role === 'student') return { error: 'Access-code management is not allowed.' };
-  if (disabler.role === 'teacher-manager') {
-    if (!disabler.canGenerateAccessCodes) {
-      return { error: 'Access-code management is not allowed.' };
-    }
-    const assignedToTeacher = dataset.assignments.some(
-      (assignment) =>
-        assignment.organizationId === params.organizationId &&
-        assignment.teacherUserId === disabler.id &&
-        accessCodeMatchesAssignment(accessCode, assignment),
+  return mutateDataset(async (dataset) => {
+    const accessCode = dataset.accessCodes.find(
+      (item) => item.id === params.accessCodeId && item.organizationId === params.organizationId,
     );
-    if (!assignedToTeacher) return { error: 'Course is not assigned to this teacher manager.' };
-  }
+    if (!accessCode) return undefined;
+    const disabler = dataset.users.find((item) => item.id === params.disabledByUserId);
+    if (!disabler) return { error: 'Access-code manager was not found.' };
+    if (disabler.role !== 'platform-admin' && disabler.organizationId !== params.organizationId) {
+      return { error: 'Access-code manager cannot manage this organization.' };
+    }
+    if (disabler.role === 'student') return { error: 'Access-code management is not allowed.' };
+    if (disabler.role === 'teacher-manager') {
+      if (!disabler.canGenerateAccessCodes) {
+        return { error: 'Access-code management is not allowed.' };
+      }
+      const assignedToTeacher = dataset.assignments.some(
+        (assignment) =>
+          assignment.organizationId === params.organizationId &&
+          assignment.teacherUserId === disabler.id &&
+          accessCodeMatchesAssignment(accessCode, assignment),
+      );
+      if (!assignedToTeacher) return { error: 'Course is not assigned to this teacher manager.' };
+    }
 
-  accessCode.isActive = false;
-  accessCode.disabledAt = new Date().toISOString();
-  await writeDataset(dataset);
-  return toAccessCodeView(dataset, accessCode);
+    accessCode.isActive = false;
+    accessCode.disabledAt = new Date().toISOString();
+
+    return toAccessCodeView(dataset, accessCode);
+  });
 }
 
 export async function isCourseAccessSessionValid(params: {
@@ -3132,34 +3159,86 @@ export async function consumeCourseAccessGrant(
   const result = await validateCourseAccessGrant(input);
   if (!result.valid) return result;
 
-  const dataset = await readDataset();
-  const accessCode = dataset.accessCodes.find(
-    (item) =>
-      item.id === result.grant.accessCode.id &&
-      accessCodeMatchesAssignment(item, result.grant.assignment),
-  );
-  if (!accessCode) {
-    return {
-      valid: false,
-      reason: 'invalid-code',
-      message: 'The access code is not valid for this course.',
-    };
-  }
-  if (!accessCode.isActive) {
-    return {
-      valid: false,
-      reason: 'code-inactive',
-      message: 'This access code is no longer active.',
-    };
-  }
-  if (accessCode.expiresAt && new Date(accessCode.expiresAt).getTime() < Date.now()) {
-    return { valid: false, reason: 'code-expired', message: 'This access code has expired.' };
-  }
+  return mutateDataset(async (dataset) => {
+    const accessCode = dataset.accessCodes.find(
+      (item) =>
+        item.id === result.grant.accessCode.id &&
+        accessCodeMatchesAssignment(item, result.grant.assignment),
+    );
+    if (!accessCode) {
+      return {
+        valid: false,
+        reason: 'invalid-code',
+        message: 'The access code is not valid for this course.',
+      };
+    }
+    if (!accessCode.isActive) {
+      return {
+        valid: false,
+        reason: 'code-inactive',
+        message: 'This access code is no longer active.',
+      };
+    }
+    if (accessCode.expiresAt && new Date(accessCode.expiresAt).getTime() < Date.now()) {
+      return { valid: false, reason: 'code-expired', message: 'This access code has expired.' };
+    }
 
-  let studentId = input.studentId || accessCode.studentId;
-  let enrollment: Enrollment | undefined;
+    let studentId = input.studentId || accessCode.studentId;
+    let enrollment: Enrollment | undefined;
 
-  if (studentId) {
+    if (studentId) {
+      const student = dataset.students.find(
+        (item) => item.id === studentId && item.organizationId === result.grant.organization.id,
+      );
+      if (!student) {
+        return {
+          valid: false,
+          reason: 'code-not-linked',
+          message: 'This code is not linked to the selected student.',
+        };
+      }
+      if (!studentMatchesAssignment(student, result.grant.assignment)) {
+        return {
+          valid: false,
+          reason: 'code-not-linked',
+          message: 'This code is not linked to the selected student.',
+        };
+      }
+      enrollment = dataset.enrollments.find(
+        (item) =>
+          item.organizationId === result.grant.organization.id &&
+          item.courseId === result.grant.course.id &&
+          item.studentId === student.id,
+      );
+    }
+
+    if (
+      accessCode.maxUses !== undefined &&
+      accessCode.currentUses >= accessCode.maxUses &&
+      enrollment?.accessCodeId !== accessCode.id
+    ) {
+      return {
+        valid: false,
+        reason: 'usage-limit-reached',
+        message: 'This access code has reached its usage limit.',
+      };
+    }
+
+    if (!studentId) {
+      const createdAt = new Date().toISOString();
+      const student: Student = {
+        id: `student-access-${Date.now()}-${randomBytes(3).toString('hex')}`,
+        organizationId: result.grant.organization.id,
+        cohortId: result.grant.assignment.cohortId,
+        name: 'Access code learner',
+        externalStudentId: `access-${result.grant.accessCode.id}-${Date.now()}`,
+        createdAt,
+        updatedAt: createdAt,
+      };
+      dataset.students.push(student);
+      studentId = student.id;
+    }
+
     const student = dataset.students.find(
       (item) => item.id === studentId && item.organizationId === result.grant.organization.id,
     );
@@ -3170,97 +3249,45 @@ export async function consumeCourseAccessGrant(
         message: 'This code is not linked to the selected student.',
       };
     }
-    if (!studentMatchesAssignment(student, result.grant.assignment)) {
-      return {
-        valid: false,
-        reason: 'code-not-linked',
-        message: 'This code is not linked to the selected student.',
+
+    let createdEnrollment = false;
+    if (!enrollment) {
+      enrollment = {
+        id: `enroll-${Date.now()}-${randomBytes(3).toString('hex')}`,
+        studentId: student.id,
+        organizationId: result.grant.organization.id,
+        courseId: result.grant.course.id,
+        accessCodeId: accessCode.id,
+        status: 'not_started',
+        progressPercentage: 0,
+        startedAt: new Date().toISOString(),
       };
+      dataset.enrollments.push(enrollment);
+      createdEnrollment = true;
     }
-    enrollment = dataset.enrollments.find(
-      (item) =>
-        item.organizationId === result.grant.organization.id &&
-        item.courseId === result.grant.course.id &&
-        item.studentId === student.id,
-    );
-  }
+    if (createdEnrollment) accessCode.currentUses += 1;
 
-  if (
-    accessCode.maxUses !== undefined &&
-    accessCode.currentUses >= accessCode.maxUses &&
-    enrollment?.accessCodeId !== accessCode.id
-  ) {
-    return {
-      valid: false,
-      reason: 'usage-limit-reached',
-      message: 'This access code has reached its usage limit.',
-    };
-  }
-
-  if (!studentId) {
-    const createdAt = new Date().toISOString();
-    const student: Student = {
-      id: `student-access-${Date.now()}-${randomBytes(3).toString('hex')}`,
+    dataset.activityLogs.push({
+      id: `activity-${Date.now()}-${randomBytes(3).toString('hex')}`,
       organizationId: result.grant.organization.id,
-      cohortId: result.grant.assignment.cohortId,
-      name: 'Access code learner',
-      externalStudentId: `access-${result.grant.accessCode.id}-${Date.now()}`,
-      createdAt,
-      updatedAt: createdAt,
-    };
-    dataset.students.push(student);
-    studentId = student.id;
-  }
-
-  const student = dataset.students.find(
-    (item) => item.id === studentId && item.organizationId === result.grant.organization.id,
-  );
-  if (!student) {
-    return {
-      valid: false,
-      reason: 'code-not-linked',
-      message: 'This code is not linked to the selected student.',
-    };
-  }
-
-  let createdEnrollment = false;
-  if (!enrollment) {
-    enrollment = {
-      id: `enroll-${Date.now()}-${randomBytes(3).toString('hex')}`,
-      studentId: student.id,
-      organizationId: result.grant.organization.id,
+      studentId,
       courseId: result.grant.course.id,
-      accessCodeId: accessCode.id,
-      status: 'not_started',
-      progressPercentage: 0,
-      startedAt: new Date().toISOString(),
+      action: 'course.access_granted',
+      metadata: { accessCodeId: accessCode.id },
+      createdAt: new Date().toISOString(),
+    });
+
+    return {
+      valid: true,
+      grant: {
+        ...result.grant,
+        accessCode,
+        enrollment,
+      },
+      accessSession: `access-${result.grant.organization.id}-${result.grant.course.id}-${Date.now()}`,
+      enrollmentId: enrollment?.id,
     };
-    dataset.enrollments.push(enrollment);
-    createdEnrollment = true;
-  }
-  if (createdEnrollment) accessCode.currentUses += 1;
-
-  dataset.activityLogs.push({
-    id: `activity-${Date.now()}-${randomBytes(3).toString('hex')}`,
-    organizationId: result.grant.organization.id,
-    studentId,
-    courseId: result.grant.course.id,
-    action: 'course.access_granted',
-    metadata: { accessCodeId: accessCode.id },
-    createdAt: new Date().toISOString(),
   });
-
-  await writeDataset(dataset);
-  return {
-    valid: true,
-    grant: {
-      ...result.grant,
-      accessCode,
-      enrollment,
-    },
-    accessSession: `access-${result.grant.organization.id}-${result.grant.course.id}-${Date.now()}`,
-    enrollmentId: enrollment?.id,
-  };
 }
 
 export async function createLearnerAccountWithAccessCode(params: {
@@ -3301,120 +3328,120 @@ export async function createLearnerAccountWithAccessCode(params: {
     return { error: validation.message, reason: validation.reason };
   }
 
-  const dataset = await readDataset();
-  if (dataset.users.some((user) => user.email.toLowerCase() === email)) {
-    return { error: 'An account with this email already exists.' };
-  }
+  return mutateDataset(async (dataset) => {
+    if (dataset.users.some((user) => user.email.toLowerCase() === email)) {
+      return { error: 'An account with this email already exists.' };
+    }
 
-  const organization = dataset.organizations.find(
-    (item) => item.id === validation.grant.organization.id,
-  );
-  const course = dataset.courses.find((item) => item.id === validation.grant.course.id);
-  const accessCode = dataset.accessCodes.find(
-    (item) =>
-      item.id === validation.grant.accessCode.id &&
-      accessCodeMatchesAssignment(item, validation.grant.assignment),
-  );
-  if (!organization || !course || !accessCode) {
-    return { error: 'The access code is not valid for this course.' };
-  }
-  if (!isActiveAccessCode(accessCode)) return { error: 'This access code is no longer active.' };
+    const organization = dataset.organizations.find(
+      (item) => item.id === validation.grant.organization.id,
+    );
+    const course = dataset.courses.find((item) => item.id === validation.grant.course.id);
+    const accessCode = dataset.accessCodes.find(
+      (item) =>
+        item.id === validation.grant.accessCode.id &&
+        accessCodeMatchesAssignment(item, validation.grant.assignment),
+    );
+    if (!organization || !course || !accessCode) {
+      return { error: 'The access code is not valid for this course.' };
+    }
+    if (!isActiveAccessCode(accessCode)) return { error: 'This access code is no longer active.' };
 
-  let student = dataset.students.find(
-    (item) => item.organizationId === organization.id && item.email?.toLowerCase() === email,
-  );
-  if (student && !studentMatchesAssignment(student, validation.grant.assignment)) {
-    return { error: 'This access code is not linked to the selected student.' };
-  }
+    let student = dataset.students.find(
+      (item) => item.organizationId === organization.id && item.email?.toLowerCase() === email,
+    );
+    if (student && !studentMatchesAssignment(student, validation.grant.assignment)) {
+      return { error: 'This access code is not linked to the selected student.' };
+    }
 
-  const existingStudent = student;
-  let enrollment = existingStudent
-    ? dataset.enrollments.find(
-        (item) =>
-          item.organizationId === organization.id &&
-          item.courseId === course.id &&
-          item.studentId === existingStudent.id,
-      )
-    : undefined;
+    const existingStudent = student;
+    let enrollment = existingStudent
+      ? dataset.enrollments.find(
+          (item) =>
+            item.organizationId === organization.id &&
+            item.courseId === course.id &&
+            item.studentId === existingStudent.id,
+        )
+      : undefined;
 
-  if (
-    accessCode.maxUses !== undefined &&
-    accessCode.currentUses >= accessCode.maxUses &&
-    enrollment?.accessCodeId !== accessCode.id
-  ) {
-    return {
-      error: 'This access code has reached its usage limit.',
-      reason: 'usage-limit-reached',
-    };
-  }
+    if (
+      accessCode.maxUses !== undefined &&
+      accessCode.currentUses >= accessCode.maxUses &&
+      enrollment?.accessCodeId !== accessCode.id
+    ) {
+      return {
+        error: 'This access code has reached its usage limit.',
+        reason: 'usage-limit-reached',
+      };
+    }
 
-  const now = new Date().toISOString();
-  if (!student) {
-    student = {
-      id: `student-signup-${Date.now()}-${randomBytes(3).toString('hex')}`,
+    const now = new Date().toISOString();
+    if (!student) {
+      student = {
+        id: `student-signup-${Date.now()}-${randomBytes(3).toString('hex')}`,
+        organizationId: organization.id,
+        cohortId: validation.grant.assignment.cohortId,
+        name,
+        email,
+        externalStudentId: `signup-${accessCode.id}-${Date.now()}`,
+        createdAt: now,
+        updatedAt: now,
+      };
+      dataset.students.push(student);
+    } else {
+      student.name = name;
+      student.email = email;
+      student.updatedAt = now;
+    }
+
+    let createdEnrollment = false;
+    if (!enrollment) {
+      enrollment = {
+        id: `enroll-signup-${Date.now()}-${randomBytes(3).toString('hex')}`,
+        studentId: student.id,
+        organizationId: organization.id,
+        courseId: course.id,
+        accessCodeId: accessCode.id,
+        status: 'not_started',
+        progressPercentage: 0,
+        startedAt: now,
+      };
+      dataset.enrollments.push(enrollment);
+      createdEnrollment = true;
+    } else if (!enrollment.accessCodeId) {
+      enrollment.accessCodeId = accessCode.id;
+    }
+    if (createdEnrollment) accessCode.currentUses += 1;
+
+    const user: PortalUser = {
+      id: `user-signup-${Date.now()}-${randomBytes(3).toString('hex')}`,
       organizationId: organization.id,
-      cohortId: validation.grant.assignment.cohortId,
+      studentId: student.id,
       name,
       email,
-      externalStudentId: `signup-${accessCode.id}-${Date.now()}`,
+      passwordHash: hashPortalPasswordScrypt(params.password),
+      role: 'student',
+      canGenerateAccessCodes: false,
+      status: 'active',
+      emailVerifiedAt: now,
+      passwordChangedAt: now,
+      sessionVersion: 1,
       createdAt: now,
       updatedAt: now,
     };
-    dataset.students.push(student);
-  } else {
-    student.name = name;
-    student.email = email;
-    student.updatedAt = now;
-  }
-
-  let createdEnrollment = false;
-  if (!enrollment) {
-    enrollment = {
-      id: `enroll-signup-${Date.now()}-${randomBytes(3).toString('hex')}`,
-      studentId: student.id,
+    dataset.users.push(user);
+    dataset.activityLogs.push({
+      id: `activity-signup-${Date.now()}-${randomBytes(3).toString('hex')}`,
       organizationId: organization.id,
+      studentId: student.id,
       courseId: course.id,
-      accessCodeId: accessCode.id,
-      status: 'not_started',
-      progressPercentage: 0,
-      startedAt: now,
-    };
-    dataset.enrollments.push(enrollment);
-    createdEnrollment = true;
-  } else if (!enrollment.accessCodeId) {
-    enrollment.accessCodeId = accessCode.id;
-  }
-  if (createdEnrollment) accessCode.currentUses += 1;
+      action: 'account.signup_access_code',
+      metadata: { accessCodeId: accessCode.id },
+      createdAt: now,
+    });
 
-  const user: PortalUser = {
-    id: `user-signup-${Date.now()}-${randomBytes(3).toString('hex')}`,
-    organizationId: organization.id,
-    studentId: student.id,
-    name,
-    email,
-    passwordHash: hashPortalPasswordScrypt(params.password),
-    role: 'student',
-    canGenerateAccessCodes: false,
-    status: 'active',
-    emailVerifiedAt: now,
-    passwordChangedAt: now,
-    sessionVersion: 1,
-    createdAt: now,
-    updatedAt: now,
-  };
-  dataset.users.push(user);
-  dataset.activityLogs.push({
-    id: `activity-signup-${Date.now()}-${randomBytes(3).toString('hex')}`,
-    organizationId: organization.id,
-    studentId: student.id,
-    courseId: course.id,
-    action: 'account.signup_access_code',
-    metadata: { accessCodeId: accessCode.id },
-    createdAt: now,
+    return { user, student, enrollment, course, organization };
   });
-
-  await writeDataset(dataset);
-  return { user, student, enrollment, course, organization };
 }
 
 export function resetCoursePortalDataStoreForTests(): void {
@@ -3429,93 +3456,94 @@ export async function trackStudentActivity(params: {
   metadata?: unknown;
   progressPercentage?: number;
 }): Promise<ActivityLog | { error: string }> {
-  const dataset = await readDataset();
-  const organization = dataset.organizations.find((item) => item.id === params.organizationId);
-  if (!organization) return { error: 'Organization not found.' };
+  return mutateDataset(async (dataset) => {
+    const organization = dataset.organizations.find((item) => item.id === params.organizationId);
+    if (!organization) return { error: 'Organization not found.' };
 
-  const action = typeof params.action === 'string' ? params.action.trim() : '';
-  if (!action) {
-    return { error: 'Activity action must be a non-empty string.' };
-  }
-  if (
-    params.progressPercentage !== undefined &&
-    (typeof params.progressPercentage !== 'number' || !Number.isFinite(params.progressPercentage))
-  ) {
-    return { error: 'Progress percentage must be a finite number.' };
-  }
-  if (
-    params.progressPercentage !== undefined &&
-    (params.progressPercentage < 0 || params.progressPercentage > 100)
-  ) {
-    return { error: 'Progress percentage must be between 0 and 100.' };
-  }
-  if (!isActivityMetadata(params.metadata)) {
-    return { error: 'Activity metadata must be an object.' };
-  }
-
-  const student = params.studentId
-    ? dataset.students.find(
-        (item) => item.id === params.studentId && item.organizationId === params.organizationId,
-      )
-    : undefined;
-  if (params.studentId) {
-    if (!student) return { error: 'Student does not belong to this organization.' };
-  }
-
-  const courseAssignments = params.courseId
-    ? dataset.assignments.filter(
-        (item) =>
-          item.courseId === params.courseId && item.organizationId === params.organizationId,
-      )
-    : [];
-  if (params.courseId) {
-    if (courseAssignments.length === 0) {
-      return { error: 'Course is not assigned to this organization.' };
+    const action = typeof params.action === 'string' ? params.action.trim() : '';
+    if (!action) {
+      return { error: 'Activity action must be a non-empty string.' };
     }
-  }
+    if (
+      params.progressPercentage !== undefined &&
+      (typeof params.progressPercentage !== 'number' || !Number.isFinite(params.progressPercentage))
+    ) {
+      return { error: 'Progress percentage must be a finite number.' };
+    }
+    if (
+      params.progressPercentage !== undefined &&
+      (params.progressPercentage < 0 || params.progressPercentage > 100)
+    ) {
+      return { error: 'Progress percentage must be between 0 and 100.' };
+    }
+    if (!isActivityMetadata(params.metadata)) {
+      return { error: 'Activity metadata must be an object.' };
+    }
 
-  const enrollment =
-    params.studentId && params.courseId
-      ? dataset.enrollments.find(
-          (item) =>
-            item.organizationId === params.organizationId &&
-            item.studentId === params.studentId &&
-            item.courseId === params.courseId,
+    const student = params.studentId
+      ? dataset.students.find(
+          (item) => item.id === params.studentId && item.organizationId === params.organizationId,
         )
       : undefined;
-  if (params.studentId && params.courseId && !enrollment) {
-    return { error: 'Student is not enrolled in this course.' };
-  }
-  if (enrollment && !enrollmentMatchesAnyAssignment(dataset, enrollment, courseAssignments)) {
-    return { error: 'Student is not assigned to this course cohort.' };
-  }
+    if (params.studentId) {
+      if (!student) return { error: 'Student does not belong to this organization.' };
+    }
 
-  if (params.studentId && params.courseId && typeof params.progressPercentage === 'number') {
-    if (enrollment) {
-      enrollment.progressPercentage = params.progressPercentage;
-      enrollment.status =
-        enrollment.progressPercentage >= 100
-          ? 'completed'
-          : enrollment.progressPercentage > 0
-            ? 'in_progress'
-            : 'not_started';
-      enrollment.lastActivityAt = new Date().toISOString();
-      if (enrollment.status === 'completed' && !enrollment.completedAt) {
-        enrollment.completedAt = enrollment.lastActivityAt;
+    const courseAssignments = params.courseId
+      ? dataset.assignments.filter(
+          (item) =>
+            item.courseId === params.courseId && item.organizationId === params.organizationId,
+        )
+      : [];
+    if (params.courseId) {
+      if (courseAssignments.length === 0) {
+        return { error: 'Course is not assigned to this organization.' };
       }
     }
-  }
 
-  const activity: ActivityLog = {
-    id: `activity-${Date.now()}-${randomBytes(3).toString('hex')}`,
-    organizationId: params.organizationId,
-    studentId: params.studentId,
-    courseId: params.courseId,
-    action,
-    metadata: params.metadata ?? {},
-    createdAt: new Date().toISOString(),
-  };
-  dataset.activityLogs.push(activity);
-  await writeDataset(dataset);
-  return activity;
+    const enrollment =
+      params.studentId && params.courseId
+        ? dataset.enrollments.find(
+            (item) =>
+              item.organizationId === params.organizationId &&
+              item.studentId === params.studentId &&
+              item.courseId === params.courseId,
+          )
+        : undefined;
+    if (params.studentId && params.courseId && !enrollment) {
+      return { error: 'Student is not enrolled in this course.' };
+    }
+    if (enrollment && !enrollmentMatchesAnyAssignment(dataset, enrollment, courseAssignments)) {
+      return { error: 'Student is not assigned to this course cohort.' };
+    }
+
+    if (params.studentId && params.courseId && typeof params.progressPercentage === 'number') {
+      if (enrollment) {
+        enrollment.progressPercentage = params.progressPercentage;
+        enrollment.status =
+          enrollment.progressPercentage >= 100
+            ? 'completed'
+            : enrollment.progressPercentage > 0
+              ? 'in_progress'
+              : 'not_started';
+        enrollment.lastActivityAt = new Date().toISOString();
+        if (enrollment.status === 'completed' && !enrollment.completedAt) {
+          enrollment.completedAt = enrollment.lastActivityAt;
+        }
+      }
+    }
+
+    const activity: ActivityLog = {
+      id: `activity-${Date.now()}-${randomBytes(3).toString('hex')}`,
+      organizationId: params.organizationId,
+      studentId: params.studentId,
+      courseId: params.courseId,
+      action,
+      metadata: params.metadata ?? {},
+      createdAt: new Date().toISOString(),
+    };
+    dataset.activityLogs.push(activity);
+
+    return activity;
+  });
 }

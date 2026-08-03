@@ -98,10 +98,11 @@ async function main() {
     const [{ count }] = await sql<
       { count: string }[]
     >`select count(*)::text as count from organizations`;
-    const shouldImportSeed =
-      Number(count) === 0 || process.env.COURSE_PORTAL_FORCE_SEED_IMPORT === 'true';
+    const shouldImportSeed = process.env.COURSE_PORTAL_SEED_IMPORT === 'true';
     if (!shouldImportSeed) {
-      console.log('[course-portal:migrate] existing Postgres data found; skipped catalog import.');
+      console.log(
+        `[course-portal:migrate] catalog import disabled; database contains ${count} organization(s).`,
+      );
       return;
     }
 

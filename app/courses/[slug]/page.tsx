@@ -51,7 +51,7 @@ export default async function CoursePage({ params, searchParams }: CoursePagePro
       <CoursePortalShell>
         <div className="mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
           <Link
-            href={`/universities/${university.slug}`}
+            href={`/u/${university.slug}`}
             className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-sm font-semibold text-slate-600 hover:bg-white hover:text-slate-950"
           >
             <ArrowLeft className="size-4" />

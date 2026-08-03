@@ -45,6 +45,10 @@ export class PostgresCoursePortalStore {
   }
 
   async readDataset(): Promise<CoursePortalDataset> {
+    return this.readDatasetWith(this.sql);
+  }
+
+  private async readDatasetWith(sql: QueryClient): Promise<CoursePortalDataset> {
     const [
       organizations,
       users,
@@ -61,20 +65,20 @@ export class PostgresCoursePortalStore {
       emailVerificationTokens,
       authAuditEvents,
     ] = await Promise.all([
-      this.sql`select * from organizations order by created_at, id`,
-      this.sql`select * from portal_users order by created_at, id`,
-      this.sql`select * from students order by created_at, id`,
-      this.sql`select * from cohorts order by created_at, id`,
-      this.sql`select * from courses order by created_at, id`,
-      this.sql`select * from course_modules order by course_id, order_index, id`,
-      this.sql`select * from course_assignments order by assigned_at, id`,
-      this.sql`select * from access_codes order by created_at, id`,
-      this.sql`select * from enrollments order by started_at, id`,
-      this.sql`select * from activity_logs order by created_at, id`,
-      this.sql`select * from password_reset_tokens order by created_at, id`,
-      this.sql`select * from account_invitations order by created_at, id`,
-      this.sql`select * from email_verification_tokens order by created_at, id`,
-      this.sql`select * from auth_audit_events order by created_at, id`,
+      sql`select * from organizations order by created_at, id`,
+      sql`select * from portal_users order by created_at, id`,
+      sql`select * from students order by created_at, id`,
+      sql`select * from cohorts order by created_at, id`,
+      sql`select * from courses order by created_at, id`,
+      sql`select * from course_modules order by course_id, order_index, id`,
+      sql`select * from course_assignments order by assigned_at, id`,
+      sql`select * from access_codes order by created_at, id`,
+      sql`select * from enrollments order by started_at, id`,
+      sql`select * from activity_logs order by created_at, id`,
+      sql`select * from password_reset_tokens order by created_at, id`,
+      sql`select * from account_invitations order by created_at, id`,
+      sql`select * from email_verification_tokens order by created_at, id`,
+      sql`select * from auth_audit_events order by created_at, id`,
     ]);
 
     const courseModulesByCourseId = new Map<string, CourseModule[]>();
@@ -111,65 +115,87 @@ export class PostgresCoursePortalStore {
   }
 
   async writeDataset(dataset: CoursePortalDataset): Promise<void> {
-    const normalized = this.options.normalizeDataset(dataset);
     await this.sql.begin(async (sql) => {
-      await sql`delete from auth_audit_events`;
-      await sql`delete from email_verification_tokens`;
-      await sql`delete from account_invitations`;
-      await sql`delete from password_reset_tokens`;
-      await sql`delete from activity_logs`;
-      await sql`delete from enrollments`;
-      await sql`delete from access_codes`;
-      await sql`delete from course_assignments`;
-      await sql`delete from course_modules`;
-      await sql`delete from courses`;
-      await sql`delete from portal_users`;
-      await sql`delete from students`;
-      await sql`delete from cohorts`;
-      await sql`delete from organizations`;
-
-      await insertRows(sql, 'organizations', normalized.organizations.map(organizationToRow));
-      await insertRows(sql, 'cohorts', normalized.cohorts.map(cohortToRow));
-      await insertRows(sql, 'students', normalized.students.map(studentToRow));
-      await insertRows(sql, 'portal_users', normalized.users.map(portalUserToRow));
-      await insertRows(sql, 'courses', normalized.courses.map(courseToRow));
-      await insertRows(
-        sql,
-        'course_modules',
-        normalized.courses.flatMap((course) =>
-          course.modules.map((module, index) => courseModuleToRow(course.id, module, index)),
-        ),
-      );
-      await insertRows(sql, 'course_assignments', normalized.assignments.map(assignmentToRow));
-      await insertRows(sql, 'access_codes', normalized.accessCodes.map(accessCodeToRow));
-      await insertRows(sql, 'enrollments', normalized.enrollments.map(enrollmentToRow));
-      await insertRows(sql, 'activity_logs', normalized.activityLogs.map(activityLogToRow));
-      await insertRows(
-        sql,
-        'password_reset_tokens',
-        (normalized.passwordResetTokens || []).map(passwordResetTokenToRow),
-      );
-      await insertRows(
-        sql,
-        'account_invitations',
-        (normalized.accountInvitations || []).map(accountInvitationToRow),
-      );
-      await insertRows(
-        sql,
-        'email_verification_tokens',
-        (normalized.emailVerificationTokens || []).map(emailVerificationTokenToRow),
-      );
-      await insertRows(
-        sql,
-        'auth_audit_events',
-        (normalized.authAuditEvents || []).map(authAuditToRow),
-      );
+      await acquirePortalMutationLock(sql);
+      await replaceDataset(sql, this.options.normalizeDataset(dataset));
     });
+  }
+
+  async mutateDataset<T>(mutator: (dataset: CoursePortalDataset) => T | Promise<T>): Promise<T> {
+    const transactionResult = await this.sql.begin(async (sql) => {
+      await acquirePortalMutationLock(sql);
+      const dataset = await this.readDatasetWith(sql);
+      const result = await mutator(dataset);
+      await replaceDataset(sql, this.options.normalizeDataset(dataset));
+      return { value: result };
+    });
+    return transactionResult.value;
   }
 
   async close(): Promise<void> {
     if (this.ownsClient) await this.sql.end();
   }
+}
+
+async function acquirePortalMutationLock(sql: postgres.TransactionSql): Promise<void> {
+  await sql`select pg_advisory_xact_lock(1279473236, 1347375956)`;
+}
+
+async function replaceDataset(
+  sql: postgres.TransactionSql,
+  normalized: CoursePortalDataset,
+): Promise<void> {
+  await sql`delete from auth_audit_events`;
+  await sql`delete from email_verification_tokens`;
+  await sql`delete from account_invitations`;
+  await sql`delete from password_reset_tokens`;
+  await sql`delete from activity_logs`;
+  await sql`delete from enrollments`;
+  await sql`delete from access_codes`;
+  await sql`delete from course_assignments`;
+  await sql`delete from course_modules`;
+  await sql`delete from courses`;
+  await sql`delete from portal_users`;
+  await sql`delete from students`;
+  await sql`delete from cohorts`;
+  await sql`delete from organizations`;
+
+  await insertRows(sql, 'organizations', normalized.organizations.map(organizationToRow));
+  await insertRows(sql, 'cohorts', normalized.cohorts.map(cohortToRow));
+  await insertRows(sql, 'students', normalized.students.map(studentToRow));
+  await insertRows(sql, 'portal_users', normalized.users.map(portalUserToRow));
+  await insertRows(sql, 'courses', normalized.courses.map(courseToRow));
+  await insertRows(
+    sql,
+    'course_modules',
+    normalized.courses.flatMap((course) =>
+      course.modules.map((module, index) => courseModuleToRow(course.id, module, index)),
+    ),
+  );
+  await insertRows(sql, 'course_assignments', normalized.assignments.map(assignmentToRow));
+  await insertRows(sql, 'access_codes', normalized.accessCodes.map(accessCodeToRow));
+  await insertRows(sql, 'enrollments', normalized.enrollments.map(enrollmentToRow));
+  await insertRows(sql, 'activity_logs', normalized.activityLogs.map(activityLogToRow));
+  await insertRows(
+    sql,
+    'password_reset_tokens',
+    (normalized.passwordResetTokens || []).map(passwordResetTokenToRow),
+  );
+  await insertRows(
+    sql,
+    'account_invitations',
+    (normalized.accountInvitations || []).map(accountInvitationToRow),
+  );
+  await insertRows(
+    sql,
+    'email_verification_tokens',
+    (normalized.emailVerificationTokens || []).map(emailVerificationTokenToRow),
+  );
+  await insertRows(
+    sql,
+    'auth_audit_events',
+    (normalized.authAuditEvents || []).map(authAuditToRow),
+  );
 }
 
 async function insertRows(

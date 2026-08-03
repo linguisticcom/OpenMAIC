@@ -76,7 +76,7 @@ export async function POST(request: Request) {
   if ('error' in invitation) return apiError('INVALID_REQUEST', 400, invitation.error);
 
   const inviteUrl = `${getAppBaseUrl(request)}/invite/${encodeURIComponent(token)}`;
-  await sendAuthEmail({
+  const emailDelivery = await sendAuthEmail({
     to: invitation.email,
     subject: 'You are invited to LC Academy',
     text: `Use this link to accept your LC Academy invitation: ${inviteUrl}`,
@@ -87,14 +87,23 @@ export async function POST(request: Request) {
     email: invitation.email,
     action: 'invitation.created',
     ip: getClientIp(request),
-    metadata: { role: invitation.role },
+    metadata: { role: invitation.role, emailDelivered: emailDelivery.ok },
   });
 
   const { tokenHash: _tokenHash, ...safeInvitation } = invitation;
+  const exposeToken = shouldExposeAuthTokensInResponse();
+  if (!emailDelivery.ok && !exposeToken) {
+    return apiError(
+      'EMAIL_DELIVERY_FAILED',
+      502,
+      'Invitation created, but email delivery failed. Verify email configuration before retrying.',
+    );
+  }
   return apiSuccess(
     {
       invitation: safeInvitation,
-      ...(shouldExposeAuthTokensInResponse() ? { inviteUrl } : {}),
+      emailDelivered: emailDelivery.ok,
+      ...(exposeToken ? { inviteUrl } : {}),
     },
     201,
   );

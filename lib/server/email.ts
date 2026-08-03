@@ -19,20 +19,26 @@ export async function sendAuthEmail(params: EmailParams): Promise<{ ok: true } |
     return { ok: false };
   }
 
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from,
-      to: params.to,
-      subject: params.subject,
-      text: params.text,
-      html: params.html,
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from,
+        to: params.to,
+        subject: params.subject,
+        text: params.text,
+        html: params.html,
+      }),
+    });
+  } catch {
+    console.warn('Auth email provider could not be reached.');
+    return { ok: false };
+  }
 
   if (!response.ok) {
     console.warn('Auth email provider rejected the message.');
