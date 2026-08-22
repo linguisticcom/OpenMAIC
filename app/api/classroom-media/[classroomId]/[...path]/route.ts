@@ -49,9 +49,12 @@ export async function GET(
   }
 
   const filePath = path.join(CLASSROOMS_DIR, classroomId, ...pathSegments);
-  const resolvedBase = path.resolve(CLASSROOMS_DIR, classroomId);
 
   try {
+    // Resolve the classroom dir itself so symlinked deployments (e.g. a shared
+    // data/classrooms directory) still pass the containment check below.
+    const resolvedBase = await fs.realpath(path.resolve(CLASSROOMS_DIR, classroomId));
+
     // Resolve symlinks and verify the real path stays within the classroom dir
     const realPath = await fs.realpath(filePath);
     if (!realPath.startsWith(resolvedBase + path.sep) && realPath !== resolvedBase) {
