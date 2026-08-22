@@ -29,9 +29,31 @@ export async function writeJsonFileAtomic(filePath: string, data: unknown) {
 }
 
 export function buildRequestOrigin(req: NextRequest): string {
-  return req.headers.get('x-forwarded-host')
+  const origin = req.headers.get('x-forwarded-host')
     ? `${req.headers.get('x-forwarded-proto') || 'http'}://${req.headers.get('x-forwarded-host')}`
     : req.nextUrl.origin;
+
+  // Requests that reach the app via loopback/private addresses (VPS-side curl,
+  // health checks, direct port access) would stamp unusable URLs into
+  // persisted classroom data (audioUrl, classroom url). Fall back to the
+  // configured public base URL so generated content stays playable from the
+  // real front-end host.
+  try {
+    const host = new URL(origin).hostname;
+    const isPrivate =
+      host === 'localhost' ||
+      host === '::1' ||
+      host.endsWith('.local') ||
+      /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(host);
+    if (isPrivate) {
+      const base = process.env.APP_BASE_URL;
+      if (base) return base.replace(/\/+$/, '');
+    }
+  } catch {
+    // Keep the origin as-is when it cannot be parsed.
+  }
+
+  return origin;
 }
 
 export interface PersistedClassroomData {
