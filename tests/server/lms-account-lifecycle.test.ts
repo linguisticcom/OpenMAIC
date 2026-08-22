@@ -27,7 +27,8 @@ vi.mock('next/headers', () => ({
   })),
 }));
 
-const now = '2026-07-06T09:00:00.000Z';
+const now = new Date().toISOString();
+const futureInvitationExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
 function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');
@@ -425,7 +426,7 @@ describe('LMS reset, signup, and invitation lifecycle', () => {
           organizationId: 'org-a',
           invitedByUserId: 'user-admin-a',
           tokenHash: 'org-admin-token',
-          expiresAt: '2026-07-13T09:00:00.000Z',
+          expiresAt: futureInvitationExpiry,
         }),
       ).resolves.toEqual({ error: 'Only platform admins can invite organization admins.' });
 
@@ -436,7 +437,7 @@ describe('LMS reset, signup, and invitation lifecycle', () => {
           organizationId: 'org-a',
           invitedByUserId: 'user-teacher-a',
           tokenHash: 'teacher-token',
-          expiresAt: '2026-07-13T09:00:00.000Z',
+          expiresAt: futureInvitationExpiry,
         }),
       ).resolves.toEqual({ error: 'Only organization admins can invite tenant users.' });
 
@@ -447,7 +448,7 @@ describe('LMS reset, signup, and invitation lifecycle', () => {
           organizationId: 'org-a',
           invitedByUserId: 'user-platform',
           tokenHash: 'platform-token',
-          expiresAt: '2026-07-13T09:00:00.000Z',
+          expiresAt: futureInvitationExpiry,
         }),
       ).resolves.toMatchObject({ email: 'new-admin@org-a.test', role: 'organization-admin' });
 
@@ -458,7 +459,7 @@ describe('LMS reset, signup, and invitation lifecycle', () => {
           organizationId: 'org-b',
           invitedByUserId: 'user-admin-a',
           tokenHash: 'cross-org-token',
-          expiresAt: '2026-07-13T09:00:00.000Z',
+          expiresAt: futureInvitationExpiry,
         }),
       ).resolves.toEqual({ error: 'Cannot invite users outside your organization.' });
 
@@ -469,7 +470,7 @@ describe('LMS reset, signup, and invitation lifecycle', () => {
           organizationId: 'org-a',
           invitedByUserId: 'user-admin-a',
           tokenHash: 'teacher2-token',
-          expiresAt: '2026-07-13T09:00:00.000Z',
+          expiresAt: futureInvitationExpiry,
         }),
       ).resolves.toMatchObject({ email: 'teacher2@org-a.test', role: 'teacher-manager' });
 

@@ -564,9 +564,12 @@ async function generateAzureTTS(
 
   // Build SSML
   const rate = config.speed ? `${((config.speed - 1) * 100).toFixed(0)}%` : '0%';
+  // Derive the SSML lang from the voice id (e.g. 'en-US-JennyNeural' -> 'en-US')
+  // so content language matches the selected voice instead of being pinned to zh-CN.
+  const voiceLang = config.voice?.match(/^[a-z]{2}-[A-Z]{2}/)?.[0] || 'en-US';
   const ssml = `
-    <speak version='1.0' xml:lang='zh-CN'>
-      <voice xml:lang='zh-CN' name='${config.voice}'>
+    <speak version='1.0' xml:lang='${voiceLang}'>
+      <voice xml:lang='${voiceLang}' name='${config.voice}'>
         <prosody rate='${rate}'>${escapeXml(text)}</prosody>
       </voice>
     </speak>
