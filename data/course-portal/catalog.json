@@ -35,6 +35,18 @@
       "welcomeMessage": "Continue your assigned learning path with institution-specific access.",
       "createdAt": "2026-06-05T09:00:00.000Z",
       "updatedAt": "2026-07-02T09:00:00.000Z"
+    },
+    {
+      "id": "org-igensia-tech",
+      "name": "Igensia Tech",
+      "slug": "igensia-tech",
+      "logoUrl": "/lc-academy-logo.webp",
+      "description": "Technology and operations learning experiences for Igensia Tech cohorts.",
+      "contactEmail": "learning-admin@igensia-tech.example",
+      "subscriptionStatus": "active",
+      "welcomeMessage": "Access your Linguistic Communication Academy Lean Thinking course.",
+      "createdAt": "2026-09-21T14:00:00.000Z",
+      "updatedAt": "2026-09-21T14:00:00.000Z"
     }
   ],
   "users": [
@@ -499,12 +511,12 @@
       "teacherUserId": "user-esilv-teacher"
     },
     {
-      "id": "assign-esilv-lan70-lean-thinking",
+      "id": "assign-igensia-tech-lan70-lean-thinking",
       "courseId": "course-lan70-lean-thinking",
-      "organizationId": "org-esilv",
+      "organizationId": "org-igensia-tech",
       "assignedAt": "2026-09-21T14:00:00.000Z",
       "assignedByUserId": "user-platform-admin",
-      "teacherUserId": "user-esilv-teacher"
+      "teacherUserId": null
     }
   ],
   "students": [
