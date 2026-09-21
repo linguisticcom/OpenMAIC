@@ -403,6 +403,28 @@
           "classroomId": "lan110_module_12"
         }
       ]
+    },
+    {
+      "id": "course-lan70-lean-thinking",
+      "title": "LAN70 Lean Thinking",
+      "slug": "lan70-lean-thinking",
+      "description": "A hands-on Lean Thinking workshop built from the LAN 70 materials. Teams map the flow of a two-operator crepe truck, identify waste and bottlenecks, and improve their process through short Agile-style iterations.",
+      "category": "Lean Thinking and Operations",
+      "level": "Business English / Operations management",
+      "status": "active",
+      "generatedBy": "OpenMAIC",
+      "createdAt": "2026-09-21T14:00:00.000Z",
+      "updatedAt": "2026-09-21T14:00:00.000Z",
+      "estimatedDurationMinutes": 60,
+      "coverAsset": "/avatars/builder.svg",
+      "coverTone": "emerald",
+      "modules": [{
+        "id": "module-lan70-1",
+        "title": "Crepe Truck Flow Lab: process mapping sprint",
+        "description": "Run the interactive group challenge: create a process map with all 11 Lean symbols, review the increment, and improve it through retrospectives.",
+        "durationMinutes": 60,
+        "classroomId": "lean-crepe-lab"
+      }]
     }
   ],
   "assignments": [
@@ -473,6 +495,14 @@
       "courseId": "course-lan110-corporate-finance",
       "organizationId": "org-esilv",
       "assignedAt": "2026-07-04T12:05:00.000Z",
+      "assignedByUserId": "user-platform-admin",
+      "teacherUserId": "user-esilv-teacher"
+    },
+    {
+      "id": "assign-esilv-lan70-lean-thinking",
+      "courseId": "course-lan70-lean-thinking",
+      "organizationId": "org-esilv",
+      "assignedAt": "2026-09-21T14:00:00.000Z",
       "assignedByUserId": "user-platform-admin",
       "teacherUserId": "user-esilv-teacher"
     }

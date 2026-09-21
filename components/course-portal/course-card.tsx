@@ -47,6 +47,7 @@ export function CourseCard({ card }: { card: CoursePortalCardView }) {
   const { course, university } = card;
   const tone = toneClasses[course.coverTone || 'violet'];
   const detailHref = getTenantCourseHref(card);
+  const previewHref = course.id === 'course-lan70-lean-thinking' ? '/classroom/lean-crepe-lab' : detailHref;
   const needsCode = !card.accessGranted;
 
   return (
@@ -131,7 +132,7 @@ export function CourseCard({ card }: { card: CoursePortalCardView }) {
               </Button>
             )}
             <Button asChild variant="outline" className="min-h-10">
-              <Link href={detailHref}>Preview</Link>
+              <Link href={previewHref}>{course.id === 'course-lan70-lean-thinking' ? 'Play game' : 'Preview'}</Link>
             </Button>
           </div>
         </div>
