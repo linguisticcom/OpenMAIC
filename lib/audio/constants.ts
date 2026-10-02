@@ -1276,7 +1276,7 @@ export const ASR_PROVIDERS: Record<BuiltInASRProviderId, ASRProviderConfig> = {
  */
 export const DEFAULT_TTS_VOICES: Record<BuiltInTTSProviderId, string> = {
   'openai-tts': 'alloy',
-  'azure-tts': 'zh-CN-XiaoxiaoNeural',
+  'azure-tts': 'en-US-JennyNeural',
   'glm-tts': 'tongtong',
   'qwen-tts': 'Cherry',
   'voxcpm-tts': VOXCPM_AUTO_VOICE_ID,

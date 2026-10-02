@@ -565,9 +565,13 @@ async function generateAzureTTS(
 
   // Build SSML
   const rate = config.speed ? `${((config.speed - 1) * 100).toFixed(0)}%` : '0%';
+  // Derive the SSML language from the voice id (e.g. en-US-JennyNeural -> en-US)
+  // instead of hardcoding it: a voice and a mismatched xml:lang make Azure read
+  // a language the voice was not built for.
+  const voiceLang = config.voice?.match(/^[a-z]{2}-[A-Z]{2}/)?.[0] || 'en-US';
   const ssml = `
-    <speak version='1.0' xml:lang='zh-CN'>
-      <voice xml:lang='zh-CN' name='${config.voice}'>
+    <speak version='1.0' xml:lang='${voiceLang}'>
+      <voice xml:lang='${voiceLang}' name='${config.voice}'>
         <prosody rate='${rate}'>${escapeXml(text)}</prosody>
       </voice>
     </speak>
