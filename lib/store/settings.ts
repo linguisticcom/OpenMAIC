@@ -38,7 +38,7 @@ import { createKVPersistStorage, purgeLegacyPersistKey } from '@/lib/store/kv-pe
 const log = createLogger('Settings');
 
 /** Persisted-blob version for zustand's `persist` `migrate` ladder. */
-const SETTINGS_PERSIST_VERSION = 4;
+const SETTINGS_PERSIST_VERSION = 5;
 
 /**
  * Bound after the store exists; see `onWriteRefused` for why it is not inlined.
@@ -1839,6 +1839,16 @@ export const useSettingsStore = create<SettingsState>()(
       // Migrate persisted state
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Partial<SettingsState>;
+
+        // v4 → v5: the azure-tts default voice used to be zh-CN-XiaoxiaoNeural with
+        // xml:lang hardcoded to zh-CN, so English course text was synthesised with a
+        // Chinese voice. Correcting DEFAULT_TTS_VOICES alone does not fix an existing
+        // install: the voice is persisted, and the store only re-seeds `ttsVoice` from
+        // the default when the *provider* changes (`Q = G !== ttsProviderId ? default : ttsVoice`).
+        // So move a persisted Chinese azure voice onto the English default here.
+        if (version < 5 && state.ttsProviderId === 'azure-tts' && state.ttsVoice === 'zh-CN-XiaoxiaoNeural') {
+          state.ttsVoice = DEFAULT_TTS_VOICES['azure-tts'];
+        }
 
         // v0 → v1: clear hardcoded default model so user must actively select
         if (version === 0) {
