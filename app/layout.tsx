@@ -32,7 +32,8 @@ export const metadata: Metadata = {
     default: 'Linguistic Communication Academy',
     template: '%s | LC Academy',
   },
-  description: 'English-language course production and interactive learning powered by OpenMAIC.',
+  description:
+    'Linguistic Communication Academy — course portal, classroom production and institutional learning dashboard.',
 };
 
 export default function RootLayout({

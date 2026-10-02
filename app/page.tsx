@@ -25,6 +25,7 @@ import {
   X,
   Presentation,
   GraduationCap,
+  LayoutGrid,
 } from 'lucide-react';
 import { useI18n } from '@/lib/hooks/use-i18n';
 import { LanguageSwitcher } from '@/components/language-switcher';
@@ -432,13 +433,24 @@ function HomePage() {
 
   return (
     <div className="min-h-[100dvh] w-full bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex flex-col items-center p-4 pt-16 md:p-8 md:pt-16 overflow-x-hidden">
-      <Link
-        href="/courses"
-        className="fixed left-4 top-4 z-50 inline-flex h-10 items-center gap-2 rounded-full border border-violet-200/70 bg-white/75 px-4 text-sm font-semibold text-violet-800 shadow-sm backdrop-blur-md transition hover:bg-white dark:border-violet-700/60 dark:bg-slate-900/75 dark:text-violet-200"
-      >
-        <GraduationCap className="size-4" />
-        LC Academy
-      </Link>
+      <div className="fixed left-4 top-4 z-50 flex items-center gap-2">
+        <Link
+          href="/courses"
+          className="inline-flex h-10 items-center gap-2 rounded-full border border-violet-200/70 bg-white/75 px-4 text-sm font-semibold text-violet-800 shadow-sm backdrop-blur-md transition hover:bg-white dark:border-violet-700/60 dark:bg-slate-900/75 dark:text-violet-200"
+        >
+          <GraduationCap className="size-4" />
+          LC Academy
+        </Link>
+        {/* The digital tool index is hosted by the classroom app on the same
+            origin, so it is a plain anchor rather than a Next route. */}
+        <a
+          href="/apps/"
+          className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200/70 bg-white/75 px-4 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-md transition hover:bg-white dark:border-slate-700/60 dark:bg-slate-900/75 dark:text-slate-200"
+        >
+          <LayoutGrid className="size-4" />
+          Tools
+        </a>
+      </div>
       <input
         ref={fileInputRef}
         type="file"
@@ -570,8 +582,8 @@ function HomePage() {
       >
         {/* ── Logo ── */}
         <motion.img
-          src="/logo-horizontal.png"
-          alt="OpenMAIC"
+          src="/lc-academy-logo.webp"
+          alt="Linguistic Communication Academy"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{
@@ -580,7 +592,7 @@ function HomePage() {
             stiffness: 200,
             damping: 20,
           }}
-          className="h-12 md:h-16 mb-2 -ml-2 md:-ml-3"
+          className="h-20 md:h-24 mb-2 object-contain"
         />
 
         {/* ── Slogan ── */}
@@ -953,7 +965,7 @@ function HomePage() {
 
       {/* Footer — flows with content, at the very end */}
       <div className="mt-auto pt-12 pb-4 text-center text-xs text-muted-foreground/40">
-        OpenMAIC Open Source Project
+        Linguistic Communication Academy
       </div>
     </div>
   );
