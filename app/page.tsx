@@ -625,7 +625,7 @@ function HomePage() {
           transition={{ delay: 0.35 }}
           className="w-full"
         >
-          <div className="w-full rounded-2xl border border-border/60 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-xl shadow-black/[0.03] dark:shadow-black/20 transition-shadow focus-within:shadow-2xl focus-within:shadow-violet-500/[0.06]">
+          <div className="w-full rounded-2xl border border-border/60 bg-white/80 backdrop-blur-xl shadow-xl shadow-black/[0.03] transition-shadow focus-within:shadow-2xl focus-within:shadow-violet-500/[0.06] dark:border-white/12 dark:bg-slate-900/95 dark:shadow-black/40">
             {/* ── Greeting + Profile + Agents ── */}
             <div className="relative z-20 flex flex-wrap items-start justify-between gap-x-2">
               <GreetingBar />

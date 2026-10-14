@@ -1813,7 +1813,11 @@ export function Roundtable({
         {/* Right: Participants area */}
         <div
           className={cn(
-            'w-[84px] md:w-[140px] shrink-0 flex flex-col py-3 border-l border-gray-100/50 dark:border-gray-700/50 bg-gray-50/30 dark:bg-gray-900/30 overflow-visible transition-opacity duration-300',
+            // Below md the rail is hidden: at a 390px viewport the fixed-width
+            // column overflowed the row by ~31px even at 84px, clipping the
+            // avatars. Phones get the full-width slide; participants remain
+            // reachable through the discussion/chat controls.
+            'hidden md:flex w-[140px] shrink-0 flex-col py-3 border-l border-gray-100/50 dark:border-gray-700/50 bg-gray-50/30 dark:bg-gray-900/30 overflow-visible transition-opacity duration-300',
             isPresenting && !controlsVisible && 'opacity-0 pointer-events-none',
           )}
         >
