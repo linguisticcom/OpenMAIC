@@ -1,5 +1,17 @@
 export type CourseStatus = 'active' | 'draft' | 'locked' | 'completed';
 
+/**
+ * How a course's classrooms are protected.
+ *
+ * - `open`: anyone with the link can read the course and play its classroom.
+ *   This is the default for LC Academy so a school can explore every generated
+ *   class without an account or an access code.
+ * - `code`: the classroom stays behind an institution access code or an
+ *   organization account. Opt-in per course; access codes remain available for
+ *   institutions that want them.
+ */
+export type CourseAccessMode = 'open' | 'code';
+
 export type SubscriptionStatus = 'trial' | 'active' | 'past_due' | 'cancelled';
 
 export type PortalUserRole =
@@ -69,6 +81,7 @@ export interface Course {
   coverAsset?: string;
   coverTone?: 'violet' | 'blue' | 'emerald' | 'amber' | 'rose';
   classroomId?: string;
+  accessMode?: CourseAccessMode;
 }
 
 export interface CourseAssignment {

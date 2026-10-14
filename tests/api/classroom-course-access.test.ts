@@ -68,7 +68,12 @@ describe('classroom API course access', () => {
 
   it('blocks assigned LMS classrooms when no account or access cookie can see the course', async () => {
     mocks.getClassroomCourseAccessContext.mockResolvedValue({
-      course: { id: 'course-cloud', classroomId: 'classroom-cloud', status: 'active' },
+      course: {
+        id: 'course-cloud',
+        classroomId: 'classroom-cloud',
+        status: 'active',
+        accessMode: 'code',
+      },
       assignments: [
         {
           id: 'assign-cloud',
@@ -98,7 +103,12 @@ describe('classroom API course access', () => {
 
   it('allows assigned LMS classrooms for a portal user with visible course detail', async () => {
     mocks.getClassroomCourseAccessContext.mockResolvedValue({
-      course: { id: 'course-cloud', classroomId: 'classroom-cloud', status: 'active' },
+      course: {
+        id: 'course-cloud',
+        classroomId: 'classroom-cloud',
+        status: 'active',
+        accessMode: 'code',
+      },
       assignments: [
         {
           id: 'assign-cloud',
@@ -129,7 +139,12 @@ describe('classroom API course access', () => {
 
   it('allows assigned LMS classrooms for a valid course access cookie session', async () => {
     mocks.getClassroomCourseAccessContext.mockResolvedValue({
-      course: { id: 'course-cloud', classroomId: 'classroom-cloud', status: 'active' },
+      course: {
+        id: 'course-cloud',
+        classroomId: 'classroom-cloud',
+        status: 'active',
+        accessMode: 'code',
+      },
       assignments: [
         {
           id: 'assign-cloud',

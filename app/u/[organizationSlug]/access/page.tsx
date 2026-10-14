@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PublicAccessForm } from '@/components/tenant-portal/public-access-form';
 import { getOrganizationBySlug, listCoursePortalCards } from '@/lib/server/course-portal-data';
@@ -18,11 +19,17 @@ export default async function PublicOrganizationAccessPage({
     <main className="min-h-screen bg-slate-100 text-slate-950">
       <div className="mx-auto grid min-h-screen max-w-5xl items-center gap-8 px-5 py-10 lg:grid-cols-[1fr_420px]">
         <section>
-          <img
-            src={organization.logoUrl || '/lc-academy-logo.webp'}
-            alt=""
-            className="h-12 w-auto"
-          />
+          <Link
+            href={`/u/${organization.slug}`}
+            className="inline-block w-fit"
+            aria-label={organization.name}
+          >
+            <img
+              src={organization.logoUrl || '/lc-academy-logo.webp'}
+              alt=""
+              className="h-12 w-auto"
+            />
+          </Link>
           <p className="mt-8 text-sm font-semibold uppercase tracking-wide text-violet-700">
             {organization.name}
           </p>

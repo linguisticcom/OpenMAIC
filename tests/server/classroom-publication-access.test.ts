@@ -27,9 +27,9 @@ vi.mock('@/lib/server/course-access', () => ({
 
 import { canReadClassroom } from '@/lib/server/classroom-access';
 
-function context(status: 'draft' | 'active', assigned = true) {
+function context(accessMode: 'open' | 'code', status: 'draft' | 'active' = 'draft', assigned = true) {
   return {
-    course: { id: 'course-1', status },
+    course: { id: 'course-1', status, accessMode },
     assignments: assigned ? [{ organizationId: 'org-1', courseId: 'course-1' }] : [],
   };
 }
@@ -45,17 +45,26 @@ describe('classroom publication access', () => {
     await expect(canReadClassroom('legacy-classroom')).resolves.toBe(true);
   });
 
-  it('blocks draft and unassigned registered classrooms from public access', async () => {
+  it('reads open courses regardless of status or assignment', async () => {
     mocks.getCurrentPortalSession.mockResolvedValue(null);
-    mocks.getClassroomCourseAccessContext.mockResolvedValueOnce(context('draft'));
+    mocks.getClassroomCourseAccessContext.mockResolvedValueOnce(context('open', 'draft'));
+    await expect(canReadClassroom('open-draft-classroom')).resolves.toBe(true);
+
+    mocks.getClassroomCourseAccessContext.mockResolvedValueOnce(context('open', 'draft', false));
+    await expect(canReadClassroom('open-unassigned-classroom')).resolves.toBe(true);
+  });
+
+  it('blocks draft and unassigned code-protected classrooms from public access', async () => {
+    mocks.getCurrentPortalSession.mockResolvedValue(null);
+    mocks.getClassroomCourseAccessContext.mockResolvedValueOnce(context('code'));
     await expect(canReadClassroom('draft-classroom')).resolves.toBe(false);
 
-    mocks.getClassroomCourseAccessContext.mockResolvedValueOnce(context('active', false));
+    mocks.getClassroomCourseAccessContext.mockResolvedValueOnce(context('code', 'active', false));
     await expect(canReadClassroom('unassigned-classroom')).resolves.toBe(false);
   });
 
   it('allows platform admins to review draft classrooms', async () => {
-    mocks.getClassroomCourseAccessContext.mockResolvedValue(context('draft'));
+    mocks.getClassroomCourseAccessContext.mockResolvedValue(context('code'));
     mocks.getCurrentPortalSession.mockResolvedValue({
       user: { id: 'platform', role: 'platform-admin' },
     });
@@ -64,7 +73,7 @@ describe('classroom publication access', () => {
   });
 
   it('allows an active assigned classroom after a valid access grant', async () => {
-    mocks.getClassroomCourseAccessContext.mockResolvedValue(context('active'));
+    mocks.getClassroomCourseAccessContext.mockResolvedValue(context('code', 'active'));
     mocks.getCurrentPortalSession.mockResolvedValue(null);
     mocks.hasCourseAccess.mockResolvedValue(true);
 

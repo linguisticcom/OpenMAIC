@@ -1,3 +1,4 @@
+import { isCourseOpenAccess } from '@/lib/course-access-mode';
 import { hasCourseAccess } from '@/lib/server/course-access';
 import {
   getClassroomCourseAccessContext,
@@ -12,6 +13,11 @@ import {
 export async function canReadClassroom(classroomId: string): Promise<boolean> {
   const context = await getClassroomCourseAccessContext(classroomId);
   if (!context) return true;
+
+  // Default LC Academy posture: a generated class is explorable without an
+  // account or an access code. Only courses explicitly switched to 'code'
+  // require an institution grant below.
+  if (isCourseOpenAccess(context.course)) return true;
 
   const session = await getCurrentPortalSession();
   if (session && isPlatformAdmin(session.user)) return true;

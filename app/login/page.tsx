@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { LoginForm } from '@/components/tenant-portal/login-form';
 
 export default function LoginPage() {
@@ -5,11 +6,13 @@ export default function LoginPage() {
     <main className="min-h-screen bg-slate-100 text-slate-950">
       <div className="mx-auto grid min-h-screen w-full max-w-6xl items-center gap-8 px-5 py-10 lg:grid-cols-[1fr_420px]">
         <section>
-          <img
-            src="/lc-academy-logo.webp"
-            alt="Linguistic Communication Academy"
-            className="h-24 w-auto object-contain"
-          />
+          <Link href="/" className="inline-block w-fit" aria-label="Linguistic Communication Academy">
+            <img
+              src="/lc-academy-logo.webp"
+              alt="Linguistic Communication Academy"
+              className="h-24 w-auto object-contain"
+            />
+          </Link>
           <p className="mt-8 text-sm font-semibold uppercase tracking-wide text-violet-700">
             Institutional LMS
           </p>

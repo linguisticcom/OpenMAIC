@@ -757,7 +757,12 @@ function normalizeDataset(
               : 1,
         }))
       : [],
-    courses: Array.isArray(parsed.courses) ? parsed.courses : [],
+    courses: Array.isArray(parsed.courses)
+      ? parsed.courses.map((course) => ({
+          ...course,
+          accessMode: course.accessMode === 'code' ? 'code' : 'open',
+        }))
+      : [],
     assignments: Array.isArray(parsed.assignments)
       ? parsed.assignments.map((assignment) => ({
           ...assignment,

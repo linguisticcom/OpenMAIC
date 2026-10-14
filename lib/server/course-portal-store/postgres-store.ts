@@ -315,6 +315,7 @@ function rowToCourse(row: Record<string, unknown>, modules: CourseModule[]): Cou
     coverAsset: optionalString(row.cover_asset),
     coverTone: optionalString(row.cover_tone) as Course['coverTone'],
     classroomId: optionalString(row.classroom_id),
+    accessMode: row.access_mode === 'code' ? 'code' : 'open',
   };
 }
 
@@ -519,6 +520,7 @@ function courseToRow(course: Course) {
     cover_asset: course.coverAsset,
     cover_tone: course.coverTone,
     classroom_id: course.classroomId,
+    access_mode: course.accessMode === 'code' ? 'code' : 'open',
   };
 }
 

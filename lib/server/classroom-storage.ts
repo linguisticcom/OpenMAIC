@@ -3,8 +3,24 @@ import path from 'path';
 import type { NextRequest } from 'next/server';
 import type { Scene, Stage } from '@/lib/types/stage';
 
-export const CLASSROOMS_DIR = path.join(process.cwd(), 'data', 'classrooms');
-export const CLASSROOM_JOBS_DIR = path.join(process.cwd(), 'data', 'classroom-jobs');
+function resolveStorageDir(envValue: string | undefined, fallback: string[]): string {
+  const trimmed = envValue?.trim();
+  if (trimmed) return path.resolve(trimmed);
+  return path.join(process.cwd(), ...fallback);
+}
+
+// Classroom content and media live outside the immutable release so a new
+// release never ships without the classes learners were promised. The env
+// overrides point at the stage-specific shared storage; the cwd fallback keeps
+// OpenMAIC's original single-directory deployments working unchanged.
+export const CLASSROOMS_DIR = resolveStorageDir(process.env.LC_CLASSROOMS_DIR, [
+  'data',
+  'classrooms',
+]);
+export const CLASSROOM_JOBS_DIR = resolveStorageDir(process.env.LC_CLASSROOM_JOBS_DIR, [
+  'data',
+  'classroom-jobs',
+]);
 
 async function ensureDir(dir: string) {
   await fs.mkdir(dir, { recursive: true });

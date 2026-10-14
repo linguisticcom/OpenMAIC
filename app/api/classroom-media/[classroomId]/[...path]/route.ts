@@ -47,9 +47,12 @@ export async function GET(
   const resolvedBase = path.resolve(CLASSROOMS_DIR, classroomId);
 
   try {
-    // Resolve symlinks and verify the real path stays within the classroom dir
+    // Resolve symlinks on both sides: the classroom root itself may be reached
+    // through a symlinked shared-storage path, and a realpath()-ed file must
+    // still be checked against a realpath()-ed base or every media request 404s.
+    const realBase = await fs.realpath(resolvedBase);
     const realPath = await fs.realpath(filePath);
-    if (!realPath.startsWith(resolvedBase + path.sep) && realPath !== resolvedBase) {
+    if (!realPath.startsWith(realBase + path.sep) && realPath !== realBase) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 

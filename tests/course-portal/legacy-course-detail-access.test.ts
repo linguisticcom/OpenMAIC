@@ -67,7 +67,7 @@ describe('legacy course detail account access', () => {
       cohortId: 'cohort-beta',
     };
     mocks.getCourseDetailContext.mockResolvedValue({
-      course: { id: 'course-cloud', slug: 'cloud', title: 'Cloud' },
+      course: { id: 'course-cloud', slug: 'cloud', title: 'Cloud', accessMode: 'code' },
       university: { id: 'org-school', slug: 'school', name: 'School' },
       organization: { id: 'org-school', slug: 'school', name: 'School' },
       assignment: alphaAssignment,

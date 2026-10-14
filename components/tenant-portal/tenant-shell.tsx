@@ -6,6 +6,7 @@ import {
   GraduationCap,
   KeyRound,
   LayoutDashboard,
+  Library,
   Menu,
   Settings,
   Sparkles,
@@ -20,6 +21,7 @@ import type { Organization, PortalUser } from '@/lib/types/course-portal';
 
 const dashboardLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/classes', label: 'Class library', icon: Library },
   { href: '/dashboard/courses', label: 'Courses', icon: GraduationCap },
   { href: '/dashboard/students', label: 'Students', icon: Users },
   { href: '/dashboard/access-codes', label: 'Access codes', icon: KeyRound },
@@ -29,12 +31,13 @@ const dashboardLinks = [
 
 const adminLinks = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard },
+  { href: '/classes', label: 'Class library', icon: Library },
+  { href: '/admin/courses', label: 'Global courses', icon: BookOpenCheck },
+  { href: '/admin/generate', label: 'Generate course', icon: Sparkles },
   { href: '/admin/organizations', label: 'Organizations', icon: Building2 },
   { href: '/admin/students', label: 'Students', icon: Users },
   { href: '/admin/teachers', label: 'Teachers', icon: UserRoundCheck },
   { href: '/admin/access-codes', label: 'Access codes', icon: KeyRound },
-  { href: '/admin/courses', label: 'Global courses', icon: BookOpenCheck },
-  { href: '/admin/generate', label: 'Generate course', icon: Sparkles },
   { href: '/admin/course-assignments', label: 'Assignments', icon: BarChart3 },
   { href: '/admin/invitations', label: 'Invitations', icon: UserPlus },
 ];

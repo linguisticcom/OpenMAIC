@@ -1,19 +1,36 @@
 import Link from 'next/link';
-import { ArrowRight, Building2, GraduationCap, KeyRound } from 'lucide-react';
+import { ArrowRight, Building2, GraduationCap, KeyRound, Sparkles } from 'lucide-react';
 import { MetricCard, PageHeader, TenantShell } from '@/components/tenant-portal/tenant-shell';
+import {
+  ClassLibraryPanel,
+  classLibraryToCards,
+} from '@/components/tenant-portal/class-library-panel';
 import { Button } from '@/components/ui/button';
 import { getCoursePortalDataset } from '@/lib/server/course-portal-data';
+import { listClassLibrary } from '@/lib/server/class-library';
 import { requirePlatformPageSession } from '@/lib/server/tenant-page-auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminOverviewPage() {
   const session = await requirePlatformPageSession();
-  const dataset = await getCoursePortalDataset();
+  const [dataset, library] = await Promise.all([getCoursePortalDataset(), listClassLibrary()]);
   const teachers = dataset.users.filter((user) => user.role === 'teacher-manager');
   const activeCodes = dataset.accessCodes.filter((code) => code.isActive);
 
   const quickLinks = [
+    {
+      href: '/classes',
+      title: 'Class library',
+      description: 'Every generated class, playable with no account and no access code.',
+      icon: GraduationCap,
+    },
+    {
+      href: '/admin/generate',
+      title: 'Generate a course',
+      description: 'Turn documents or a prompt into a new LC Academy classroom.',
+      icon: Sparkles,
+    },
     {
       href: '/admin/organizations',
       title: 'Manage organizations',
@@ -23,14 +40,8 @@ export default async function AdminOverviewPage() {
     {
       href: '/admin/access-codes/new',
       title: 'Generate access code',
-      description: 'Create a tenant, course, cohort, or student-scoped code.',
+      description: 'Optional tenant, course, cohort, or student-scoped code.',
       icon: KeyRound,
-    },
-    {
-      href: '/admin/courses',
-      title: 'Test global courses',
-      description: 'Review publishing state and open generated classrooms.',
-      icon: GraduationCap,
     },
   ];
 
@@ -42,6 +53,8 @@ export default async function AdminOverviewPage() {
         description="One operational view across every organization, learner, teacher, course, assignment, and access code."
       />
       <div className="grid gap-6 p-5 sm:p-8">
+        <ClassLibraryPanel cards={classLibraryToCards(library.entries)} limit={6} />
+
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
             label="Organizations"

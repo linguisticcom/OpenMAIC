@@ -173,7 +173,8 @@
           "description": "Bias, privacy, academic integrity, and evaluation guardrails.",
           "durationMinutes": 55
         }
-      ]
+      ],
+      "accessMode": "open"
     },
     {
       "id": "course-cloud-devsecops",
@@ -208,7 +209,8 @@
           "description": "ArgoCD promotion, health signals, and safe rollback paths.",
           "durationMinutes": 75
         }
-      ]
+      ],
+      "accessMode": "open"
     },
     {
       "id": "course-secure-automation",
@@ -243,7 +245,8 @@
           "description": "Designing intervention points for sensitive operations.",
           "durationMinutes": 45
         }
-      ]
+      ],
+      "accessMode": "open"
     },
     {
       "id": "course-business-genai",
@@ -278,7 +281,8 @@
           "description": "Metrics, support, risk review, and post-pilot decisions.",
           "durationMinutes": 55
         }
-      ]
+      ],
+      "accessMode": "open"
     },
     {
       "id": "course-data-literacy",
@@ -313,7 +317,8 @@
           "description": "Turning analysis into clear recommendations.",
           "durationMinutes": 35
         }
-      ]
+      ],
+      "accessMode": "open"
     },
     {
       "id": "course-lan110-corporate-finance",
@@ -414,7 +419,8 @@
           "durationMinutes": 45,
           "classroomId": "lan110_module_12"
         }
-      ]
+      ],
+      "accessMode": "open"
     },
     {
       "id": "course-lan70-lean-thinking",
@@ -430,13 +436,16 @@
       "estimatedDurationMinutes": 60,
       "coverAsset": "/avatars/builder.svg",
       "coverTone": "emerald",
-      "modules": [{
-        "id": "module-lan70-1",
-        "title": "Crepe Truck Flow Lab: process mapping sprint",
-        "description": "Run the interactive group challenge: create a process map with all 11 Lean symbols, review the increment, and improve it through retrospectives.",
-        "durationMinutes": 60,
-        "classroomId": "lean-crepe-lab"
-      }]
+      "modules": [
+        {
+          "id": "module-lan70-1",
+          "title": "Crepe Truck Flow Lab: process mapping sprint",
+          "description": "Run the interactive group challenge: create a process map with all 11 Lean symbols, review the increment, and improve it through retrospectives.",
+          "durationMinutes": 60,
+          "classroomId": "lean-crepe-lab"
+        }
+      ],
+      "accessMode": "open"
     }
   ],
   "assignments": [

@@ -20,6 +20,12 @@ export function CoursePortalShell({ children }: { children: ReactNode }) {
           <nav className="flex items-center gap-1 text-sm font-medium text-slate-600">
             <Link
               className="rounded-md px-3 py-2 hover:bg-slate-100 hover:text-slate-950"
+              href="/classes"
+            >
+              Classes
+            </Link>
+            <Link
+              className="rounded-md px-3 py-2 hover:bg-slate-100 hover:text-slate-950"
               href="/courses"
             >
               Courses
@@ -66,9 +72,10 @@ export function CoursePortalIntro({
               <Building2 className="size-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-950">Institution-aware access</p>
+              <p className="text-sm font-semibold text-slate-950">Open exploration</p>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                Courses are scoped by university and unlocked with server-validated codes.
+                Every generated class is playable from the class library. Institution codes stay
+                optional.
               </p>
             </div>
           </div>

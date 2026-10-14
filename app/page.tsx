@@ -26,6 +26,7 @@ import {
   Presentation,
   GraduationCap,
   LayoutGrid,
+  Library,
 } from 'lucide-react';
 import { useI18n } from '@/lib/hooks/use-i18n';
 import { LanguageSwitcher } from '@/components/language-switcher';
@@ -440,6 +441,13 @@ function HomePage() {
         >
           <GraduationCap className="size-4" />
           LC Academy
+        </Link>
+        <Link
+          href="/classes"
+          className="inline-flex h-10 items-center gap-2 rounded-full border border-violet-200/70 bg-white/75 px-4 text-sm font-semibold text-violet-800 shadow-sm backdrop-blur-md transition hover:bg-white dark:border-violet-700/60 dark:bg-slate-900/75 dark:text-violet-200"
+        >
+          <Library className="size-4" />
+          Classes
         </Link>
         {/* The digital tool index is hosted by the classroom app on the same
             origin, so it is a plain anchor rather than a Next route. */}

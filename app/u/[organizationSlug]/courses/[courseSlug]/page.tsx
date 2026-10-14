@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { CourseDetail } from '@/components/course-portal/course-detail';
 import { CoursePortalShell } from '@/components/course-portal/portal-shell';
 import { CourseAccessGate } from '@/components/course-portal/course-access-gate';
+import { isCourseOpenAccess } from '@/lib/course-access-mode';
 import { findCourseAccessAssignment } from '@/lib/server/course-access';
 import { getCourseDetailContext } from '@/lib/server/course-portal-data';
 import { getCurrentPortalSession, isPlatformAdmin } from '@/lib/server/organization-session';
@@ -22,13 +23,39 @@ export default async function PublicOrganizationCoursePage({
   ]);
   if (!context) notFound();
 
-  const accessAssignment = await findCourseAccessAssignment({
-    courseId: context.course.id,
-    universityId: context.organization.id,
-    assignments: context.assignments,
-  });
+  const requiresCode = !isCourseOpenAccess(context.course);
+  const accessAssignment = requiresCode
+    ? await findCourseAccessAssignment({
+        courseId: context.course.id,
+        universityId: context.organization.id,
+        assignments: context.assignments,
+      })
+    : undefined;
   const assignment = accessAssignment || context.assignment;
-  const accessGranted = Boolean(accessAssignment);
+  const accessGranted = !requiresCode || Boolean(accessAssignment);
+
+  const content = (
+    <CoursePortalShell>
+      <div className="mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
+        <Link
+          href={`/u/${context.organization.slug}/courses`}
+          className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-sm font-semibold text-slate-600 hover:bg-white hover:text-slate-950"
+        >
+          <ArrowLeft className="size-4" />
+          Back to {context.organization.name}
+        </Link>
+      </div>
+      <CourseDetail
+        course={context.course}
+        university={context.organization}
+        assignment={assignment}
+        accessGranted={accessGranted}
+        adminPreview={Boolean(session && isPlatformAdmin(session.user))}
+      />
+    </CoursePortalShell>
+  );
+
+  if (!requiresCode) return content;
 
   return (
     <CourseAccessGate
@@ -39,24 +66,7 @@ export default async function PublicOrganizationCoursePage({
       courseTitle={context.course.title}
       universityName={context.organization.name}
     >
-      <CoursePortalShell>
-        <div className="mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
-          <Link
-            href={`/u/${context.organization.slug}/courses`}
-            className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-sm font-semibold text-slate-600 hover:bg-white hover:text-slate-950"
-          >
-            <ArrowLeft className="size-4" />
-            Back to {context.organization.name}
-          </Link>
-        </div>
-        <CourseDetail
-          course={context.course}
-          university={context.organization}
-          assignment={assignment}
-          accessGranted={accessGranted}
-          adminPreview={Boolean(session && isPlatformAdmin(session.user))}
-        />
-      </CoursePortalShell>
+      {content}
     </CourseAccessGate>
   );
 }
