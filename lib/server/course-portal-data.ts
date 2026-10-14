@@ -1527,6 +1527,25 @@ export async function updateGlobalCourseStatus(params: {
   });
 }
 
+export async function updateGlobalCourseAccessMode(params: {
+  courseId: string;
+  accessMode: string;
+}): Promise<Course | { error: string }> {
+  if (params.accessMode !== 'open' && params.accessMode !== 'code') {
+    return { error: 'Invalid course access mode.' };
+  }
+
+  return mutateDataset(async (dataset) => {
+    const course = dataset.courses.find((item) => item.id === params.courseId);
+    if (!course) return { error: 'Course not found.' };
+
+    course.accessMode = params.accessMode === 'code' ? 'code' : 'open';
+    course.updatedAt = new Date().toISOString();
+
+    return course;
+  });
+}
+
 export async function deleteGlobalCourse(params: { courseId: string }): Promise<
   | {
       deleted: true;
