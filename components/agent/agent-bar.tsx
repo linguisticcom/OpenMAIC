@@ -819,8 +819,10 @@ export function AgentBar() {
     );
   };
 
+  // w-96 is the desktop slot; on a phone that fixed width overflowed the
+  // composer card (and the viewport), clipping the trigger's right edge.
   return (
-    <div ref={containerRef} className="relative w-96">
+    <div ref={containerRef} className="relative w-96 max-w-full">
       <Tooltip>
         <TooltipTrigger asChild>
           <button

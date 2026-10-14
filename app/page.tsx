@@ -645,9 +645,13 @@ function HomePage() {
               rows={4}
             />
 
-            {/* Toolbar row */}
-            <div className="px-3 pb-3 flex items-end gap-2">
-              <div className="flex-1 min-w-0">
+            {/* Toolbar row. The generation chips are wider than a phone or a
+                narrow window can give them, and without wrapping they painted
+                over the mode toggle, the mic and the submit button. The chips
+                now take their own full-width (scrollable) line below sm, and
+                the actions drop to a second line right-aligned. */}
+            <div className="px-3 pb-3 flex flex-wrap items-center gap-2">
+              <div className="w-full min-w-0 overflow-x-auto sm:w-auto sm:flex-1">
                 <GenerationToolbar
                   webSearch={form.webSearch}
                   onWebSearchChange={(v) => updateForm('webSearch', v)}
@@ -662,46 +666,48 @@ function HomePage() {
                 />
               </div>
 
-              {/* Interactive mode toggle */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <InteractiveModeButton
-                    pressed={form.interactiveMode}
-                    label={t('toolbar.interactiveModeLabel')}
-                    onPressedChange={(pressed) => updateForm('interactiveMode', pressed)}
-                  />
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">
-                  {t('toolbar.interactiveModeHint')}
-                </TooltipContent>
-              </Tooltip>
+              <div className="ml-auto flex shrink-0 items-center gap-2">
+                {/* Interactive mode toggle */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InteractiveModeButton
+                      pressed={form.interactiveMode}
+                      label={t('toolbar.interactiveModeLabel')}
+                      onPressedChange={(pressed) => updateForm('interactiveMode', pressed)}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    {t('toolbar.interactiveModeHint')}
+                  </TooltipContent>
+                </Tooltip>
 
-              {/* Voice input */}
-              <SpeechButton
-                size="md"
-                onTranscription={(text) => {
-                  setForm((prev) => {
-                    const next = prev.requirement + (prev.requirement ? ' ' : '') + text;
-                    updateRequirementCache(next);
-                    return { ...prev, requirement: next };
-                  });
-                }}
-              />
+                {/* Voice input */}
+                <SpeechButton
+                  size="md"
+                  onTranscription={(text) => {
+                    setForm((prev) => {
+                      const next = prev.requirement + (prev.requirement ? ' ' : '') + text;
+                      updateRequirementCache(next);
+                      return { ...prev, requirement: next };
+                    });
+                  }}
+                />
 
-              {/* Send button */}
-              <button
-                onClick={handleGenerate}
-                disabled={!canGenerate}
-                className={cn(
-                  'shrink-0 h-8 rounded-lg flex items-center justify-center gap-1.5 transition-all px-3',
-                  canGenerate
-                    ? 'bg-primary text-primary-foreground hover:opacity-90 shadow-sm cursor-pointer'
-                    : 'bg-muted text-muted-foreground/40 cursor-not-allowed',
-                )}
-              >
-                <span className="text-xs font-medium">{t('toolbar.enterClassroom')}</span>
-                <ArrowUp className="size-3.5" />
-              </button>
+                {/* Send button */}
+                <button
+                  onClick={handleGenerate}
+                  disabled={!canGenerate}
+                  className={cn(
+                    'shrink-0 h-8 rounded-lg flex items-center justify-center gap-1.5 transition-all px-3',
+                    canGenerate
+                      ? 'bg-primary text-primary-foreground hover:opacity-90 shadow-sm cursor-pointer'
+                      : 'bg-muted text-muted-foreground/40 cursor-not-allowed',
+                  )}
+                >
+                  <span className="text-xs font-medium">{t('toolbar.enterClassroom')}</span>
+                  <ArrowUp className="size-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         </motion.div>
