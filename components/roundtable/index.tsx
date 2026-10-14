@@ -1813,7 +1813,7 @@ export function Roundtable({
         {/* Right: Participants area */}
         <div
           className={cn(
-            'w-[140px] shrink-0 flex flex-col py-3 border-l border-gray-100/50 dark:border-gray-700/50 bg-gray-50/30 dark:bg-gray-900/30 overflow-visible transition-opacity duration-300',
+            'w-[84px] md:w-[140px] shrink-0 flex flex-col py-3 border-l border-gray-100/50 dark:border-gray-700/50 bg-gray-50/30 dark:bg-gray-900/30 overflow-visible transition-opacity duration-300',
             isPresenting && !controlsVisible && 'opacity-0 pointer-events-none',
           )}
         >

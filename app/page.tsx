@@ -434,29 +434,34 @@ function HomePage() {
 
   return (
     <div className="min-h-[100dvh] w-full bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex flex-col items-center p-4 pt-16 md:p-8 md:pt-16 overflow-x-hidden">
-      <div className="fixed left-4 top-4 z-50 flex items-center gap-2">
+      {/* Mobile: the three shortcuts wrap as icon-only pills so they never
+          collide with the settings/language controls pinned top-right. */}
+      <div className="fixed left-3 top-3 z-50 flex max-w-[calc(100vw-7.5rem)] flex-wrap items-center gap-1.5 sm:left-4 sm:top-4 sm:gap-2">
         <Link
           href="/courses"
-          className="inline-flex h-10 items-center gap-2 rounded-full border border-violet-200/70 bg-white/75 px-4 text-sm font-semibold text-violet-800 shadow-sm backdrop-blur-md transition hover:bg-white dark:border-violet-700/60 dark:bg-slate-900/75 dark:text-violet-200"
+          aria-label="LC Academy courses"
+          className="inline-flex h-10 items-center gap-2 rounded-full border border-violet-200/70 bg-white/75 px-3 text-sm font-semibold text-violet-800 shadow-sm backdrop-blur-md transition hover:bg-white sm:px-4 dark:border-violet-700/60 dark:bg-slate-900/75 dark:text-violet-200"
         >
-          <GraduationCap className="size-4" />
-          LC Academy
+          <GraduationCap className="size-4 shrink-0" />
+          <span className="hidden sm:inline">LC Academy</span>
         </Link>
         <Link
           href="/classes"
-          className="inline-flex h-10 items-center gap-2 rounded-full border border-violet-200/70 bg-white/75 px-4 text-sm font-semibold text-violet-800 shadow-sm backdrop-blur-md transition hover:bg-white dark:border-violet-700/60 dark:bg-slate-900/75 dark:text-violet-200"
+          aria-label="Class library"
+          className="inline-flex h-10 items-center gap-2 rounded-full border border-violet-200/70 bg-white/75 px-3 text-sm font-semibold text-violet-800 shadow-sm backdrop-blur-md transition hover:bg-white sm:px-4 dark:border-violet-700/60 dark:bg-slate-900/75 dark:text-violet-200"
         >
-          <Library className="size-4" />
-          Classes
+          <Library className="size-4 shrink-0" />
+          <span className="hidden sm:inline">Classes</span>
         </Link>
         {/* The digital tool index is hosted by the classroom app on the same
             origin, so it is a plain anchor rather than a Next route. */}
         <a
           href="/apps/"
-          className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200/70 bg-white/75 px-4 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-md transition hover:bg-white dark:border-slate-700/60 dark:bg-slate-900/75 dark:text-slate-200"
+          aria-label="Digital tools"
+          className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200/70 bg-white/75 px-3 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-md transition hover:bg-white sm:px-4 dark:border-slate-700/60 dark:bg-slate-900/75 dark:text-slate-200"
         >
-          <LayoutGrid className="size-4" />
-          Tools
+          <LayoutGrid className="size-4 shrink-0" />
+          <span className="hidden sm:inline">Tools</span>
         </a>
       </div>
       <input
@@ -622,9 +627,9 @@ function HomePage() {
         >
           <div className="w-full rounded-2xl border border-border/60 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-xl shadow-black/[0.03] dark:shadow-black/20 transition-shadow focus-within:shadow-2xl focus-within:shadow-violet-500/[0.06]">
             {/* ── Greeting + Profile + Agents ── */}
-            <div className="relative z-20 flex items-start justify-between">
+            <div className="relative z-20 flex flex-wrap items-start justify-between gap-x-2">
               <GreetingBar />
-              <div className="pr-3 pt-3.5 shrink-0">
+              <div className="min-w-0 max-w-full shrink-0 pr-2 pt-3 sm:pr-3 sm:pt-3.5">
                 <AgentBar />
               </div>
             </div>

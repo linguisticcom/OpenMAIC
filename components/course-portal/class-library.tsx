@@ -153,7 +153,7 @@ function CategoryChip({
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-full px-3.5 py-1.5 text-xs font-semibold ring-1 transition',
+        'inline-flex min-h-9 items-center rounded-full px-3.5 py-2 text-xs font-semibold ring-1 transition sm:min-h-0 sm:py-1.5',
         active
           ? 'bg-violet-700 text-white ring-violet-700'
           : 'bg-white text-slate-600 ring-slate-200 hover:text-violet-800 hover:ring-violet-200',
