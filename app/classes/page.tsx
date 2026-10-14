@@ -30,6 +30,7 @@ export default async function ClassesPage() {
     detailHref: `/classes/${entry.course.slug}`,
     organizationNames: entry.organizationNames,
     requiresCode: !entry.isOpen,
+    classroomMissing: entry.classroomMissing,
   }));
 
   return (
@@ -55,6 +56,11 @@ export default async function ClassesPage() {
             <PlayCircle className="size-4 text-violet-700" />
             {library.playableCount} playable right now
           </span>
+          {library.missingClassroomCount > 0 && (
+            <span className="inline-flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800">
+              {library.missingClassroomCount} awaiting classroom content
+            </span>
+          )}
           {library.entries.some((entry) => entry.organizationNames.length > 0) && (
             <Link
               href="/courses"

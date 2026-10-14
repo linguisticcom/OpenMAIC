@@ -129,6 +129,7 @@ export function classLibraryToCards(
     sceneCount: number;
     playHref?: string;
     isOpen: boolean;
+    classroomMissing: boolean;
     organizationNames: string[];
   }[],
 ): ClassLibraryCard[] {
@@ -147,5 +148,6 @@ export function classLibraryToCards(
     detailHref: `/classes/${entry.course.slug}`,
     organizationNames: entry.organizationNames,
     requiresCode: !entry.isOpen,
+    classroomMissing: entry.classroomMissing,
   }));
 }

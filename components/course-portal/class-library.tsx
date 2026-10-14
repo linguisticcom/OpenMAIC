@@ -29,6 +29,7 @@ export interface ClassLibraryCard {
   detailHref: string;
   organizationNames: string[];
   requiresCode?: boolean;
+  classroomMissing?: boolean;
 }
 
 const toneClasses: Record<NonNullable<ClassLibraryCard['coverTone']>, string> = {
@@ -237,8 +238,12 @@ function ClassLibraryCardItem({ card }: { card: ClassLibraryCard }) {
               Open class
             </Link>
           ) : (
-            <span className="inline-flex min-h-10 flex-1 items-center justify-center rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-500">
-              {card.requiresCode ? 'Institution code required' : 'Content in preparation'}
+            <span className="inline-flex min-h-10 flex-1 items-center justify-center rounded-md bg-slate-100 px-3 text-center text-sm font-semibold text-slate-500">
+              {card.requiresCode
+                ? 'Institution code required'
+                : card.classroomMissing
+                  ? 'Classroom unavailable'
+                  : 'Content in preparation'}
             </span>
           )}
           <Link

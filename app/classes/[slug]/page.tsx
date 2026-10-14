@@ -73,6 +73,10 @@ export default async function ClassDetailPage({
               </h2>
               <ol className="mt-4 grid gap-2">
                 {course.modules.map((module, index) => {
+                  // Generated classes store one classroom covering the whole
+                  // deck, so a module only gets its own Play link when it has a
+                  // dedicated classroom. Modules without one are listed, not
+                  // labelled "planned" — the class as a whole is playable.
                   const href =
                     module.classroomId && entry.isOpen
                       ? classroomPlayHref(module.classroomId)
@@ -84,17 +88,13 @@ export default async function ClassDetailPage({
                       className="flex items-center justify-between gap-4 rounded-md border border-slate-200 px-4 py-3 text-sm text-slate-700"
                     >
                       <span className="font-medium">{label}</span>
-                      {href ? (
+                      {href && (
                         <Link
                           href={href}
                           className="shrink-0 text-sm font-semibold text-violet-700 hover:text-violet-900"
                         >
                           Play
                         </Link>
-                      ) : (
-                        <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                          {module.classroomId ? 'Restricted' : 'Planned'}
-                        </span>
                       )}
                     </li>
                   );
@@ -125,10 +125,12 @@ export default async function ClassDetailPage({
           ) : entry.isOpen ? (
             <>
               <h2 className="text-lg font-semibold tracking-normal text-slate-950">
-                Classroom in preparation
+                {entry.classroomMissing ? 'Classroom content unavailable' : 'Classroom in preparation'}
               </h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                This class exists in the catalog but its classroom has not been generated yet.
+                {entry.classroomMissing
+                  ? 'This class is catalogued, but its classroom content is not stored on the academy server yet. Re-generating it will make it playable here.'
+                  : 'This class exists in the catalog but its classroom has not been generated yet.'}
               </p>
             </>
           ) : (

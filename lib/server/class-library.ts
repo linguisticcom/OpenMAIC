@@ -1,4 +1,7 @@
+import { promises as fs } from 'fs';
+import path from 'path';
 import { isCourseOpenAccess } from '@/lib/course-access-mode';
+import { CLASSROOMS_DIR } from '@/lib/server/classroom-storage';
 import { getCoursePortalDataset } from '@/lib/server/course-portal-data';
 import type { Course } from '@/lib/types/course-portal';
 
@@ -11,10 +14,12 @@ import type { Course } from '@/lib/types/course-portal';
  */
 export interface ClassLibraryEntry {
   course: Course;
-  /** Classroom that actually plays for this course, if any. */
+  /** Classroom the course resolves to, whether or not its content is on disk. */
   classroomId?: string;
-  /** Direct playback URL, when the course has a classroom. */
+  /** Direct playback URL — set only when the classroom content actually exists. */
   playHref?: string;
+  /** The catalog references a classroom with no stored content. */
+  classroomMissing: boolean;
   sceneCount: number;
   isOpen: boolean;
   /** Institutions this class is assigned to, for context on the card. */
@@ -23,8 +28,10 @@ export interface ClassLibraryEntry {
 
 export interface ClassLibrary {
   entries: ClassLibraryEntry[];
-  /** Entries that have a playable classroom. */
+  /** Entries with an existing, open classroom. */
   playableCount: number;
+  /** Entries whose classroom reference has no stored content. */
+  missingClassroomCount: number;
   categories: { category: string; count: number }[];
 }
 
@@ -38,21 +45,37 @@ export function classroomPlayHref(classroomId: string): string {
   return `/classroom/${classroomId}?tts=browser`;
 }
 
-export function toClassLibraryEntry(
+/** True when classroom content for this id is actually readable on disk. */
+export async function classroomContentExists(classroomId: string): Promise<boolean> {
+  try {
+    await fs.access(path.join(CLASSROOMS_DIR, `${classroomId}.json`));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function toClassLibraryEntry(
   course: Course,
   organizationNames: string[] = [],
-): ClassLibraryEntry {
+): Promise<ClassLibraryEntry> {
   const classroomId = resolveClassroomId(course);
+  const isOpen = isCourseOpenAccess(course);
+  const classroomMissing = classroomId ? !(await classroomContentExists(classroomId)) : false;
+
   const entry: ClassLibraryEntry = {
     course,
     sceneCount: course.modules.length,
-    isOpen: isCourseOpenAccess(course),
+    isOpen,
+    classroomMissing,
     organizationNames,
   };
 
   if (classroomId) {
     entry.classroomId = classroomId;
-    if (entry.isOpen) entry.playHref = classroomPlayHref(classroomId);
+    // Offer a play link only when the classroom exists: a class that 404s in
+    // the player is worse for a visiting school than one marked unavailable.
+    if (isOpen && !classroomMissing) entry.playHref = classroomPlayHref(classroomId);
   }
 
   return entry;
@@ -61,9 +84,15 @@ export function toClassLibraryEntry(
 function sortEntries(entries: ClassLibraryEntry[]): ClassLibraryEntry[] {
   const statusWeight: Record<string, number> = { active: 0, draft: 1, locked: 2, completed: 3 };
   return [...entries].sort((left, right) => {
+    // Playable classes first — they are what a visitor came for.
+    const leftPlayable = left.playHref ? 0 : 1;
+    const rightPlayable = right.playHref ? 0 : 1;
+    if (leftPlayable !== rightPlayable) return leftPlayable - rightPlayable;
+
     const leftWeight = statusWeight[left.course.status] ?? 9;
     const rightWeight = statusWeight[right.course.status] ?? 9;
     if (leftWeight !== rightWeight) return leftWeight - rightWeight;
+
     const leftDate = left.course.updatedAt || left.course.createdAt;
     const rightDate = right.course.updatedAt || right.course.createdAt;
     return rightDate.localeCompare(leftDate);
@@ -76,9 +105,12 @@ export async function listClassLibrary(options?: {
   const dataset = await getCoursePortalDataset();
   const includeWithoutClassroom = options?.includeWithoutClassroom ?? true;
 
-  const entries = dataset.courses
-    .filter((course) => includeWithoutClassroom || Boolean(resolveClassroomId(course)))
-    .map((course) =>
+  const courses = dataset.courses.filter(
+    (course) => includeWithoutClassroom || Boolean(resolveClassroomId(course)),
+  );
+
+  const entries = await Promise.all(
+    courses.map((course) =>
       toClassLibraryEntry(
         course,
         dataset.organizations
@@ -91,7 +123,8 @@ export async function listClassLibrary(options?: {
           )
           .map((organization) => organization.name),
       ),
-    );
+    ),
+  );
 
   const categories = Array.from(
     entries.reduce((counts, entry) => {
@@ -105,7 +138,8 @@ export async function listClassLibrary(options?: {
 
   return {
     entries: sortEntries(entries),
-    playableCount: entries.filter((entry) => Boolean(entry.classroomId)).length,
+    playableCount: entries.filter((entry) => Boolean(entry.playHref)).length,
+    missingClassroomCount: entries.filter((entry) => entry.classroomMissing).length,
     categories,
   };
 }
